@@ -8,11 +8,15 @@
 # divided by summation ((from (i = 1 to n; k = 1 to m))
 # (A(i)(x) max (B)(k)(x) * z(ik)))
 
-class Rule:
-    def __init__(self, antecedents, consequent):
-        self.antecedents = antecedents
-        self.consequent = consequent
+import fuzzy_logic
+
+def food_quality_low(x):
+    if 1 <= x <= 3:
+        return (x - 1) / 2
+    elif 3 < x <= 5:
+        return (5 - x) / 2
+    else:
+        return 0
 
 def main():
-    rule_1 = Rule(["good", "fast"], 0.25)
-    rule_2 = Rule(["poor", "slow"], 0.1)
+    fuzzy_set_food_quality_low = fuzzy_logic.FuzzySet(food_quality_low)
