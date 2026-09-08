@@ -10,13 +10,29 @@
 
 import fuzzy_logic
 
-def food_quality_low(x):
-    if 1 <= x <= 3:
-        return (x - 1) / 2
+def food_quality_poor(x):
+    if 0 <= x <= 2.5:
+        return x / 2.5
+    elif 2.5 < x <= 5:
+        return (5 - x) / 2.5
+    else:
+        return 0
+
+def food_quality_average(x):
+    if 2.5 <= x <= 5:
+        return (x - 2.5)/ 2.5
+    elif 5 < x <= 7.5:
+        return (7.5 - x) / 2.5
+    else:
+        return 0
+
+def food_quality_excellent(x):
+    if 5 <= x <= 7.5:
+        return (x - 5) / 2.5
     elif 3 < x <= 5:
         return (5 - x) / 2
     else:
         return 0
 
 def main():
-    fuzzy_set_food_quality_low = fuzzy_logic.FuzzySet(food_quality_low)
+    food_quality_low = fuzzy_logic.FuzzySet(food_quality_poor)
