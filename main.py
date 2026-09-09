@@ -13,16 +13,16 @@ import sys
 import fuzzy_logic
 
 def main() -> int:
-    food_quality: list[fuzzy_logic.FuzzySet] = [
+    food_quality: tuple[fuzzy_logic.FuzzySet, ...] = (
         food_quality_poor,
         food_quality_average,
         food_quality_excellent
-    ]
-    service: list[fuzzy_logic.FuzzySet] = [
+    )
+    service: tuple[fuzzy_logic.FuzzySet, ...] = (
         service_poor,
         service_average,
         service_excellent
-    ]
+    )
 
     ruleset: tuple[fuzzy_logic.FuzzyRule, ...] = (
         fuzzy_logic.FuzzyRule((food_quality[0], service[0]), 0),
