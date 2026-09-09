@@ -59,9 +59,25 @@ def service_excellent(x):
         return 0
 
 def main():
-    food_quality = fuzzy_logic.FuzzySet(
-        [food_quality_poor, food_quality_average, food_quality_excellent]
-    )
-    service = fuzzy_logic.FuzzySet(
-        [service_poor, service_average, service_excellent]
-    )
+    food_quality = [
+        fuzzy_logic.FuzzySet(food_quality_poor),
+        fuzzy_logic.FuzzySet(food_quality_average),
+        fuzzy_logic.FuzzySet(food_quality_excellent)
+    ]
+    service = [
+        fuzzy_logic.FuzzySet(service_poor),
+        fuzzy_logic.FuzzySet(service_average),
+        fuzzy_logic.FuzzySet(service_excellent)
+    ]
+
+    ruleset = [
+        fuzzy_logic.FuzzyRule([food_quality[0], service[0]], 0),
+        fuzzy_logic.FuzzyRule([food_quality[0], service[1]], 0.1),
+        fuzzy_logic.FuzzyRule([food_quality[0], service[2]], 0.15),
+        fuzzy_logic.FuzzyRule([food_quality[1], service[0]], 0.1),
+        fuzzy_logic.FuzzyRule([food_quality[1], service[1]], 0.15),
+        fuzzy_logic.FuzzyRule([food_quality[1], service[2]], 0.2),
+        fuzzy_logic.FuzzyRule([food_quality[2], service[0]], 0.15),
+        fuzzy_logic.FuzzyRule([food_quality[2], service[1]], 0.2),
+        fuzzy_logic.FuzzyRule([food_quality[2], service[2]], 0.25),
+    ]
