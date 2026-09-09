@@ -12,6 +12,46 @@ import sys
 
 import fuzzy_logic
 
+def food_quality_poor(x: int | float) -> int | float:
+    if 0 <= x <= 5:
+        return (5 - x) / 5
+    else:
+        return 0
+
+def food_quality_average(x: int | float) -> int | float:
+    if 2.5 <= x <= 5:
+        return (x - 2.5)/ 2.5
+    elif 5 < x <= 7.5:
+        return (7.5 - x) / 2.5
+    else:
+        return 0
+
+def food_quality_excellent(x: int | float) -> int | float:
+    if 5 <= x <= 10:
+        return (x - 5) / 5
+    else:
+        return 0
+
+def service_poor(x: int | float) -> int | float:
+    if 0 <= x <= 5:
+        return (5 - x) / 5
+    else:
+        return 0
+
+def service_average(x: int | float) -> int | float:
+    if 2.5 <= x <= 5:
+        return (x - 2.5)/ 2.5
+    elif 5 < x <= 7.5:
+        return (7.5 - x) / 2.5
+    else:
+        return 0
+
+def service_excellent(x: int | float) -> int | float:
+    if 5 <= x <= 10:
+        return (x - 5) / 5
+    else:
+        return 0
+
 def main() -> int:
     food_quality: tuple[fuzzy_logic.FuzzySet, ...] = (
         food_quality_poor,
@@ -40,51 +80,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
-
-def food_quality_poor(x: int | float) -> int | float:
-    if 0 <= x <= 2.5:
-        return x / 2.5
-    elif 2.5 < x <= 5:
-        return (5 - x) / 2.5
-    else:
-        return 0
-
-def food_quality_average(x: int | float) -> int | float:
-    if 2.5 <= x <= 5:
-        return (x - 2.5)/ 2.5
-    elif 5 < x <= 7.5:
-        return (7.5 - x) / 2.5
-    else:
-        return 0
-
-def food_quality_excellent(x: int | float) -> int | float:
-    if 5 <= x <= 7.5:
-        return (x - 5) / 2.5
-    elif 7.5 < x <= 10:
-        return (5 - x) / 2
-    else:
-        return 0
-
-def service_poor(x: int | float) -> int | float:
-    if 0 <= x <= 2.5:
-        return x / 2.5
-    elif 2.5 < x <= 5:
-        return (5 - x) / 2.5
-    else:
-        return 0
-
-def service_average(x: int | float) -> int | float:
-    if 2.5 <= x <= 5:
-        return (x - 2.5)/ 2.5
-    elif 5 < x <= 7.5:
-        return (7.5 - x) / 2.5
-    else:
-        return 0
-
-def service_excellent(x: int | float) -> int | float:
-    if 5 <= x <= 7.5:
-        return (x - 5) / 2.5
-    elif 7.5 < x <= 10:
-        return (5 - x) / 2
-    else:
-        return 0
