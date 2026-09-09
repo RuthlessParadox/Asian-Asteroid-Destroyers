@@ -4,9 +4,9 @@
 
 # output is
 # summation (from (i = 1 to n; k = 1 to m)
-# (A(i)(x) max (B)(k)(x) * z(ik)))
+# (A(i)(x) min (B)(k)(x) * z(ik)))
 # divided by summation ((from (i = 1 to n; k = 1 to m))
-# (A(i)(x) max (B)(k)(x) * z(ik)))
+# (A(i)(x) min (B)(k)(x))
 
 import fuzzy_logic
 
