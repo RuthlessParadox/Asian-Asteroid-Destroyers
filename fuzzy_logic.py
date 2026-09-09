@@ -1,11 +1,8 @@
-class FuzzySet:
-    def __init__(self, function):
-        self.function = function
+from collections.abc import Callable
+from typing import NamedTuple
 
-    def calculate(self, x):
-        return self.function(x)
+type FuzzySet = Callable[[int | float], int | float]
 
-class FuzzyRule:
-    def __init__(self, fuzzy_sets, output):
-        self.fuzzy_sets = fuzzy_sets
-        self.output = output
+class FuzzyRule(NamedTuple):
+    fuzzy_sets: tuple[FuzzySet, ...]
+    output: int | float
