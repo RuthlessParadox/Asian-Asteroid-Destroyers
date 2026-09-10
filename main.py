@@ -65,7 +65,7 @@ def main() -> int:
     )
 
     ruleset: tuple[fuzzy_logic.FuzzyRule, ...] = (
-        fuzzy_logic.FuzzyRule((food_quality[0], service[0]), 0),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[0]), 0.05),
         fuzzy_logic.FuzzyRule((food_quality[0], service[1]), 0.1),
         fuzzy_logic.FuzzyRule((food_quality[0], service[2]), 0.15),
         fuzzy_logic.FuzzyRule((food_quality[1], service[0]), 0.1),
