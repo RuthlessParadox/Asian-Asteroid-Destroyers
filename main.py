@@ -11,6 +11,14 @@
 import sys
 
 import fuzzy_logic
+def TakagiSugeno(list1, list2):
+    numerator = 0
+    denominator = 0
+    result = 0
+    for i in range (len(list1)) :
+        numerator += list1[i] * list2[i]
+        denominator += list1[i]
+    result = numerator / denominator
 
 def food_quality_poor(x: int | float) -> int | float:
     if 0 <= x <= 5:
@@ -52,6 +60,27 @@ def service_excellent(x: int | float) -> int | float:
     else:
         return 0
 
+def timing_slow(x: int | float) -> int | float:
+    if 20 <= x <= 30:
+        return (x - 20) / 10
+    elif x <= 20:
+        return 0
+    else:
+        return 1
+    return 0
+def timing_medium(x: int | float) -> int | float:
+    if 5 <= x <= 15:
+        return (x - 5) / 10
+    elif 15 < x <= 25:
+        return (25 - x) / 10
+    else:
+        return 0
+def timing_fast(x: int | float) -> int | float:
+    if 0 <= x <= 10:
+        return (10 - x) / 10
+    else:
+        return 0
+
 def main() -> int:
     food_quality: tuple[fuzzy_logic.FuzzySet, ...] = (
         food_quality_poor,
@@ -63,19 +92,42 @@ def main() -> int:
         service_average,
         service_excellent
     )
-
-    ruleset: tuple[fuzzy_logic.FuzzyRule, ...] = (
-        fuzzy_logic.FuzzyRule((food_quality[0], service[0]), 0.05),
-        fuzzy_logic.FuzzyRule((food_quality[0], service[1]), 0.1),
-        fuzzy_logic.FuzzyRule((food_quality[0], service[2]), 0.15),
-        fuzzy_logic.FuzzyRule((food_quality[1], service[0]), 0.1),
-        fuzzy_logic.FuzzyRule((food_quality[1], service[1]), 0.15),
-        fuzzy_logic.FuzzyRule((food_quality[1], service[2]), 0.2),
-        fuzzy_logic.FuzzyRule((food_quality[2], service[0]), 0.15),
-        fuzzy_logic.FuzzyRule((food_quality[2], service[1]), 0.2),
-        fuzzy_logic.FuzzyRule((food_quality[2], service[2]), 0.25),
+    timing: tuple[fuzzy_logic.FuzzySet, ...] = (
+        timing_slow,
+        timing_medium,
+        timing_fast
     )
 
+    ruleset: tuple[fuzzy_logic.FuzzyRule, ...] = (
+        fuzzy_logic.FuzzyRule((food_quality[0], service[0], timing[0]), 0),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[0], timing[1]), 0.05),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[0], timing[2]), 0.075),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[1], timing[0]), 0.05),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[1], timing[1]), 0.075),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[1], timing[2]), 0.1),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[2], timing[0]), 0.075),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[2], timing[1]), 0.1),
+        fuzzy_logic.FuzzyRule((food_quality[0], service[2], timing[2]), 0.15),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[0], timing[0]), 0.05),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[0], timing[1]), 0.075),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[0], timing[2]), 0.1),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[1], timing[0]), 0.075),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[1], timing[1]), 0.1),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[1], timing[2]), 0.15),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[2], timing[0]), 0.1),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[2], timing[1]), 0.15),
+        fuzzy_logic.FuzzyRule((food_quality[1], service[2], timing[2]), 0.2),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[0], timing[0]), 0.075),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[0], timing[1]), 0.1),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[0], timing[2]), 0.15),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[1], timing[0]), 0.1),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[1], timing[1]), 0.15),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[1], timing[2]), 0.2),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[2], timing[0]), 0.15),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[2], timing[1]), 0.2),
+        fuzzy_logic.FuzzyRule((food_quality[2], service[2], timing[2]), 0.25),
+
+    )
     return 0
 
 if __name__ == "__main__":
