@@ -81,6 +81,9 @@ def timing_fast(x: int | float) -> int | float:
     else:
         return 0
 
+def product(a, b):
+    return a * b
+
 def main() -> int:
     food_quality: tuple[fuzzy_logic.FuzzySet, ...] = (
         food_quality_poor,
@@ -128,6 +131,32 @@ def main() -> int:
         fuzzy_logic.FuzzyRule((food_quality[2], service[2], timing[2]), 0.25),
 
     )
+
+    print("T-Norm: Minimum\n")
+    print("Food Quality: 7, Service: 3, Time: 10")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((7, 3, 10), ruleset, min)}")
+    print("Food Quality: 5, Service: 2, Time: 7")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((5, 2, 7), ruleset, min)}")
+    print("Food Quality: 3, Service: 10, Time: 34")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((3, 10, 34), ruleset, min)}")
+    print("Food Quality: 6, Service: 6, Time: 14")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((6, 6, 14), ruleset, min)}")
+    print("Food Quality: 8, Service: 2, Time: 2")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((8, 2, 2), ruleset, min)}")
+    print("\n")
+
+    print("T-Norm: Product\n")
+    print("Food Quality: 7, Service: 3, Time: 10")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((7, 3, 10), ruleset, product)}")
+    print("Food Quality: 5, Service: 2, Time: 7")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((5, 2, 7), ruleset, product)}")
+    print("Food Quality: 3, Service: 10, Time: 34")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((3, 10, 34), ruleset, product)}")
+    print("Food Quality: 6, Service: 6, Time: 14")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((6, 6, 14), ruleset, product)}")
+    print("Food Quality: 8, Service: 2, Time: 2")
+    print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((8, 2, 2), ruleset, product)}")
+
     return 0
 
 if __name__ == "__main__":
