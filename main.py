@@ -10,7 +10,11 @@
 
 import sys
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 import fuzzy_logic
+
 def TakagiSugeno(list1, list2):
     numerator = 0
     denominator = 0
