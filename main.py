@@ -15,15 +15,6 @@ import numpy as np
 
 import fuzzy_logic
 
-def TakagiSugeno(list1, list2):
-    numerator = 0
-    denominator = 0
-    result = 0
-    for i in range (len(list1)) :
-        numerator += list1[i] * list2[i]
-        denominator += list1[i]
-    result = numerator / denominator
-
 def food_quality_poor(x: int | float) -> int | float:
     if 0 <= x <= 5:
         return (5 - x) / 5
@@ -160,6 +151,42 @@ def main() -> int:
     print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((6, 6, 14), ruleset, product)}")
     print("Food Quality: 8, Service: 2, Time: 2")
     print(f"Tip: {fuzzy_logic.takagi_sugeno_calculation((8, 2, 2), ruleset, product)}")
+
+    fig_food_quality, ax_food_quality = plt.subplots()
+    ax_food_quality.set_title("Food Quality Membership Functions")
+    ax_food_quality.set_xlabel("Food Quality")
+    ax_food_quality.set_ylabel("Membership")
+    x = np.linspace(0, 10, 100)
+    ax_food_quality.plot(x, np.vectorize(food_quality_poor, otypes=[float])(x), label="Poor")
+    ax_food_quality.plot(x, np.vectorize(food_quality_average, otypes=[float])(x), label="Average")
+    ax_food_quality.plot(x, np.vectorize(food_quality_excellent, otypes=[float])(x), label="Excellent")
+    box = ax_food_quality.get_position()
+    ax_food_quality.set_position((box.x0, box.y0, box.width * 0.8, box.height))
+
+    fig_service, ax_service = plt.subplots()
+    ax_service.set_title("Service Membership Functions")
+    ax_service.set_xlabel("Service")
+    ax_service.set_ylabel("Membership")
+    x = np.linspace(0, 10, 100)
+    ax_service.plot(x, np.vectorize(service_poor, otypes=[float])(x), label="Poor")
+    ax_service.plot(x, np.vectorize(service_average, otypes=[float])(x), label="Average")
+    ax_service.plot(x, np.vectorize(service_excellent, otypes=[float])(x), label="Excellent")
+    box = ax_service.get_position()
+    ax_service.set_position((box.x0, box.y0, box.width * 0.8, box.height))
+
+    fig_timing, ax_timing = plt.subplots()
+    ax_timing.set_title("Time Membership Functions")
+    ax_timing.set_xlabel("Time (min)")
+    ax_timing.set_ylabel("Membership")
+    x = np.linspace(0, 30, 100)
+    ax_timing.plot(x, np.vectorize(timing_fast, otypes=[float])(x), label="Fast")
+    ax_timing.plot(x, np.vectorize(timing_medium, otypes=[float])(x), label="Medium")
+    ax_timing.plot(x, np.vectorize(timing_slow, otypes=[float])(x), label="Slow")
+    box = ax_timing.get_position()
+    ax_timing.set_position((box.x0, box.y0, box.width * 0.8, box.height))
+
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.show()
 
     return 0
 
