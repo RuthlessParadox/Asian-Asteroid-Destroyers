@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from collections.abc import Sequence
 from typing import NamedTuple
 from typing import TypeAlias
 
@@ -22,8 +23,8 @@ class FuzzyRule(NamedTuple):
 TNorm: TypeAlias = Callable[[int | float, int | float], int | float]
 
 def takagi_sugeno_calculation(
-    inputs: tuple[int | float, ...],
-    ruleset: tuple[FuzzyRule, ...],
+    inputs: Sequence[int | float],
+    ruleset: Sequence[FuzzyRule],
     t_norm: TNorm,
 ) -> int | float:
     """Uses the Takagi-Sugeno fuzzy inference system to calculate an output.
