@@ -9,72 +9,206 @@
 # (A(i)(x) min (B)(k)(x))
 
 import sys
+from typing import overload
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 
 import fuzzy_logic
 
-def food_quality_poor(x: float) -> int | float:
-    if 0 <= x <= 5:
-        return (5 - x) / 5
+@overload
+def food_quality_poor(x: float) -> int | float: ...
+@overload
+def food_quality_poor(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def food_quality_poor(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 0 <= x <= 5:
+            return (5 - x) / 5
+        else:
+            return 0
     else:
-        return 0
+        return np.where(np.logical_and(0 <= x, x <= 5), (5 - x) / 5, 0)
 
-def food_quality_average(x: float) -> int | float:
-    if 2.5 <= x <= 5:
-        return (x - 2.5)/ 2.5
-    elif 5 < x <= 7.5:
-        return (7.5 - x) / 2.5
+@overload
+def food_quality_average(x: float) -> int | float: ...
+@overload
+def food_quality_average(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def food_quality_average(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 2.5 <= x <= 5:
+            return (x - 2.5) / 2.5
+        elif 5 < x <= 7.5:
+            return (7.5 - x) / 2.5
+        else:
+            return 0
     else:
-        return 0
+        conditions = [
+            np.logical_and(2.5 <= x, x <= 5),
+            np.logical_and(5 < x, x <= 7.5)
+        ]
+        choices = [
+            (x - 2.5) / 2.5,
+            (7.5 - x) / 2.5
+        ]
+        return np.select(conditions, choices, default=0)
 
-def food_quality_excellent(x: float) -> int | float:
-    if 5 <= x <= 10:
-        return (x - 5) / 5
+@overload
+def food_quality_excellent(x: float) -> int | float: ...
+@overload
+def food_quality_excellent(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def food_quality_excellent(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 5 <= x <= 10:
+            return (x - 5) / 5
+        else:
+            return 0
     else:
-        return 0
+        return np.where(np.logical_and(5 <= x, x <= 10), (x - 5) / 5, 0)
 
-def service_poor(x: float) -> int | float:
-    if 0 <= x <= 5:
-        return (5 - x) / 5
+@overload
+def service_poor(x: float) -> int | float: ...
+@overload
+def service_poor(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def service_poor(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 0 <= x <= 5:
+            return (5 - x) / 5
+        else:
+            return 0
     else:
-        return 0
+        return np.where(np.logical_and(0 <= x, x <= 5), (5 - x) / 5, 0)
 
-def service_average(x: float) -> int | float:
-    if 2.5 <= x <= 5:
-        return (x - 2.5)/ 2.5
-    elif 5 < x <= 7.5:
-        return (7.5 - x) / 2.5
+@overload
+def service_average(x: float) -> int | float: ...
+@overload
+def service_average(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def service_average(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 2.5 <= x <= 5:
+            return (x - 2.5) / 2.5
+        elif 5 < x <= 7.5:
+            return (7.5 - x) / 2.5
+        else:
+            return 0
     else:
-        return 0
+        conditions = [
+            np.logical_and(2.5 <= x, x <= 5),
+            np.logical_and(5 < x, x <= 7.5)
+        ]
+        choices = [
+            (x - 2.5) / 2.5,
+            (7.5 - x) / 2.5
+        ]
+        return np.select(conditions, choices, default=0)
 
-def service_excellent(x: float) -> int | float:
-    if 5 <= x <= 10:
-        return (x - 5) / 5
+@overload
+def service_excellent(x: float) -> int | float: ...
+@overload
+def service_excellent(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def service_excellent(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 5 <= x <= 10:
+            return (x - 5) / 5
+        else:
+            return 0
     else:
-        return 0
+        return np.where(np.logical_and(5 <= x, x <= 10), (x - 5) / 5, 0)
 
-def timing_slow(x: float) -> int | float:
-    if 20 <= x <= 30:
-        return (x - 20) / 10
-    elif x <= 20:
-        return 0
+@overload
+def timing_slow(x: float) -> int | float: ...
+@overload
+def timing_slow(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def timing_slow(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 0 <= x <= 20:
+            return 0
+        elif 20 < x <= 30:
+            return (x - 20) / 10
+        else:
+            return 1
     else:
-        return 1
-    return 0
-def timing_medium(x: float) -> int | float:
-    if 5 <= x <= 15:
-        return (x - 5) / 10
-    elif 15 < x <= 25:
-        return (25 - x) / 10
+        conditions = [
+            np.logical_and(0 <= x, x <= 20),
+            np.logical_and(20 < x, x <= 30)
+        ]
+        choices = [
+            0,
+            (x - 20) / 10
+        ]
+        return np.select(conditions, choices, default=1)
+
+@overload
+def timing_medium(x: float) -> int | float: ...
+@overload
+def timing_medium(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def timing_medium(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 5 <= x <= 15:
+            return (x - 5) / 10
+        elif 15 < x <= 25:
+            return (25 - x) / 10
+        else:
+            return 0
     else:
-        return 0
-def timing_fast(x: float) -> int | float:
-    if 0 <= x <= 10:
-        return (10 - x) / 10
+        conditions = [
+            np.logical_and(5 <= x, x <= 15),
+            np.logical_and(15 < x, x <= 25)
+        ]
+        choices = [
+            (x - 5) / 10,
+            (25 - x) / 10
+        ]
+        return np.select(conditions, choices, default=0)
+
+@overload
+def timing_fast(x: float) -> int | float: ...
+@overload
+def timing_fast(
+    x: npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> npt.NDArray[np.int_] | npt.NDArray[np.floating]: ...
+def timing_fast(
+    x: float | npt.NDArray[np.int_] | npt.NDArray[np.floating]
+) -> int | float | npt.NDArray[np.int_] | npt.NDArray[np.floating]:
+    if isinstance(x, (int, float)):
+        if 0 <= x <= 10:
+            return (10 - x) / 10
+        else:
+            return 0
     else:
-        return 0
+        return np.where(np.logical_and(0 <= x, x <= 10), (10 - x) / 10, 0)
 
 def product(a: float, b: float) -> int | float:
     return a * b
@@ -157,9 +291,9 @@ def main() -> int:
     ax_food_quality.set_xlabel("Food Quality")
     ax_food_quality.set_ylabel("Membership")
     x = np.linspace(0, 10, 100)
-    ax_food_quality.plot(x, np.vectorize(food_quality_poor, otypes=[float])(x), label="Poor")
-    ax_food_quality.plot(x, np.vectorize(food_quality_average, otypes=[float])(x), label="Average")
-    ax_food_quality.plot(x, np.vectorize(food_quality_excellent, otypes=[float])(x), label="Excellent")
+    ax_food_quality.plot(x, food_quality_poor(x), label="Poor")
+    ax_food_quality.plot(x, food_quality_average(x), label="Average")
+    ax_food_quality.plot(x, food_quality_excellent(x), label="Excellent")
     box = ax_food_quality.get_position()
     ax_food_quality.set_position((box.x0, box.y0, box.width * 0.8, box.height))
 
@@ -168,9 +302,9 @@ def main() -> int:
     ax_service.set_xlabel("Service")
     ax_service.set_ylabel("Membership")
     x = np.linspace(0, 10, 100)
-    ax_service.plot(x, np.vectorize(service_poor, otypes=[float])(x), label="Poor")
-    ax_service.plot(x, np.vectorize(service_average, otypes=[float])(x), label="Average")
-    ax_service.plot(x, np.vectorize(service_excellent, otypes=[float])(x), label="Excellent")
+    ax_service.plot(x, service_poor(x), label="Poor")
+    ax_service.plot(x, service_average(x), label="Average")
+    ax_service.plot(x, service_excellent(x), label="Excellent")
     box = ax_service.get_position()
     ax_service.set_position((box.x0, box.y0, box.width * 0.8, box.height))
 
@@ -179,9 +313,9 @@ def main() -> int:
     ax_timing.set_xlabel("Time (min)")
     ax_timing.set_ylabel("Membership")
     x = np.linspace(0, 30, 100)
-    ax_timing.plot(x, np.vectorize(timing_fast, otypes=[float])(x), label="Fast")
-    ax_timing.plot(x, np.vectorize(timing_medium, otypes=[float])(x), label="Medium")
-    ax_timing.plot(x, np.vectorize(timing_slow, otypes=[float])(x), label="Slow")
+    ax_timing.plot(x, timing_fast(x), label="Fast")
+    ax_timing.plot(x, timing_medium(x), label="Medium")
+    ax_timing.plot(x, timing_slow(x), label="Slow")
     box = ax_timing.get_position()
     ax_timing.set_position((box.x0, box.y0, box.width * 0.8, box.height))
 
