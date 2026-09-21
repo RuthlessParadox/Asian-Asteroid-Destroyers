@@ -15,13 +15,13 @@ import numpy as np
 
 import fuzzy_logic
 
-def food_quality_poor(x: int | float) -> int | float:
+def food_quality_poor(x: float) -> int | float:
     if 0 <= x <= 5:
         return (5 - x) / 5
     else:
         return 0
 
-def food_quality_average(x: int | float) -> int | float:
+def food_quality_average(x: float) -> int | float:
     if 2.5 <= x <= 5:
         return (x - 2.5)/ 2.5
     elif 5 < x <= 7.5:
@@ -29,19 +29,19 @@ def food_quality_average(x: int | float) -> int | float:
     else:
         return 0
 
-def food_quality_excellent(x: int | float) -> int | float:
+def food_quality_excellent(x: float) -> int | float:
     if 5 <= x <= 10:
         return (x - 5) / 5
     else:
         return 0
 
-def service_poor(x: int | float) -> int | float:
+def service_poor(x: float) -> int | float:
     if 0 <= x <= 5:
         return (5 - x) / 5
     else:
         return 0
 
-def service_average(x: int | float) -> int | float:
+def service_average(x: float) -> int | float:
     if 2.5 <= x <= 5:
         return (x - 2.5)/ 2.5
     elif 5 < x <= 7.5:
@@ -49,13 +49,13 @@ def service_average(x: int | float) -> int | float:
     else:
         return 0
 
-def service_excellent(x: int | float) -> int | float:
+def service_excellent(x: float) -> int | float:
     if 5 <= x <= 10:
         return (x - 5) / 5
     else:
         return 0
 
-def timing_slow(x: int | float) -> int | float:
+def timing_slow(x: float) -> int | float:
     if 20 <= x <= 30:
         return (x - 20) / 10
     elif x <= 20:
@@ -63,40 +63,40 @@ def timing_slow(x: int | float) -> int | float:
     else:
         return 1
     return 0
-def timing_medium(x: int | float) -> int | float:
+def timing_medium(x: float) -> int | float:
     if 5 <= x <= 15:
         return (x - 5) / 10
     elif 15 < x <= 25:
         return (25 - x) / 10
     else:
         return 0
-def timing_fast(x: int | float) -> int | float:
+def timing_fast(x: float) -> int | float:
     if 0 <= x <= 10:
         return (10 - x) / 10
     else:
         return 0
 
-def product(a, b):
+def product(a: float, b: float) -> int | float:
     return a * b
 
 def main() -> int:
-    food_quality: tuple[fuzzy_logic.FuzzySet, ...] = (
+    food_quality = (
         food_quality_poor,
         food_quality_average,
         food_quality_excellent
     )
-    service: tuple[fuzzy_logic.FuzzySet, ...] = (
+    service = (
         service_poor,
         service_average,
         service_excellent
     )
-    timing: tuple[fuzzy_logic.FuzzySet, ...] = (
+    timing = (
         timing_slow,
         timing_medium,
         timing_fast
     )
 
-    ruleset: tuple[fuzzy_logic.FuzzyRule, ...] = (
+    ruleset = (
         fuzzy_logic.FuzzyRule((food_quality[0], service[0], timing[0]), 0),
         fuzzy_logic.FuzzyRule((food_quality[0], service[0], timing[1]), 0.05),
         fuzzy_logic.FuzzyRule((food_quality[0], service[0], timing[2]), 0.075),

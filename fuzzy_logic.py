@@ -4,7 +4,7 @@ from typing import NamedTuple
 from typing import TypeAlias
 
 # Function that takes a numeric input and returns a firing strength.
-FuzzySet: TypeAlias = Callable[[int | float], int | float]
+FuzzySet: TypeAlias = Callable[[float], int | float]
 
 # Tuple containing a FuzzySet tuple and a numeric output.
 class FuzzyRule(NamedTuple):
@@ -20,10 +20,10 @@ class FuzzyRule(NamedTuple):
 #    the result cannot decrease.
 # 3. The order of inputs should not matter.
 # 4. The order of function calls should not matter.
-TNorm: TypeAlias = Callable[[int | float, int | float], int | float]
+TNorm: TypeAlias = Callable[[float, float], int | float]
 
 def takagi_sugeno_calculation(
-    inputs: Sequence[int | float],
+    inputs: Sequence[float],
     ruleset: Sequence[FuzzyRule],
     t_norm: TNorm,
 ) -> int | float:
