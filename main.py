@@ -1,12 +1,7 @@
-# Takagi Sugeno Fuzzy System
-
-# if x is A(i) and y is B(k) then z = z(ik)
-
-# output is
-# summation (from (i = 1 to n; k = 1 to m)
-# (A(i)(x) min (B)(k)(x) * z(ik)))
-# divided by summation ((from (i = 1 to n; k = 1 to m))
-# (A(i)(x) min (B)(k)(x))
+# Atreyi Seal, Isaac Zhou
+# CSP 200
+#
+# Simple application of fuzzy logic modeling tipping for a restaurant.
 
 import sys
 from typing import overload
