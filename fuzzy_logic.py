@@ -47,7 +47,7 @@ def takagi_sugeno_calculation(
     for rule in ruleset:
         # Start with firing strength 1 since the t-norm function should not
         # alter the other input.
-        firing_strength = 1
+        firing_strength: float = 1
         # Iterate through each fuzzy set in the rule.
         for index, fuzzy_set in enumerate(rule.fuzzy_sets):
             # Apply the t-norm function to the current firing strength and the
