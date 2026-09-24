@@ -35,5 +35,18 @@ scenario2 = Scenario(name='Scenario 2',
                             ammo_limit_multiplier=0,
                             stop_if_no_ammo=False)
 
+# Much bigger game scenario with 50 random (seeded) asteroid initial conditions
+scenario3 = Scenario(name='Scenario 3',
+                            num_asteroids=50,
+                            seed=3,
+                            ship_states=[
+                                {'position': (400, 400), 'angle': 90, 'lives': 3, 'team': 1, "mines_remaining": 3},
+                                # {'position': (400, 600), 'angle': 90, 'lives': 3, 'team': 2, "mines_remaining": 3},
+                            ],
+                            map_size=(1000, 800),
+                            time_limit=30,
+                            ammo_limit_multiplier=0,
+                            stop_if_no_ammo=False)
+
 training_set = [scenario1,
-                scenario2]
+                scenario2, scenario3]
