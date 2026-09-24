@@ -76,6 +76,8 @@ class MyFuzzyController(KesslerController):
         #   ]
         self.aiming_fis = None
         self.aiming_fis_sim = None
+        self.moving_fis = None
+        self.moving_fis_sim = None
         self.normalization_dist = None
         self.sa = SA()
 
@@ -186,8 +188,111 @@ class MyFuzzyController(KesslerController):
             # creating a controller sim to evaluate the FIS
             self.aiming_fis_sim = ctrl.ControlSystemSimulation(self.aiming_fis)
 
+    def create_moving_fis(self):
+        # If we don't have a chromosome to get values from, use "default" values
+        if not self.chromosome:
+            # input 1 - distance to asteroid
+            distance = ctrl.Antecedent(np.linspace(0.0, 1.0, 11), "distance")
+            # input 2 - angle to asteroid (relative to ship heading)
+            angle = ctrl.Antecedent(np.linspace(-1.0, 1.0, 11), "angle")
+
+            # output - desired relative angle to match to aim ship at asteroid
+            thrust = ctrl.Consequent(np.linspace(-1.0, 1.0, 11), "thrust")
+
+            # creating 3 equally spaced membership functions for the inputs
+            distance.automf(3, names=["close", "medium", "far"])
+            angle.automf(3, names=["negative", "zero", "positive"])
+
+            # creating 3 triangular membership functions for the output
+            thrust["negative"] = skf.trimf(thrust.universe, [-1.0, -1.0, 0.0])
+            thrust["zero"] = skf.trimf(thrust.universe, [-1.0, 0.0, 1.0])
+            thrust["positive"] = skf.trimf(thrust.universe, [0.0, 1.0, 1.0])
+
+            # creating the rule base for the fuzzy system
+            rule1 = ctrl.Rule(distance["close"] & angle["negative"], thrust["negative"])
+            rule2 = ctrl.Rule(distance["medium"] & angle["negative"], thrust["negative"])
+            rule3 = ctrl.Rule(distance["far"] & angle["negative"], thrust["negative"])
+            rule4 = ctrl.Rule(distance["close"] & angle["zero"], thrust["negative"])
+            rule5 = ctrl.Rule(distance["medium"] & angle["zero"], thrust["positive"])
+            rule6 = ctrl.Rule(distance["far"] & angle["zero"], thrust["positive"])
+            rule7 = ctrl.Rule(distance["close"] & angle["positive"], thrust["positive"])
+            rule8 = ctrl.Rule(distance["medium"] & angle["positive"], thrust["positive"])
+            rule9 = ctrl.Rule(distance["far"] & angle["positive"], thrust["positive"])
+
+            rules = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9]
+            # creating a FIS controller from the rules + membership functions
+            self.moving_fis = ctrl.ControlSystem(rules)
+            # creating a controller sim to evaluate the FIS
+            self.moving_fis_sim = ctrl.ControlSystemSimulation(self.moving_fis)
+        else:
+            # create FIS using GA chromosome
+            # input 1 - distance to asteroid
+            distance = ctrl.Antecedent(np.linspace(0.0, 1.0, 11), "distance")
+            # input 2 - angle to asteroid (relative to ship heading)
+            angle = ctrl.Antecedent(np.linspace(-1.0, 1.0, 11), "angle")
+
+            # output - desired relative angle to match to aim ship at asteroid
+            thrust = ctrl.Consequent(np.linspace(-1.0, 1.0, 11), "thrust")
+
+            # Create membership functions from chromosome - Note that we're constraining the triangular membership
+            # functions to have Ruspini partitioning
+            # create distance membership functions from chromosome
+            distance["close"] = skf.trimf(distance.universe, [-1.0, -1.0, self.chromosome[0]])
+            distance["medium"] = skf.trimf(distance.universe, [-1.0, self.chromosome[0], 1.0])
+            distance["far"] = skf.trimf(distance.universe, [self.chromosome[0], 1.0, 1.0])
+            # create angle membership functions from chromosome
+            angle["negative"] = skf.trimf(angle.universe, [-1.0, -1.0, self.chromosome[1] * 2 - 1])
+            angle["zero"] = skf.trimf(angle.universe, [-1.0, self.chromosome[1] * 2 - 1, 1.0])
+            angle["positive"] = skf.trimf(angle.universe, [self.chromosome[1] * 2 - 1, 1.0, 1.0])
+
+            # creating 3 triangular membership functions for the output
+            thrust["negative"] = skf.trimf(thrust.universe, [-1.0, -1.0, self.chromosome[12] * 2 - 1])
+            thrust["zero"] = skf.trimf(thrust.universe, [-1.0, self.chromosome[12] * 2 - 1, 1.0])
+            thrust["positive"] = skf.trimf(thrust.universe, [self.chromosome[12] * 2 - 1, 1.0, 1.0])
+
+            input1_mfs = [distance["close"], distance["medium"], distance["far"]]
+            input2_mfs = [angle["negative"], angle["zero"], angle["positive"]]
+
+            # create list of output membership functions to index into to create rule antecedents
+            output_mfs = [thrust["negative"], thrust["zero"], thrust["positive"]]
+
+            # bin the values associated with rules - this is done so we can use the floats in the chromosome DNA
+            # associated with the output membership functions in order to index into our predefined output membership
+            # function set - i.e. the "output_mfs" list
+            bins = np.array([0.0, 0.33333, 0.66666, 1.0])
+            num_mfs1 = len(input1_mfs)
+            num_mfs2 = len(input2_mfs)
+            num_rules = num_mfs1 * num_mfs2
+            # grabbing the corresponding DNA values that determine the output mfs from the chromosome
+            rules_raw = self.chromosome[12:12 + num_rules]
+            # binning the values to convert the floats to integer values to be used as indices - a somewhat hacky way
+            # using direct integer encodings would be nicer and probably perform better - opportunity for improvement
+            ind = np.digitize(rules_raw, bins, right=True) - 1
+            ind = [int(min(max(idx, 0), 2)) for idx in ind]
+
+            count = 0
+            # mapping the DNA indices to output_mfs
+            try:
+                rule_consequents_linear = [output_mfs[idx] for idx in ind]
+            except:
+                print(ind)
+                print(rules_raw)
+            # constructing the rules by combining our antecedents (conjunction of input mfs) with the corresponding
+            # consequents (output mfs)
+            rules = []
+
+            for jj in range(num_mfs2):
+                for ii in range(num_mfs1):
+                    rules.append(ctrl.Rule(input1_mfs[ii] & input2_mfs[jj], rule_consequents_linear[count]))
+
+            # creating a FIS controller from the rules + membership functions
+            self.moving_fis = ctrl.ControlSystem(rules)
+            # creating a controller sim to evaluate the FIS
+            self.moving_fis_sim = ctrl.ControlSystemSimulation(self.moving_fis)
+
     def create_fuzzy_systems(self):
         self.create_aiming_fis()
+        self.create_moving_fis()
 
     def actions(self, ship_state: Dict, game_state: Dict) -> Tuple[float, float, bool, bool]:
         """
@@ -220,8 +325,11 @@ class MyFuzzyController(KesslerController):
         # feed asteroid dist and angle to the FIS
         self.aiming_fis_sim.input["angle"] = norm_relative_angle
         self.aiming_fis_sim.input["distance"] = norm_ast_distance
+        self.moving_fis_sim.input["angle"] = norm_relative_angle
+        self.moving_fis_sim.input["distance"] = norm_ast_distance
         # compute fis output
         self.aiming_fis_sim.compute()
+        self.moving_fis_sim.compute()
         # map normalized output to angle range [-180, 180], note that the output of the fis is determined by the membership functions and they go from -1 to 1
         desired_aim_angle = self.aiming_fis_sim.output["aiming_angle"]*180.0
         aim_angle_difference = trim_angle(desired_aim_angle - relative_angle)
@@ -236,7 +344,7 @@ class MyFuzzyController(KesslerController):
             turn_rate = ship_state["turn_rate_range"][0]
 
         # set firing to always be true (fires as often as possible), all other values to 0
-        thrust = 0
+        thrust = self.moving_fis_sim.output["thrust"] * 480.0
         fire = True
         drop_mine = False
 
