@@ -30,7 +30,7 @@ def exampleFitness(individual, settings=None):
         result, _ = game.run(scenario=scenario, controllers=[controller])
         # scores = [team.asteroids_hit for team in result.teams]
         # total_score += scores[0]
-        score = result.teams[0].fraction_total_asteroids_hit + result.teams[0].accuracy
+        score = result.teams[0].fraction_total_asteroids_hit * 3 + int(result.teams[0].lives_remaining > 0)
         total_score += score
 
     return total_score,
