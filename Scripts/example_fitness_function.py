@@ -31,6 +31,7 @@ def exampleFitness(individual, settings=None):
         # scores = [team.asteroids_hit for team in result.teams]
         # total_score += scores[0]
         score = result.teams[0].fraction_total_asteroids_hit + result.teams[0].accuracy
+        score += result.teams[0].asteroids_hit + result.teams[0].accuracy
         total_score += score
 
     return total_score,
