@@ -100,7 +100,7 @@ def main():
     toolbox.register("select", tools.selTournament, tournsize=3)
 
     # creating a population - in this case we only have 20 individuals in our population
-    pop = toolbox.population(n=20)
+    pop = toolbox.population(n=100)
 
     # Path for saving the best solution checkpoint each generation
     best_solution_dir = Path(os.path.dirname(__file__), "solution_history")
