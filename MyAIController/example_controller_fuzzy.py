@@ -237,18 +237,18 @@ class MyFuzzyController(KesslerController):
             # Create membership functions from chromosome - Note that we're constraining the triangular membership
             # functions to have Ruspini partitioning
             # create distance membership functions from chromosome
-            distance["close"] = skf.trimf(distance.universe, [-1.0, -1.0, self.chromosome[0]])
-            distance["medium"] = skf.trimf(distance.universe, [-1.0, self.chromosome[0], 1.0])
-            distance["far"] = skf.trimf(distance.universe, [self.chromosome[0], 1.0, 1.0])
+            distance["close"] = skf.trimf(distance.universe, [-1.0, -1.0, self.chromosome[12]])
+            distance["medium"] = skf.trimf(distance.universe, [-1.0, self.chromosome[12], 1.0])
+            distance["far"] = skf.trimf(distance.universe, [self.chromosome[12], 1.0, 1.0])
             # create angle membership functions from chromosome
-            angle["negative"] = skf.trimf(angle.universe, [-1.0, -1.0, self.chromosome[1] * 2 - 1])
-            angle["zero"] = skf.trimf(angle.universe, [-1.0, self.chromosome[1] * 2 - 1, 1.0])
-            angle["positive"] = skf.trimf(angle.universe, [self.chromosome[1] * 2 - 1, 1.0, 1.0])
+            angle["negative"] = skf.trimf(angle.universe, [-1.0, -1.0, self.chromosome[13] * 2 - 1])
+            angle["zero"] = skf.trimf(angle.universe, [-1.0, self.chromosome[13] * 2 - 1, 1.0])
+            angle["positive"] = skf.trimf(angle.universe, [self.chromosome[13] * 2 - 1, 1.0, 1.0])
 
             # creating 3 triangular membership functions for the output
-            thrust["negative"] = skf.trimf(thrust.universe, [-1.0, -1.0, self.chromosome[12] * 2 - 1])
-            thrust["zero"] = skf.trimf(thrust.universe, [-1.0, self.chromosome[12] * 2 - 1, 1.0])
-            thrust["positive"] = skf.trimf(thrust.universe, [self.chromosome[12] * 2 - 1, 1.0, 1.0])
+            thrust["negative"] = skf.trimf(thrust.universe, [-1.0, -1.0, self.chromosome[14] * 2 - 1])
+            thrust["zero"] = skf.trimf(thrust.universe, [-1.0, self.chromosome[14] * 2 - 1, 1.0])
+            thrust["positive"] = skf.trimf(thrust.universe, [self.chromosome[14] * 2 - 1, 1.0, 1.0])
 
             input1_mfs = [distance["close"], distance["medium"], distance["far"]]
             input2_mfs = [angle["negative"], angle["zero"], angle["positive"]]
@@ -264,7 +264,7 @@ class MyFuzzyController(KesslerController):
             num_mfs2 = len(input2_mfs)
             num_rules = num_mfs1 * num_mfs2
             # grabbing the corresponding DNA values that determine the output mfs from the chromosome
-            rules_raw = self.chromosome[12:12 + num_rules]
+            rules_raw = self.chromosome[15:15 + num_rules]
             # binning the values to convert the floats to integer values to be used as indices - a somewhat hacky way
             # using direct integer encodings would be nicer and probably perform better - opportunity for improvement
             ind = np.digitize(rules_raw, bins, right=True) - 1
