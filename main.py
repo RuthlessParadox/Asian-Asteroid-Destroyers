@@ -296,10 +296,6 @@ def main() -> int:
     ax_food_quality.plot(x, food_quality_poor(x), label="Poor", color="red")
     ax_food_quality.plot(x, food_quality_average(x), label="Average", color="yellow")
     ax_food_quality.plot(x, food_quality_excellent(x), label="Excellent", color="green")
-    ax_food_quality.plot(6, 0.6, marker='o', markersize=5, color="black")
-    ax_food_quality.annotate("(6, 0.6)", xy=(6, 0.6), xytext=(5, 0.65))
-    ax_food_quality.plot(6, 0.2, marker='o', markersize=5, color="black")
-    ax_food_quality.annotate("(6, 0.2)", xy=(6, 0.2), xytext=(6.2, 0.15))
     box = ax_food_quality.get_position()
     ax_food_quality.set_position((box.x0, box.y0, box.width * 0.8, box.height))
     fig_food_quality.legend(loc='center right')
@@ -328,6 +324,20 @@ def main() -> int:
     ax_timing.set_position((box.x0, box.y0, box.width * 0.8, box.height))
     fig_timing.legend(loc='center right')
 
+    rng = np.random.default_rng()
+    x = rng.uniform(low=0, high=10,size=1000)
+    y = rng.uniform(low=0, high=10,size=1000)
+    z = rng.uniform(low=0, high=30,size=1000)
+    intensity = np.empty(1000, dtype=np.float32)
+    for i in range(1000):
+        intensity[i] = fuzzy_logic.takagi_sugeno_calculation((x[i], y[i], z[i]), ruleset, product)
+    fig_heatmap, ax_heatmap = plt.subplots(subplot_kw={'projection': '3d'})
+    ax_heatmap.set_title("Output Tip from TSK")
+    ax_heatmap.set(xlabel="Food Quality", ylabel="Service", zlabel="Time (min)")
+    scatter = ax_heatmap.scatter(x, y, z, c=intensity, cmap='inferno', alpha=0.6, edgecolors='none')
+    fig_heatmap.colorbar(scatter, ax=ax_heatmap, label='Intensity Value')
+
+    plt.tight_layout()
     plt.show()
 
     return 0
