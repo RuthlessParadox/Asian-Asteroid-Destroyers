@@ -9,7 +9,7 @@ sys.path.append('')
 
 from kesslergame import KesslerGame, GraphicsType
 from scenarios.example_scenarios import *
-from src.controllers import MyFuzzyController
+from controllers.example_controller_fuzzy import MyFuzzyController
 
 # Define game scenario
 # my_test_scenario = Scenario(name='Test Scenario',

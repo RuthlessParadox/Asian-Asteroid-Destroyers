@@ -18,7 +18,7 @@ from deap import creator
 from deap import tools
 from deap import algorithms
 
-from example_fitness_function import exampleFitness
+from scripts.example_fitness_function import exampleFitness
 
 # orginal fitness function from DEAP onemax example
 # def evalOneMax(individual):
