@@ -5,12 +5,11 @@
 
 import sys
 
-sys.path.append('.')
+sys.path.append('')
 
-from kesslergame import Scenario, KesslerGame, GraphicsType
-from Scenarios.example_scenarios import *
-from MyAIController.example_controller_fuzzy import MyFuzzyController
-from MyAIController.example_controller_fuzzy2 import MyFuzzyController2
+from kesslergame import KesslerGame, GraphicsType
+from scenarios.example_scenarios import *
+from src.controllers import MyFuzzyController
 
 # Define game scenario
 # my_test_scenario = Scenario(name='Test Scenario',

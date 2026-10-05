@@ -5,7 +5,7 @@
 
 from kesslergame import KesslerController
 from typing import Dict, Tuple
-# from MyAIController.ai.sa.sa import SA
+# from controllers.ai.sa.sa import SA
 from .sa.sa import SA
 from .sa.util.helpers import trim_angle
 import skfuzzy.control as ctrl

@@ -5,7 +5,7 @@
 
 import sys
 
-sys.path.append('.')
+sys.path.append('')
 import json
 import os
 import numpy as np
@@ -103,7 +103,7 @@ def main():
     pop = toolbox.population(n=20)
 
     # Path for saving the best solution checkpoint each generation
-    best_solution_dir = Path(os.path.dirname(__file__), "../TrainingData/solution_history")
+    best_solution_dir = Path(os.path.dirname(__file__), "../../training_data/solution_history")
     clear_solution_history(best_solution_dir)
 
     # Evaluate the entire population

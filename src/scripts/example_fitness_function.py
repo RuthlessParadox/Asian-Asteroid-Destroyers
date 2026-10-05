@@ -5,12 +5,12 @@
 import random
 import sys
 
-sys.path.append('.')
+sys.path.append('')
 
-from kesslergame import KesslerController, KesslerGame, GraphicsType, TrainerEnvironment
-from MyAIController.example_controller_fuzzy import MyFuzzyController
-# from MyAIController.example_controller_fuzzy2 import MyFuzzyController2
-from Scenarios.example_scenarios import training_set
+from kesslergame import KesslerGame, GraphicsType
+from src.controllers import MyFuzzyController
+# from controllers.example_controller_fuzzy2 import MyFuzzyController2
+from scenarios.example_scenarios import training_set
 
 
 def exampleFitness(individual, settings=None):

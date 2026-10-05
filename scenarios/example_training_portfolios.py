@@ -5,7 +5,7 @@
 
 from kesslergame import Scenario
 
-# Scenarios can be defined using the Scenario() class in fuzzy asteroids. Refer to
+# scenarios can be defined using the Scenario() class in fuzzy asteroids. Refer to
 # examples below for creating your own or check out tas_scenarios.py for a large list
 # of pre-made examples that you can be used. The "adv" prefix indicates a scenario has
 # been set up for adversarial use (two competing ships)

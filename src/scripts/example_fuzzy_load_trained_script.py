@@ -6,19 +6,19 @@
 import sys
 import os
 
-sys.path.append('.')
+sys.path.append('')
 
-from kesslergame import KesslerController, KesslerGame, GraphicsType, TrainerEnvironment
-from MyAIController.example_controller_fuzzy import MyFuzzyController
-# from MyAIController.example_controller_fuzzy2 import MyFuzzyController2
-from Scenarios.example_scenarios import training_set
+from kesslergame import KesslerGame, GraphicsType
+from src.controllers import MyFuzzyController
+# from controllers.example_controller_fuzzy2 import MyFuzzyController2
+from scenarios.example_scenarios import training_set
 
 import json
 from pathlib import Path
 
 # Path to the saved JSON file
 # json_path = Path("solution_history/best_solution_gen_0001.json")
-json_path = Path(os.path.dirname(__file__), "../TrainingData/best_solution.json")
+json_path = Path(os.path.dirname(__file__), "../../training_data/best_solution.json")
 
 # Load JSON
 with json_path.open("r", encoding="utf-8") as f:
@@ -41,9 +41,6 @@ print("Generation:", generation)
 print("Best fitness:", best_fitness)
 print("Genome length:", n_genes)
 print("Genome:", genome)
-
-
-from example_fitness_function import exampleFitness
 
 # orginal fitness function from DEAP onemax example
 # def evalOneMax(individual):
