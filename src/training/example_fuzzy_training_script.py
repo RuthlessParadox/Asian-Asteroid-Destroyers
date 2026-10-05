@@ -8,7 +8,6 @@ import sys
 sys.path.append('')
 import json
 import os
-import numpy as np
 import random
 from pathlib import Path
 
@@ -16,9 +15,8 @@ from pathlib import Path
 from deap import base
 from deap import creator
 from deap import tools
-from deap import algorithms
 
-from scripts.example_fitness_function import exampleFitness
+from training.fitness_functions import example_fitness
 
 # orginal fitness function from DEAP onemax example
 # def evalOneMax(individual):
@@ -91,7 +89,7 @@ def main():
     toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
     # here we register our custom fitness function that we import above - in the DEAP onemax example this is where "evalOneMax" would be passed instead
-    toolbox.register("evaluate", exampleFitness)
+    toolbox.register("evaluate", example_fitness)
     # Defining what type of crossover will be used
     toolbox.register("mate", tools.cxTwoPoint)
     # defining what type of mutation will be used - in this case our encoding is floats so we're using Gaussian - we could use other methods

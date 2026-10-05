@@ -13,7 +13,7 @@ from controllers.example_controller_fuzzy import MyFuzzyController
 from scenarios.example_scenarios import training_set
 
 
-def exampleFitness(individual, settings=None):
+def example_fitness(individual, settings=None):
     controller = MyFuzzyController(chromosome=individual)
     total_score = 0
     game_settings = {'perf_tracker': False,
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     test_individual = [random.random() for _ in range(50)]
     print(test_individual)
 
-    test_score = exampleFitness(individual=test_individual)
+    test_score = example_fitness(individual=test_individual)
     print(test_score)
 
     # print(score.stop_reason)
