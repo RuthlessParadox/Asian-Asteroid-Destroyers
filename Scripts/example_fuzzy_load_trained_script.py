@@ -18,7 +18,7 @@ from pathlib import Path
 
 # Path to the saved JSON file
 # json_path = Path("solution_history/best_solution_gen_0001.json")
-json_path = Path(os.path.dirname(__file__), "best_solution.json")
+json_path = Path(os.path.dirname(__file__), "../TrainingData/best_solution.json")
 
 # Load JSON
 with json_path.open("r", encoding="utf-8") as f:
