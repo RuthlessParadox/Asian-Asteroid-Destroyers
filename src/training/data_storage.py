@@ -6,9 +6,11 @@
 # this source code package.
 
 from datetime import datetime
-from typing import cast, get_args, get_origin, NamedTuple, TypeAlias
+from typing import get_args, get_origin, get_type_hints, NamedTuple, TypeAlias
 
 import polars as pl
+
+_MappableType: TypeAlias = type[int] | type[float] | type[str] | type[bool]
 
 
 class GenerationData(NamedTuple):
@@ -22,30 +24,22 @@ class GenerationData(NamedTuple):
 
 
 def build_best_solution_lazyframe() -> pl.LazyFrame:
+    type_hints: dict[str, _MappableType] = get_type_hints(GenerationData)
     schema = {
         field: _map_py_type_to_polars_type(py_type)
-        for field, py_type in (
-            cast(
-                dict[str, _MappableType],
-                GenerationData.__annotations__
-            ).items()
-        )
+        for field, py_type in type_hints.items()
     }
     return pl.LazyFrame(schema)
 
 
-_MappableType: TypeAlias = type[int] | type[float] | type[str] | type[bool]
-
-
-_TYPE_MAPPING = {
-    int: pl.Int32,
-    float: pl.Float32,
-    str: pl.String,
-    bool: pl.Boolean,
-}
-
-
 def _map_py_type_to_polars_type(py_type: _MappableType):
+    type_mapping = {
+        int: pl.Int32,
+        float: pl.Float32,
+        str: pl.String,
+        bool: pl.Boolean,
+    }
+
     # Check if it's a generic type hint like list[float]
     origin = get_origin(py_type)
     args = get_args(py_type)
@@ -53,11 +47,11 @@ def _map_py_type_to_polars_type(py_type: _MappableType):
     if origin is list:
         # Recursively find the inner Polars type (defaulting to Float32 if unknown)
         inner_py_type = args[0] if args else float
-        inner_pl_type = _TYPE_MAPPING.get(inner_py_type, pl.Float32)
+        inner_pl_type = type_mapping.get(inner_py_type, pl.Float32)
         return pl.List(inner_pl_type)
 
     # Standard primitive lookup
-    return _TYPE_MAPPING.get(py_type, pl.Unknown)
+    return type_mapping.get(py_type, pl.Unknown)
 
 
 def add_generation(
