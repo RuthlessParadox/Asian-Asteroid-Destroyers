@@ -1,0 +1,68 @@
+# -*- coding: utf-8 -*-
+# Authors: Isaac Zhou
+# File Name: data_storage.py
+# Copyright © 2026 DigiPen Institute of Technology. All Rights Reserved.
+# NOTICE: This file is subject to the license agreement defined in file 'LICENSE', which is part of
+# this source code package.
+
+from datetime import datetime
+from typing import cast, get_args, get_origin, NamedTuple, TypeAlias
+
+import polars as pl
+
+
+class GenerationData(NamedTuple):
+    generation: int
+    fitness: float
+    genome: list[float]
+    number_of_genes: int
+    population_size: int
+    cxpb: float
+    mutpb: float
+
+
+def build_best_solution_lazyframe() -> pl.LazyFrame:
+    schema = {
+        field: _map_py_type_to_polars_type(py_type)
+        for field, py_type in (
+            cast(
+                dict[str, _MappableType],
+                GenerationData.__annotations__
+            ).items()
+        )
+    }
+    return pl.LazyFrame(schema)
+
+
+_MappableType: TypeAlias = type[int] | type[float] | type[str] | type[bool]
+
+
+_TYPE_MAPPING = {
+    int: pl.Int32,
+    float: pl.Float32,
+    str: pl.String,
+    bool: pl.Boolean,
+}
+
+
+def _map_py_type_to_polars_type(py_type: _MappableType):
+    # Check if it's a generic type hint like list[float]
+    origin = get_origin(py_type)
+    args = get_args(py_type)
+
+    if origin is list:
+        # Recursively find the inner Polars type (defaulting to Float32 if unknown)
+        inner_py_type = args[0] if args else float
+        inner_pl_type = _TYPE_MAPPING.get(inner_py_type, pl.Float32)
+        return pl.List(inner_pl_type)
+
+    # Standard primitive lookup
+    return _TYPE_MAPPING.get(py_type, pl.Unknown)
+
+
+def add_generation(
+    lazy_frame: pl.LazyFrame,
+    data: GenerationData,
+) -> pl.LazyFrame:
+    new_row = pl.DataFrame([data]).lazy()
+    return pl.concat([lazy_frame, new_row], how="vertical")
