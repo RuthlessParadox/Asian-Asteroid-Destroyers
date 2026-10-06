@@ -148,7 +148,8 @@ def save_best_solutions(best_solutions: pl.LazyFrame, timestamp: str) -> None:
 
 def _build_best_solutions_file_path(timestamp: str) -> str:
     """Builds a file path for a parquet file storing a training session's best
-    solutions. Files are named "best_solutions_{timestamp}.parquet".
+    solutions. Files are named "best_solutions_{timestamp}.parquet" and are
+    stored in data/best_solutions/.
 
     Parameters
     ----------
@@ -160,7 +161,7 @@ def _build_best_solutions_file_path(timestamp: str) -> str:
     str
         The built file path.
     """
-    return f"best_solutions_{timestamp}.parquet"
+    return f"data/best_solutions/best_solutions_{timestamp}.parquet"
 
 
 def build_timestamp() -> str:
