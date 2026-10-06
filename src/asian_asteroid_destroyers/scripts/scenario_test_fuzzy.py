@@ -8,7 +8,7 @@ import sys
 sys.path.append('')
 
 from kesslergame import KesslerGame, GraphicsType
-from scenarios.example_scenarios import *
+from asian_asteroid_destroyers.scenarios.example_scenarios import *
 from controllers.example_controller_fuzzy import MyFuzzyController
 
 # Define game scenario

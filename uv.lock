@@ -20,7 +20,7 @@ resolution-markers = [
 [[package]]
 name = "asian-asteroid-destroyers"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "deap" },
     { name = "joblib" },

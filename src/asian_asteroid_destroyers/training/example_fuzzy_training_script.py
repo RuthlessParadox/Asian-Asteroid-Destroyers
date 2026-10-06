@@ -11,7 +11,6 @@ import os
 import random
 from pathlib import Path
 
-
 from deap import base
 from deap import creator
 from deap import tools
@@ -101,7 +100,7 @@ def main():
     pop = toolbox.population(n=20)
 
     # Path for saving the best solution checkpoint each generation
-    best_solution_dir = Path(os.path.dirname(__file__), "../../training_data/solution_history")
+    best_solution_dir = Path(os.path.dirname(__file__), "../../../training_data/solution_history")
     clear_solution_history(best_solution_dir)
 
     # Evaluate the entire population

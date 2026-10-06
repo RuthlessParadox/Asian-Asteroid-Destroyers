@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
-# Authors: Isaac Zhou
-# File Name: data_storage.py
-# Copyright © 2026 DigiPen Institute of Technology. All Rights Reserved.
-# NOTICE: This file is subject to the license agreement defined in file 'LICENSE', which is part of
-# this source code package.
+"""Data Storage Module.
+
+This module provides functions to store training data locally and onto the
+disc.
+"""
 
 from datetime import datetime
 from typing import get_args, get_origin, get_type_hints, NamedTuple, TypeAlias
@@ -14,6 +13,25 @@ _MappableType: TypeAlias = type[int] | type[float] | type[str] | type[bool]
 
 
 class GenerationData(NamedTuple):
+    """A collection of data representing the best solution in a generation.
+
+    Attributes
+    ----------
+    generation : int
+        The generation.
+    fitness : float
+        The best solution's fitness.
+    genome: list[float]
+        The best solution's genes.
+    number_of_genes: int
+        The number of genes in the best solution's genome.
+    population_size: int
+        The number of solutions in the generation.
+    cxpb: float
+        The generation's crossover probability.
+    mutpb: float
+        The generation's mutation probability.
+    """
     generation: int
     fitness: float
     genome: list[float]
@@ -23,7 +41,15 @@ class GenerationData(NamedTuple):
     mutpb: float
 
 
-def build_best_solution_lazyframe() -> pl.LazyFrame:
+def build_best_solution_lazy_frame() -> pl.LazyFrame:
+    """Builds a lazy frame to store the best solutions in a training session.
+    The frame's schema is based on the NamedTuple GenerationData.
+
+    Returns
+    -------
+    pl.LazyFrame
+        The lazy frame to store a training session's best solutions.
+    """
     type_hints: dict[str, _MappableType] = get_type_hints(GenerationData)
     schema = {
         field: _map_py_type_to_polars_type(py_type)

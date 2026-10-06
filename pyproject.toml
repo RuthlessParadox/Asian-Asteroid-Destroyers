@@ -20,3 +20,13 @@ dependencies = [
 dev = [
     "basedpyright>=1.40.1",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+src-layout = true
+
+[tool.uv]
+package = true

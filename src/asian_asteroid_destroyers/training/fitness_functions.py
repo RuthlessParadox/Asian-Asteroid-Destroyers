@@ -10,7 +10,7 @@ sys.path.append('')
 from kesslergame import KesslerGame, GraphicsType
 from controllers.example_controller_fuzzy import MyFuzzyController
 # from controllers.example_controller_fuzzy2 import MyFuzzyController2
-from scenarios.example_scenarios import training_set
+from asian_asteroid_destroyers.scenarios.example_scenarios import training_set
 
 
 def example_fitness(individual, settings=None):
