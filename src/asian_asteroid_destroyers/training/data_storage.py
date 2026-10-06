@@ -51,7 +51,7 @@ class GenerationData(NamedTuple):
     mutpb: float
 
 
-def build_best_solution_lazy_frame() -> pl.LazyFrame:
+def build_best_solutions_lazy_frame() -> pl.LazyFrame:
     """Builds a lazy frame to store the best solutions in a training session.
     The frame's schema is based on the NamedTuple GenerationData.
 
@@ -65,7 +65,7 @@ def build_best_solution_lazy_frame() -> pl.LazyFrame:
         field: _map_py_type_to_polars_type(py_type)
         for field, py_type in type_hints.items()
     }
-    return pl.LazyFrame(schema)
+    return pl.LazyFrame(schema=schema)
 
 
 def _map_py_type_to_polars_type(py_type: _MappableType) -> _MappedType:
