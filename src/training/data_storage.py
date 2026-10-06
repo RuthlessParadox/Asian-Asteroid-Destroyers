@@ -55,8 +55,24 @@ def _map_py_type_to_polars_type(py_type: _MappableType):
 
 
 def add_generation(
-    lazy_frame: pl.LazyFrame,
+    best_solutions: pl.LazyFrame,
     data: GenerationData,
 ) -> pl.LazyFrame:
     new_row = pl.DataFrame([data]).lazy()
-    return pl.concat([lazy_frame, new_row], how="vertical")
+    return pl.concat([best_solutions, new_row], how="vertical")
+
+
+def save_best_solutions(best_solutions: pl.LazyFrame, timestamp: str) -> None:
+    best_solutions.sink_parquet(
+        _build_best_solutions_file_path(timestamp),
+        compression="zstd",
+        compression_level=3
+    )
+
+
+def _build_best_solutions_file_path(timestamp: str) -> str:
+    return f"best_solutions_{timestamp}.parquet"
+
+
+def build_timestamp() -> str:
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
