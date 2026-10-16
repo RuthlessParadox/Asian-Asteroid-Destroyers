@@ -85,6 +85,10 @@ class MyFuzzyController(KesslerController):
         # that create your FIS functions
         self.create_fuzzy_systems()
 
+    def create_fuzzy_systems(self):
+        self.create_aiming_fis()
+        self.create_moving_fis()
+
     def create_aiming_fis(self):
         # If we don't have a chromosome to get values from, use "default" values
         if not self.chromosome:
@@ -290,9 +294,7 @@ class MyFuzzyController(KesslerController):
             # creating a controller sim to evaluate the FIS
             self.moving_fis_sim = ctrl.ControlSystemSimulation(self.moving_fis)
 
-    def create_fuzzy_systems(self):
-        self.create_aiming_fis()
-        self.create_moving_fis()
+
 
     def actions(self, ship_state: Dict, game_state: Dict) -> Tuple[float, float, bool, bool]:
         """
