@@ -28,7 +28,6 @@ class Individual(list[float]):
 
 
 Population = list[Individual]
-
 GeneGenerator = Callable[[], float]
 IndividualGenerator = Callable[[], Individual]
 PopulationGenerator = Callable[[int], Population]
@@ -40,13 +39,11 @@ MutationOperator = Callable[[Individual], tuple[Individual]]
 SelectionOperator = Callable[[Population, int], Population]
 
 
-class ConcreteStrictToolbox:
+class GeneticAlgorithmToolbox:
     def __init__(self) -> None:
         self._toolbox: base.Toolbox = base.Toolbox()
-
         register_function = cast(
-            Callable[[str, Callable[..., object]], None],
-            getattr(self._toolbox, "register"),
+            Callable[..., None], getattr(self._toolbox, "register")
         )
         register_function("clone", copy.deepcopy)
 
@@ -58,8 +55,7 @@ class ConcreteStrictToolbox:
         **kwargs: object,
     ) -> None:
         register_function = cast(
-            Callable[[str, Callable[..., object], object, object], None],
-            getattr(self._toolbox, "register"),
+            Callable[..., None], getattr(self._toolbox, "register")
         )
         register_function(name, function, *args, **kwargs)
 
@@ -114,9 +110,9 @@ def build_toolbox(
     evaluation_function: FitnessEvaluator,
     gene_size: int,
     weights: tuple[float, ...] = (1.0,),
-) -> ConcreteStrictToolbox:
+) -> GeneticAlgorithmToolbox:
     TypedFitness.weights = weights
-    wrapper = ConcreteStrictToolbox()
+    wrapper = GeneticAlgorithmToolbox()
 
     def individual_factory() -> Individual:
         genes = [random.random() for _ in range(gene_size)]
@@ -124,13 +120,13 @@ def build_toolbox(
 
     wrapper.register_operator("individual", individual_factory)
 
-    initialize_repeat_object = cast(object, tools.initRepeat)
     initialize_repeat_population = cast(
         Callable[
             [type[list[Individual]], Callable[[], Individual], int], Population
         ],
-        initialize_repeat_object,
+        tools.initRepeat,
     )
+
     wrapper.register_operator(
         "population",
         initialize_repeat_population,
@@ -140,21 +136,26 @@ def build_toolbox(
 
     wrapper.register_operator("evaluate", evaluation_function)
 
-    mate_object = cast(object, tools.cxTwoPoint)
-    wrapper.register_operator("mate", cast(CrossoverOperator, mate_object))
+    wrapper.register_operator(
+        "mate", cast(CrossoverOperator, tools.cxTwoPoint)
+    )
 
-    mutate_object = cast(object, tools.mutGaussian)
+    mutate_function = cast(MutationOperator, cast(object, tools.mutGaussian))
     wrapper.register_operator(
         "mutate",
-        cast(MutationOperator, mutate_object),
+        mutate_function,
         mu=0.0,
         sigma=0.1,
         indpb=0.2,
     )
 
-    select_object = cast(object, tools.selTournament)
+    select_function = cast(
+        SelectionOperator, cast(object, tools.selTournament)
+    )
     wrapper.register_operator(
-        "select", cast(SelectionOperator, select_object), tournsize=3
+        "select",
+        select_function,
+        tournsize=3,
     )
 
     return wrapper
