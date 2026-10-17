@@ -170,7 +170,7 @@ def build_toolbox(
             ],
             tools.initRepeat,
         )
-        return typed_init_repeat(list, toolbox.individual, n)
+        return typed_init_repeat(list, toolbox.deap_toolbox.individual, n)
 
     def configured_mutation(ind: Individual) -> tuple[Individual]:
         typed_mut_gaussian = cast(
