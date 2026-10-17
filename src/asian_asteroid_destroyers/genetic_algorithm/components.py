@@ -99,7 +99,7 @@ class DeapToolboxProtocol(Protocol):
     ) -> Iterable[_R]: ...
 
 
-class TypedDeapToolbox(base.Toolbox, DeapToolboxProtocol):
+class _TypedDeapToolbox(base.Toolbox, DeapToolboxProtocol):
     @override
     def individual(self) -> Individual:
         raise NotImplementedError
@@ -145,7 +145,7 @@ class GeneticAlgorithmToolbox:
     deap_toolbox: DeapToolboxProtocol
 
     def __init__(self) -> None:
-        self.deap_toolbox = cast(DeapToolboxProtocol, TypedDeapToolbox())
+        self.deap_toolbox = cast(DeapToolboxProtocol, _TypedDeapToolbox())
         self.deap_toolbox.register("clone", copy.deepcopy)
 
     def register_individual_factory(
