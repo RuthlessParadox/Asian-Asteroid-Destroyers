@@ -10,6 +10,7 @@ _R = TypeVar("_R")
 
 
 class TypedFitness(base.Fitness):
+    weights: tuple[float, ...] = ()
     values: tuple[float, ...]
 
     def __init__(self, values: tuple[float, ...] | None = None) -> None:
@@ -38,6 +39,20 @@ CrossoverOperator = Callable[
 ]
 MutationOperator = Callable[[Individual], tuple[Individual]]
 SelectionOperator = Callable[[Population, int], Population]
+
+
+def reweight_population(
+    population: Population,
+    new_weights: tuple[float, ...],
+) -> None:
+    for individual in population:
+        individual.fitness.__class__.weights = new_weights
+
+        if hasattr(individual.fitness, "values") and individual.fitness.valid:
+            raw_values = individual.fitness.values
+            del individual.fitness.values
+            del individual.fitness.wvalues
+            individual.fitness.values = raw_values
 
 
 class DeapToolboxProtocol(Protocol):
@@ -170,7 +185,7 @@ def build_toolbox(
             ],
             tools.initRepeat,
         )
-        return typed_init_repeat(list, toolbox.deap_toolbox.individual, n)
+        return typed_init_repeat(list, toolbox.individual, n)
 
     def configured_mutation(ind: Individual) -> tuple[Individual]:
         typed_mut_gaussian = cast(
