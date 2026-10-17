@@ -63,12 +63,29 @@ def reweight_population(
     new_weights: tuple[float, ...],
 ) -> None:
     for individual in population:
-        individual.fitness.__class__.weights = new_weights
+        fitness_type = type(
+            "DynamicReweightedFitness",
+            (individual.fitness.__class__,),
+            {"weights": new_weights},
+        )
 
-        if hasattr(individual.fitness, "values") and individual.fitness.valid:
-            raw_values = individual.fitness.values
-            del individual.fitness.values
-            del individual.fitness.wvalues
+        has_valid_values = hasattr(individual.fitness, "values") and getattr(
+            individual.fitness, "valid", False
+        )
+
+        raw_values: tuple[float, ...] | None = (
+            cast(tuple[float, ...], getattr(individual.fitness, "values"))
+            if has_valid_values
+            else None
+        )
+
+        individual.fitness.__class__ = fitness_type
+
+        for attr in ("values", "wvalues"):
+            if hasattr(individual.fitness, attr):
+                delattr(individual.fitness, attr)
+
+        if raw_values is not None:
             individual.fitness.values = raw_values
 
 
@@ -99,18 +116,40 @@ class DeapToolboxProtocol(Protocol):
     ) -> Iterable[_R]: ...
 
 
-class _TypedDeapToolbox(base.Toolbox, DeapToolboxProtocol):
+class GeneticAlgorithmToolbox(base.Toolbox, DeapToolboxProtocol):
+    @override
+    def register(
+        self,
+        alias: str,
+        method: Callable[..., object],
+        *args: object,
+        **kwargs: object,
+    ) -> None:
+        base_register = cast(
+            Callable[..., None],
+            getattr(base.Toolbox, "register"),
+        )
+        base_register(self, alias, method, *args, **kwargs)
+
+    @override
+    def unregister(self, alias: str) -> None:
+        base_unregister = cast(
+            Callable[[object, str], None],
+            getattr(base.Toolbox, "unregister"),
+        )
+        base_unregister(self, alias)
+
     @override
     def individual(self) -> Individual:
-        raise NotImplementedError
+        return cast(Individual, getattr(self, "individual")())
 
     @override
     def population(self, n: int) -> Population:
-        raise NotImplementedError
+        return cast(Population, getattr(self, "population")(n))
 
     @override
     def evaluate(self, individual: Individual) -> tuple[float, ...]:
-        raise NotImplementedError
+        return cast(tuple[float, ...], getattr(self, "evaluate")(individual))
 
     @override
     def mate(
@@ -118,91 +157,30 @@ class _TypedDeapToolbox(base.Toolbox, DeapToolboxProtocol):
         individual1: Individual,
         individual2: Individual,
     ) -> tuple[Individual, Individual]:
-        raise NotImplementedError
+        return cast(
+            tuple[Individual, Individual],
+            getattr(self, "mate")(individual1, individual2),
+        )
 
     @override
     def mutate(self, individual: Individual) -> tuple[Individual]:
-        raise NotImplementedError
+        return cast(tuple[Individual], getattr(self, "mutate")(individual))
 
     @override
     def select(self, individuals: Population, k: int) -> Population:
-        raise NotImplementedError
+        return cast(Population, getattr(self, "select")(individuals, k))
 
     @override
-    def clone(self, obj: object) -> object:
-        raise NotImplementedError
-
-    @override
-    def map(
-        self,
-        function: Callable[..., object],
-        iterable: Iterable[object],
-    ) -> Iterable[object]:
-        raise NotImplementedError
-
-
-class GeneticAlgorithmToolbox:
-    deap_toolbox: DeapToolboxProtocol
-
-    def __init__(self) -> None:
-        self.deap_toolbox = cast(DeapToolboxProtocol, _TypedDeapToolbox())
-        self.deap_toolbox.register("clone", copy.deepcopy)
-
-    def register_individual_factory(
-        self,
-        function: IndividualGenerator,
-    ) -> None:
-        self.deap_toolbox.register("individual", function)
-
-    def register_population_factory(
-        self,
-        function: PopulationGenerator,
-    ) -> None:
-        self.deap_toolbox.register("population", function)
-
-    def register_evaluate(self, function: FitnessEvaluator) -> None:
-        self.deap_toolbox.register("evaluate", function)
-
-    def register_mate(self, function: CrossoverOperator) -> None:
-        self.deap_toolbox.register("mate", function)
-
-    def register_mutate(self, function: MutationOperator) -> None:
-        self.deap_toolbox.register("mutate", function)
-
-    def register_select(self, function: SelectionOperator) -> None:
-        self.deap_toolbox.register("select", function)
-
-    def individual(self) -> Individual:
-        return self.deap_toolbox.individual()
-
-    def population(self, n: int) -> Population:
-        return self.deap_toolbox.population(n)
-
-    def evaluate(self, individual: Individual) -> tuple[float, ...]:
-        return self.deap_toolbox.evaluate(individual)
-
-    def mate(
-        self,
-        individual1: Individual,
-        individual2: Individual,
-    ) -> tuple[Individual, Individual]:
-        return self.deap_toolbox.mate(individual1, individual2)
-
-    def mutate(self, individual: Individual) -> tuple[Individual]:
-        return self.deap_toolbox.mutate(individual)
-
-    def select(self, individuals: Population, k: int) -> Population:
-        return self.deap_toolbox.select(individuals, k)
-
     def clone(self, obj: _T) -> _T:
-        return self.deap_toolbox.clone(obj)
+        return cast(_T, getattr(self, "clone")(obj))
 
+    @override
     def map(
         self,
         function: Callable[[_T], _R],
         iterable: Iterable[_T],
     ) -> Iterable[_R]:
-        return self.deap_toolbox.map(function, iterable)
+        return cast(Iterable[_R], getattr(self, "map")(function, iterable))
 
 
 def build_toolbox(
@@ -212,11 +190,12 @@ def build_toolbox(
 ) -> GeneticAlgorithmToolbox:
     individual_class = create_individual_class(weights)
     toolbox = GeneticAlgorithmToolbox()
+    toolbox.register("clone", copy.deepcopy)
 
     def individual_factory() -> Individual:
         return individual_class(random.random() for _ in range(gene_size))
 
-    toolbox.register_individual_factory(individual_factory)
+    toolbox.register("individual", individual_factory)
 
     def population_factory(n: int) -> Population:
         typed_init_repeat = cast(
@@ -242,10 +221,10 @@ def build_toolbox(
         )
         return typed_sel_tournament(individuals, k, 3)
 
-    toolbox.register_population_factory(population_factory)
-    toolbox.register_evaluate(evaluation_function)
-    toolbox.register_mate(cast(CrossoverOperator, tools.cxTwoPoint))
-    toolbox.register_mutate(configured_mutation)
-    toolbox.register_select(configured_selection)
+    toolbox.register("population", population_factory)
+    toolbox.register("evaluate", evaluation_function)
+    toolbox.register("mate", cast(CrossoverOperator, tools.cxTwoPoint))
+    toolbox.register("mutate", configured_mutation)
+    toolbox.register("select", configured_selection)
 
     return toolbox
