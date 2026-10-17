@@ -10,21 +10,24 @@ _R = TypeVar("_R")
 
 
 class TypedFitness(base.Fitness):
+    values: tuple[float, ...]
     weights: tuple[float, ...] = (1.0,)
 
     def __init__(self, values: tuple[float, ...] | None = None) -> None:
         super().__init__()
         if values is not None:
-            self.values: tuple[float, ...] = values
+            self.values = values
 
 
 class Individual(list[float]):
+    fitness: TypedFitness
+
     def __init__(self, iterable: Iterable[float] | None = None) -> None:
         if iterable is not None:
             super().__init__(iterable)
         else:
             super().__init__()
-        self.fitness: TypedFitness = TypedFitness()
+        self.fitness = TypedFitness()
 
 
 Population = list[Individual]
@@ -40,27 +43,40 @@ SelectionOperator = Callable[[Population, int], Population]
 
 
 class GeneticAlgorithmToolbox:
+    _toolbox: base.Toolbox
+    _register: Callable[..., None]
+
     def __init__(self) -> None:
-        self._toolbox: base.Toolbox = base.Toolbox()
-        register_function = cast(
-            Callable[..., None], getattr(self._toolbox, "register")
+        self._toolbox = base.Toolbox()
+        self._register = cast(
+            Callable[..., None],
+            getattr(self._toolbox, "register"),
         )
-        register_function("clone", copy.deepcopy)
+        self._register("clone", copy.deepcopy)
 
-    def register_operator(
+    def register_individual_factory(
         self,
-        name: str,
-        function: Callable[..., object],
-        *args: object,
-        **kwargs: object,
+        function: IndividualGenerator,
     ) -> None:
-        register_function = cast(
-            Callable[..., None], getattr(self._toolbox, "register")
-        )
-        register_function(name, function, *args, **kwargs)
+        self._register("individual", function)
 
-    def get_operator(self, name: str) -> Callable[..., object]:
-        return cast(Callable[..., object], getattr(self._toolbox, name))
+    def register_population_factory(
+        self,
+        function: PopulationGenerator,
+    ) -> None:
+        self._register("population", function)
+
+    def register_evaluate(self, function: FitnessEvaluator) -> None:
+        self._register("evaluate", function)
+
+    def register_mate(self, function: CrossoverOperator) -> None:
+        self._register("mate", function)
+
+    def register_mutate(self, function: MutationOperator) -> None:
+        self._register("mutate", function)
+
+    def register_select(self, function: SelectionOperator) -> None:
+        self._register("select", function)
 
     def individual(self) -> Individual:
         function = cast(
@@ -79,10 +95,12 @@ class GeneticAlgorithmToolbox:
         return function(individual)
 
     def mate(
-        self, ind1: Individual, ind2: Individual
+        self,
+        individual1: Individual,
+        individual2: Individual,
     ) -> tuple[Individual, Individual]:
         function = cast(CrossoverOperator, getattr(self._toolbox, "mate"))
-        return function(ind1, ind2)
+        return function(individual1, individual2)
 
     def mutate(self, individual: Individual) -> tuple[Individual]:
         function = cast(MutationOperator, getattr(self._toolbox, "mutate"))
@@ -97,7 +115,9 @@ class GeneticAlgorithmToolbox:
         return function(obj)
 
     def map(
-        self, function: Callable[[_T], _R], iterable: Iterable[_T]
+        self,
+        function: Callable[[_T], _R],
+        iterable: Iterable[_T],
     ) -> Iterable[_R]:
         map_function = cast(
             Callable[[Callable[[_T], _R], Iterable[_T]], Iterable[_R]],
@@ -112,50 +132,46 @@ def build_toolbox(
     weights: tuple[float, ...] = (1.0,),
 ) -> GeneticAlgorithmToolbox:
     TypedFitness.weights = weights
-    wrapper = GeneticAlgorithmToolbox()
+
+    toolbox = GeneticAlgorithmToolbox()
 
     def individual_factory() -> Individual:
-        genes = [random.random() for _ in range(gene_size)]
-        return Individual(genes)
+        return Individual(random.random() for _ in range(gene_size))
 
-    wrapper.register_operator("individual", individual_factory)
+    toolbox.register_individual_factory(individual_factory)
 
-    initialize_repeat_population = cast(
-        Callable[
-            [type[list[Individual]], Callable[[], Individual], int], Population
-        ],
-        tools.initRepeat,
-    )
+    def population_factory(n: int) -> Population:
+        typed_init_repeat = cast(
+            Callable[
+                [type[list[Individual]], Callable[[], Individual], int],
+                list[Individual],
+            ],
+            tools.initRepeat,
+        )
+        return typed_init_repeat(list, toolbox.individual, n)
 
-    wrapper.register_operator(
-        "population",
-        initialize_repeat_population,
-        list,
-        cast(IndividualGenerator, wrapper.get_operator("individual")),
-    )
+    toolbox.register_population_factory(population_factory)
 
-    wrapper.register_operator("evaluate", evaluation_function)
+    toolbox.register_evaluate(evaluation_function)
 
-    wrapper.register_operator(
-        "mate", cast(CrossoverOperator, tools.cxTwoPoint)
-    )
+    toolbox.register_mate(cast(CrossoverOperator, tools.cxTwoPoint))
 
-    mutate_function = cast(MutationOperator, cast(object, tools.mutGaussian))
-    wrapper.register_operator(
-        "mutate",
-        mutate_function,
-        mu=0.0,
-        sigma=0.1,
-        indpb=0.2,
-    )
+    def configured_mutation(ind: Individual) -> tuple[Individual]:
+        typed_mut_gaussian = cast(
+            Callable[[Individual, float, float, float], tuple[Individual]],
+            tools.mutGaussian,
+        )
+        return typed_mut_gaussian(ind, 0.0, 0.1, 0.2)
 
-    select_function = cast(
-        SelectionOperator, cast(object, tools.selTournament)
-    )
-    wrapper.register_operator(
-        "select",
-        select_function,
-        tournsize=3,
-    )
+    toolbox.register_mutate(configured_mutation)
 
-    return wrapper
+    def configured_selection(individuals: Population, k: int) -> Population:
+        typed_sel_tournament = cast(
+            Callable[[Population, int, int], Population],
+            tools.selTournament,
+        )
+        return typed_sel_tournament(individuals, k, 3)
+
+    toolbox.register_select(configured_selection)
+
+    return toolbox
