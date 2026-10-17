@@ -1,7 +1,7 @@
 import copy
 import random
 from collections.abc import Callable, Iterable
-from typing import Protocol, TypeVar, cast
+from typing import Protocol, TypeVar, cast, override
 
 from deap import base, tools
 
@@ -28,6 +28,23 @@ class Individual(list[float]):
         else:
             super().__init__()
         self.fitness = TypedFitness()
+
+
+def create_individual_class(weights: tuple[float, ...]) -> type[Individual]:
+    fitness_type = type(
+        "RuntimeFitness",
+        (TypedFitness,),
+        {"weights": weights},
+    )
+
+    class ContextIndividual(Individual):
+        fitness: TypedFitness
+
+        def __init__(self, iterable: Iterable[float] | None = None) -> None:
+            super().__init__(iterable)
+            self.fitness = fitness_type()
+
+    return ContextIndividual
 
 
 Population = list[Individual]
@@ -82,14 +99,53 @@ class DeapToolboxProtocol(Protocol):
     ) -> Iterable[_R]: ...
 
 
+class TypedDeapToolbox(base.Toolbox, DeapToolboxProtocol):
+    @override
+    def individual(self) -> Individual:
+        raise NotImplementedError
+
+    @override
+    def population(self, n: int) -> Population:
+        raise NotImplementedError
+
+    @override
+    def evaluate(self, individual: Individual) -> tuple[float, ...]:
+        raise NotImplementedError
+
+    @override
+    def mate(
+        self,
+        individual1: Individual,
+        individual2: Individual,
+    ) -> tuple[Individual, Individual]:
+        raise NotImplementedError
+
+    @override
+    def mutate(self, individual: Individual) -> tuple[Individual]:
+        raise NotImplementedError
+
+    @override
+    def select(self, individuals: Population, k: int) -> Population:
+        raise NotImplementedError
+
+    @override
+    def clone(self, obj: object) -> object:
+        raise NotImplementedError
+
+    @override
+    def map(
+        self,
+        function: Callable[..., object],
+        iterable: Iterable[object],
+    ) -> Iterable[object]:
+        raise NotImplementedError
+
+
 class GeneticAlgorithmToolbox:
     deap_toolbox: DeapToolboxProtocol
 
     def __init__(self) -> None:
-        self.deap_toolbox = cast(
-            DeapToolboxProtocol,
-            cast(object, base.Toolbox()),
-        )
+        self.deap_toolbox = cast(DeapToolboxProtocol, TypedDeapToolbox())
         self.deap_toolbox.register("clone", copy.deepcopy)
 
     def register_individual_factory(
@@ -154,26 +210,11 @@ def build_toolbox(
     gene_size: int,
     weights: tuple[float, ...] = (1.0,),
 ) -> GeneticAlgorithmToolbox:
-    fitness_type = type(
-        "RuntimeFitness",
-        (TypedFitness,),
-        {"weights": weights},
-    )
-
-    class ContextIndividual(Individual):
-        fitness: TypedFitness
-
-        def __init__(self, iterable: Iterable[float] | None = None) -> None:
-            if iterable is not None:
-                super().__init__(iterable)
-            else:
-                super().__init__()
-            self.fitness = fitness_type()
-
+    individual_class = create_individual_class(weights)
     toolbox = GeneticAlgorithmToolbox()
 
     def individual_factory() -> Individual:
-        return ContextIndividual(random.random() for _ in range(gene_size))
+        return individual_class(random.random() for _ in range(gene_size))
 
     toolbox.register_individual_factory(individual_factory)
 
