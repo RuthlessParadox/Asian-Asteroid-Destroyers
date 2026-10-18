@@ -198,25 +198,14 @@ def build_toolbox(
             Callable[[Individual, Individual], tuple[Individual, Individual]],
             tools.cxTwoPoint,
         )
-        result = typed_cx(individual1, individual2)
-        for individual in result:
-            try:
-                del individual.fitness.values
-            except AttributeError:
-                pass
-        return result
+        return typed_cx(individual1, individual2)
 
     def configured_mutation(individual: Individual) -> tuple[Individual]:
         typed_mut_gaussian = cast(
             Callable[[Individual, float, float, float], tuple[Individual]],
             tools.mutGaussian,
         )
-        result = typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
-        try:
-            del result[0].fitness.values
-        except AttributeError:
-            pass
-        return result
+        return typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
 
     def configured_selection(population: Population, k: int) -> Population:
         typed_sel_tournament = cast(
