@@ -190,14 +190,22 @@ def build_toolbox(
             Callable[[Individual, Individual], tuple[Individual, Individual]],
             tools.cxTwoPoint,
         )
-        return typed_cx(individual1, individual2)
+        result = typed_cx(individual1, individual2)
+        if hasattr(result[0].fitness, "values"):
+            del result[0].fitness.values
+        if hasattr(result[1].fitness, "values"):
+            del result[1].fitness.values
+        return result
 
     def configured_mutation(individual: Individual) -> tuple[Individual]:
         typed_mut_gaussian = cast(
             Callable[[Individual, float, float, float], tuple[Individual]],
             tools.mutGaussian,
         )
-        return typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
+        result = typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
+        if hasattr(result[0].fitness, "values"):
+            del result[0].fitness.values
+        return result
 
     def configured_selection(population: Population, k: int) -> Population:
         typed_sel_tournament = cast(
