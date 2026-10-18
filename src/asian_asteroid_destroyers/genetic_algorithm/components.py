@@ -84,6 +84,11 @@ def _create_individual_class(weights: tuple[float, ...]) -> type[Individual]:
 
 
 Population = list[Individual]
+CloneMethod = Callable[[Individual], Individual]
+MapMethod = Callable[
+    [Callable[[Individual], tuple[float, ...]], list[Individual]],
+    Iterable[tuple[float, ...]],
+]
 IndividualGenerator = Callable[[], Individual]
 PopulationGenerator = Callable[[int], Population]
 FitnessEvaluator = Callable[[Individual], tuple[float, ...]]
@@ -126,6 +131,8 @@ def _raise_unregistered(name: str) -> NoReturn:
 
 
 class GeneticAlgorithmToolbox(base.Toolbox):
+    clone: CloneMethod
+    map: MapMethod
     individual: IndividualGenerator
     population: PopulationGenerator
     evaluate: FitnessEvaluator
@@ -136,11 +143,18 @@ class GeneticAlgorithmToolbox(base.Toolbox):
     def __init__(self) -> None:
         super().__init__()
 
+        base_register = cast(
+            Callable[..., None], getattr(base.Toolbox, "register")
+        )
+        base_register(self, "clone", copy.deepcopy)
+        self.clone = cast(CloneMethod, getattr(self, "clone"))
+        base_register(self, "map", map)
+        self.map = cast(MapMethod, getattr(self, "map"))
+
         def _stub_factory(name: str) -> Callable[..., NoReturn]:
             return lambda *args, **kwargs: _raise_unregistered(name)
 
         factory: Callable[[str], Callable[..., NoReturn]] = _stub_factory
-
         self.individual = cast(IndividualGenerator, factory("individual"))
         self.population = cast(PopulationGenerator, factory("population"))
         self.evaluate = cast(FitnessEvaluator, factory("evaluate"))
@@ -161,6 +175,10 @@ class GeneticAlgorithmToolbox(base.Toolbox):
             getattr(base.Toolbox, "register"),
         )
         base_register(self, alias, method, *args, **kwargs)
+        if hasattr(self, alias):
+            setattr(
+                self, alias, cast(Callable[..., object], getattr(self, alias))
+            )
 
     @override
     def unregister(self, alias: str) -> None:
@@ -236,10 +254,7 @@ def build_toolbox(
     individual_class = _create_individual_class(weights)
     toolbox = GeneticAlgorithmToolbox()
 
-    toolbox.register("clone", copy.deepcopy)
-    toolbox.register("map", map)
     toolbox.register("evaluate", evaluation_function)
-
     toolbox.register(
         "individual",
         individual_factory
