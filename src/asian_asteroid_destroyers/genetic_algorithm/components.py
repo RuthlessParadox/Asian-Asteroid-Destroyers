@@ -1,7 +1,7 @@
 import copy
 import random
 from collections.abc import Callable, Iterable
-from typing import Protocol, TypeVar, cast, override
+from typing import NoReturn, Protocol, TypeVar, cast, override
 
 from deap import base, tools
 
@@ -63,28 +63,22 @@ def reweight_population(
     new_weights: tuple[float, ...],
 ) -> None:
     for individual in population:
-        fitness_type = type(
+        new_fitness_type = type(
             "DynamicReweightedFitness",
-            (individual.fitness.__class__,),
+            (TypedFitness,),
             {"weights": new_weights},
         )
 
         has_valid_values = hasattr(individual.fitness, "values") and getattr(
             individual.fitness, "valid", False
         )
-
         raw_values: tuple[float, ...] | None = (
             cast(tuple[float, ...], getattr(individual.fitness, "values"))
             if has_valid_values
             else None
         )
 
-        individual.fitness.__class__ = fitness_type
-
-        for attr in ("values", "wvalues"):
-            if hasattr(individual.fitness, attr):
-                delattr(individual.fitness, attr)
-
+        individual.fitness = new_fitness_type()
         if raw_values is not None:
             individual.fitness.values = raw_values
 
@@ -98,16 +92,14 @@ class DeapToolboxProtocol(Protocol):
         **kwargs: object,
     ) -> None: ...
     def unregister(self, alias: str) -> None: ...
-    def individual(self) -> Individual: ...
-    def population(self, n: int) -> Population: ...
-    def evaluate(self, individual: Individual) -> tuple[float, ...]: ...
-    def mate(
-        self,
-        individual1: Individual,
-        individual2: Individual,
-    ) -> tuple[Individual, Individual]: ...
-    def mutate(self, individual: Individual) -> tuple[Individual]: ...
-    def select(self, individuals: Population, k: int) -> Population: ...
+
+    individual: IndividualGenerator
+    population: PopulationGenerator
+    evaluate: FitnessEvaluator
+    mate: CrossoverOperator
+    mutate: MutationOperator
+    select: SelectionOperator
+
     def clone(self, obj: _T) -> _T: ...
     def map(
         self,
@@ -116,7 +108,25 @@ class DeapToolboxProtocol(Protocol):
     ) -> Iterable[_R]: ...
 
 
+def _unregistered_stub() -> NoReturn:
+    raise NotImplementedError(
+        "Method has not been registered on the toolbox yet."
+    )
+
+
 class GeneticAlgorithmToolbox(base.Toolbox, DeapToolboxProtocol):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.individual: IndividualGenerator = lambda: _unregistered_stub()
+        self.population: PopulationGenerator = lambda n: _unregistered_stub()
+        self.evaluate: FitnessEvaluator = lambda ind: _unregistered_stub()
+        self.mate: CrossoverOperator = lambda ind1, ind2: _unregistered_stub()
+        self.mutate: MutationOperator = lambda ind: _unregistered_stub()
+        self.select: SelectionOperator = lambda individuals, k: (
+            _unregistered_stub()
+        )
+
     @override
     def register(
         self,
@@ -140,39 +150,9 @@ class GeneticAlgorithmToolbox(base.Toolbox, DeapToolboxProtocol):
         base_unregister(self, alias)
 
     @override
-    def individual(self) -> Individual:
-        return cast(Individual, getattr(self, "individual")())
-
-    @override
-    def population(self, n: int) -> Population:
-        return cast(Population, getattr(self, "population")(n))
-
-    @override
-    def evaluate(self, individual: Individual) -> tuple[float, ...]:
-        return cast(tuple[float, ...], getattr(self, "evaluate")(individual))
-
-    @override
-    def mate(
-        self,
-        individual1: Individual,
-        individual2: Individual,
-    ) -> tuple[Individual, Individual]:
-        return cast(
-            tuple[Individual, Individual],
-            getattr(self, "mate")(individual1, individual2),
-        )
-
-    @override
-    def mutate(self, individual: Individual) -> tuple[Individual]:
-        return cast(tuple[Individual], getattr(self, "mutate")(individual))
-
-    @override
-    def select(self, individuals: Population, k: int) -> Population:
-        return cast(Population, getattr(self, "select")(individuals, k))
-
-    @override
     def clone(self, obj: _T) -> _T:
-        return cast(_T, getattr(self, "clone")(obj))
+        clone_func = cast(Callable[[_T], _T], self.__dict__["clone"])
+        return clone_func(obj)
 
     @override
     def map(
@@ -180,7 +160,11 @@ class GeneticAlgorithmToolbox(base.Toolbox, DeapToolboxProtocol):
         function: Callable[[_T], _R],
         iterable: Iterable[_T],
     ) -> Iterable[_R]:
-        return cast(Iterable[_R], getattr(self, "map")(function, iterable))
+        map_func = cast(
+            Callable[[Callable[[_T], _R], Iterable[_T]], Iterable[_R]],
+            self.__dict__["map"],
+        )
+        return map_func(function, iterable)
 
 
 def build_toolbox(
@@ -207,6 +191,16 @@ def build_toolbox(
         )
         return typed_init_repeat(list, toolbox.individual, n)
 
+    def configured_mate(
+        individual1: Individual,
+        individual2: Individual,
+    ) -> tuple[Individual, Individual]:
+        typed_cx = cast(
+            Callable[[Individual, Individual], tuple[Individual, Individual]],
+            tools.cxTwoPoint,
+        )
+        return typed_cx(individual1, individual2)
+
     def configured_mutation(ind: Individual) -> tuple[Individual]:
         typed_mut_gaussian = cast(
             Callable[[Individual, float, float, float], tuple[Individual]],
@@ -223,7 +217,7 @@ def build_toolbox(
 
     toolbox.register("population", population_factory)
     toolbox.register("evaluate", evaluation_function)
-    toolbox.register("mate", cast(CrossoverOperator, tools.cxTwoPoint))
+    toolbox.register("mate", configured_mate)
     toolbox.register("mutate", configured_mutation)
     toolbox.register("select", configured_selection)
 
