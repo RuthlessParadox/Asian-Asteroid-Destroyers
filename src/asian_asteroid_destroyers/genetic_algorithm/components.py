@@ -1,5 +1,6 @@
 import copy
 import random
+import sys
 from collections.abc import Callable, Iterable
 from typing import NoReturn, TypeVar, cast, override
 
@@ -48,7 +49,8 @@ def _get_or_create_fitness_class(
         type[TypedFitness],
         type(class_name, (TypedFitness,), {"weights": weights}),
     )
-    globals()[class_name] = new_class
+    current_module = sys.modules[__name__]
+    setattr(current_module, class_name, new_class)
     new_class.__module__ = __name__
     _FITNESS_CLASS_CACHE[weights] = new_class
     return new_class
