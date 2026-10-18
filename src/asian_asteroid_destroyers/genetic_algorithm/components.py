@@ -177,26 +177,27 @@ def build_toolbox(
         return typed_init_repeat(list, toolbox.individual, n)
 
     def configured_mate(
-        ind1: Individual, ind2: Individual
+        individual1: Individual,
+        individual2: Individual,
     ) -> tuple[Individual, Individual]:
         typed_cx = cast(
             Callable[[Individual, Individual], tuple[Individual, Individual]],
             tools.cxTwoPoint,
         )
-        return typed_cx(ind1, ind2)
+        return typed_cx(individual1, individual2)
 
-    def configured_mutation(ind: Individual) -> tuple[Individual]:
+    def configured_mutation(individual: Individual) -> tuple[Individual]:
         typed_mut_gaussian = cast(
             Callable[[Individual, float, float, float], tuple[Individual]],
             tools.mutGaussian,
         )
-        return typed_mut_gaussian(ind, 0.0, 0.1, 0.2)
+        return typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
 
-    def configured_selection(individuals: Population, k: int) -> Population:
+    def configured_selection(population: Population, k: int) -> Population:
         typed_sel_tournament = cast(
             Callable[[Population, int, int], Population], tools.selTournament
         )
-        return typed_sel_tournament(individuals, k, 3)
+        return typed_sel_tournament(population, k, 3)
 
     toolbox.register("population", population_factory)
     toolbox.register("evaluate", evaluation_function)
