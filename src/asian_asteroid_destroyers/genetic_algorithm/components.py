@@ -163,24 +163,20 @@ class GeneticAlgorithmToolbox(base.Toolbox):
         base_unregister(self, alias)
 
 
-def build_toolbox(
-    evaluation_function: FitnessEvaluator,
+def _get_default_individual_factory(
+    individual_class: type[Individual],
     gene_size: int,
-    weights: tuple[float, ...] = (1.0,),
-) -> GeneticAlgorithmToolbox:
-    individual_class = _create_individual_class(weights)
-
-    toolbox = GeneticAlgorithmToolbox()
-
-    toolbox.register("clone", copy.deepcopy)
-    toolbox.register("map", map)
-
-    def individual_factory() -> Individual:
+) -> IndividualGenerator:
+    def default_individual_factory() -> Individual:
         return individual_class(random.random() for _ in range(gene_size))
 
-    toolbox.register("individual", individual_factory)
+    return default_individual_factory
 
-    def population_factory(n: int) -> Population:
+
+def _get_default_population_factory(
+    toolbox: GeneticAlgorithmToolbox,
+) -> PopulationGenerator:
+    def default_population_factory(n: int) -> Population:
         typed_init_repeat = cast(
             Callable[
                 [type[list[Individual]], Callable[[], Individual], int],
@@ -190,33 +186,63 @@ def build_toolbox(
         )
         return typed_init_repeat(list, toolbox.individual, n)
 
-    def configured_mate(
-        individual1: Individual,
-        individual2: Individual,
-    ) -> tuple[Individual, Individual]:
-        typed_cx = cast(
-            Callable[[Individual, Individual], tuple[Individual, Individual]],
-            tools.cxTwoPoint,
-        )
-        return typed_cx(individual1, individual2)
+    return default_population_factory
 
-    def configured_mutation(individual: Individual) -> tuple[Individual]:
-        typed_mut_gaussian = cast(
-            Callable[[Individual, float, float, float], tuple[Individual]],
-            tools.mutGaussian,
-        )
-        return typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
 
-    def configured_selection(population: Population, k: int) -> Population:
-        typed_sel_tournament = cast(
-            Callable[[Population, int, int], Population], tools.selTournament
-        )
-        return typed_sel_tournament(population, k, 3)
+def _default_mate(
+    individual1: Individual,
+    individual2: Individual,
+) -> tuple[Individual, Individual]:
+    typed_cx = cast(
+        Callable[[Individual, Individual], tuple[Individual, Individual]],
+        tools.cxTwoPoint,
+    )
+    return typed_cx(individual1, individual2)
 
-    toolbox.register("population", population_factory)
+
+def _default_mutation(individual: Individual) -> tuple[Individual]:
+    typed_mut_gaussian = cast(
+        Callable[[Individual, float, float, float], tuple[Individual]],
+        tools.mutGaussian,
+    )
+    return typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
+
+
+def _default_selection(population: Population, k: int) -> Population:
+    typed_sel_tournament = cast(
+        Callable[[Population, int, int], Population], tools.selTournament
+    )
+    return typed_sel_tournament(population, k, 3)
+
+
+def build_toolbox(
+    evaluation_function: FitnessEvaluator,
+    gene_size: int,
+    weights: tuple[float, ...] = (1.0,),
+    individual_factory: IndividualGenerator | None = None,
+    population_factory: PopulationGenerator | None = None,
+    mate_operator: CrossoverOperator | None = None,
+    mutate_operator: MutationOperator | None = None,
+    select_operator: SelectionOperator | None = None,
+) -> GeneticAlgorithmToolbox:
+    individual_class = _create_individual_class(weights)
+    toolbox = GeneticAlgorithmToolbox()
+
+    toolbox.register("clone", copy.deepcopy)
+    toolbox.register("map", map)
     toolbox.register("evaluate", evaluation_function)
-    toolbox.register("mate", configured_mate)
-    toolbox.register("mutate", configured_mutation)
-    toolbox.register("select", configured_selection)
+
+    toolbox.register(
+        "individual",
+        individual_factory
+        or _get_default_individual_factory(individual_class, gene_size),
+    )
+    toolbox.register(
+        "population",
+        population_factory or _get_default_population_factory(toolbox),
+    )
+    toolbox.register("mate", mate_operator or _default_mate)
+    toolbox.register("mutate", mutate_operator or _default_mutation)
+    toolbox.register("select", select_operator or _default_selection)
 
     return toolbox
