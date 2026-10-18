@@ -119,8 +119,10 @@ def reweight_population(
             individual.fitness = copy.copy(empty_prototype)
 
 
-def _unregistered_stub(*_args: object, **_kwargs: object) -> NoReturn:
-    raise NotImplementedError("This DEAP method has not been registered yet.")
+def _raise_unregistered(name: str) -> NoReturn:
+    raise NotImplementedError(
+        f"The DEAP operation '{name}' has not been registered yet."
+    )
 
 
 class GeneticAlgorithmToolbox(base.Toolbox):
@@ -133,12 +135,18 @@ class GeneticAlgorithmToolbox(base.Toolbox):
 
     def __init__(self) -> None:
         super().__init__()
-        self.individual = _unregistered_stub
-        self.population = _unregistered_stub
-        self.evaluate = _unregistered_stub
-        self.mate = _unregistered_stub
-        self.mutate = _unregistered_stub
-        self.select = _unregistered_stub
+
+        def _stub_factory(name: str) -> Callable[..., NoReturn]:
+            return lambda *args, **kwargs: _raise_unregistered(name)
+
+        factory: Callable[[str], Callable[..., NoReturn]] = _stub_factory
+
+        self.individual = cast(IndividualGenerator, factory("individual"))
+        self.population = cast(PopulationGenerator, factory("population"))
+        self.evaluate = cast(FitnessEvaluator, factory("evaluate"))
+        self.mate = cast(CrossoverOperator, factory("mate"))
+        self.mutate = cast(MutationOperator, factory("mutate"))
+        self.select = cast(SelectionOperator, factory("select"))
 
     @override
     def register(
