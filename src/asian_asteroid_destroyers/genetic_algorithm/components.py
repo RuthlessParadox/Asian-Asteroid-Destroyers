@@ -191,10 +191,11 @@ def build_toolbox(
             tools.cxTwoPoint,
         )
         result = typed_cx(individual1, individual2)
-        if hasattr(result[0].fitness, "values"):
-            del result[0].fitness.values
-        if hasattr(result[1].fitness, "values"):
-            del result[1].fitness.values
+        for individual in result:
+            try:
+                del individual.fitness.values
+            except AttributeError:
+                pass
         return result
 
     def configured_mutation(individual: Individual) -> tuple[Individual]:
@@ -203,8 +204,10 @@ def build_toolbox(
             tools.mutGaussian,
         )
         result = typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
-        if hasattr(result[0].fitness, "values"):
+        try:
             del result[0].fitness.values
+        except AttributeError:
+            pass
         return result
 
     def configured_selection(population: Population, k: int) -> Population:
