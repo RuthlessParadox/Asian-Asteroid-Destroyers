@@ -76,7 +76,8 @@ def _create_individual_class(weights: tuple[float, ...]) -> type[Individual]:
         type[Individual],
         type(class_name, (Individual,), {"__init__": individual_init}),
     )
-    globals()[class_name] = new_class
+    current_module = sys.modules[__name__]
+    setattr(current_module, class_name, new_class)
     new_class.__module__ = __name__
     _INDIVIDUAL_CLASS_CACHE[weights] = new_class
     return new_class
