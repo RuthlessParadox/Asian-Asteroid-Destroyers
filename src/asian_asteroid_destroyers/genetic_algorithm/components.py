@@ -1,7 +1,7 @@
 import copy
 import random
 from collections.abc import Callable, Iterable
-from typing import NoReturn, Protocol, TypeVar, cast, override
+from typing import NoReturn, TypeVar, cast, override
 
 from deap import base, tools
 
@@ -39,20 +39,16 @@ def _get_or_create_fitness_class(
 ) -> type[TypedFitness]:
     if weights in _FITNESS_CLASS_CACHE:
         return _FITNESS_CLASS_CACHE[weights]
-
     clean_weight_string = "_".join(
         str(w).replace(".", "_").replace("-", "neg") for w in weights
     )
     class_name = f"DynamicFitness_{clean_weight_string}"
-
     new_class = cast(
         type[TypedFitness],
         type(class_name, (TypedFitness,), {"weights": weights}),
     )
-
     globals()[class_name] = new_class
     new_class.__module__ = __name__
-
     _FITNESS_CLASS_CACHE[weights] = new_class
     return new_class
 
@@ -60,16 +56,15 @@ def _get_or_create_fitness_class(
 def _create_individual_class(weights: tuple[float, ...]) -> type[Individual]:
     if weights in _INDIVIDUAL_CLASS_CACHE:
         return _INDIVIDUAL_CLASS_CACHE[weights]
-
     fitness_type = _get_or_create_fitness_class(weights)
-
     clean_weight_string = "_".join(
         str(w).replace(".", "_").replace("-", "neg") for w in weights
     )
     class_name = f"DynamicIndividual_{clean_weight_string}"
 
     def individual_init(
-        self: Individual, iterable: Iterable[float] | None = None
+        self: Individual,
+        iterable: Iterable[float] | None = None,
     ) -> None:
         super(Individual, self).__init__(iterable or [])
         self.fitness = fitness_type()
@@ -78,10 +73,8 @@ def _create_individual_class(weights: tuple[float, ...]) -> type[Individual]:
         type[Individual],
         type(class_name, (Individual,), {"__init__": individual_init}),
     )
-
     globals()[class_name] = new_class
     new_class.__module__ = __name__
-
     _INDIVIDUAL_CLASS_CACHE[weights] = new_class
     return new_class
 
@@ -97,102 +90,20 @@ MutationOperator = Callable[[Individual], tuple[Individual]]
 SelectionOperator = Callable[[Population, int], Population]
 
 
-def reweight_population(
-    population: Population,
-    new_weights: tuple[float, ...],
-) -> None:
-    new_fitness_type = _get_or_create_fitness_class(new_weights)
-
-    for individual in population:
-        has_valid_values = hasattr(individual.fitness, "values") and getattr(
-            individual.fitness, "valid", False
-        )
-        raw_values: tuple[float, ...] | None = (
-            cast(tuple[float, ...], getattr(individual.fitness, "values"))
-            if has_valid_values
-            else None
-        )
-
-        individual.fitness = new_fitness_type()
-        if raw_values is not None:
-            individual.fitness.values = raw_values
+def _unregistered_stub(*_args: object, **_kwargs: object) -> NoReturn:
+    raise NotImplementedError("This DEAP method has not been registered yet.")
 
 
-class DeapToolboxProtocol(Protocol):
-    def register(
-        self,
-        alias: str,
-        method: Callable[..., object],
-        *args: object,
-        **kwargs: object,
-    ) -> None: ...
-    def unregister(self, alias: str) -> None: ...
+class GeneticAlgorithmToolbox(base.Toolbox):
+    individual: IndividualGenerator = _unregistered_stub
+    population: PopulationGenerator = _unregistered_stub
+    evaluate: FitnessEvaluator = _unregistered_stub
+    mate: CrossoverOperator = _unregistered_stub
+    mutate: MutationOperator = _unregistered_stub
+    select: SelectionOperator = _unregistered_stub
 
-    @property
-    def individual(self) -> IndividualGenerator: ...
-    @property
-    def population(self) -> PopulationGenerator: ...
-    @property
-    def evaluate(self) -> FitnessEvaluator: ...
-    @property
-    def mate(self) -> CrossoverOperator: ...
-    @property
-    def mutate(self) -> MutationOperator: ...
-    @property
-    def select(self) -> SelectionOperator: ...
-
-    def clone(self, obj: _T) -> _T: ...
-    def map(
-        self,
-        function: Callable[[_T], _R],
-        iterable: Iterable[_T],
-    ) -> Iterable[_R]: ...
-
-
-def _unregistered_stub(name: str) -> NoReturn:
-    raise NotImplementedError(
-        f"Method '{name}' has not been registered on the toolbox yet."
-    )
-
-
-class GeneticAlgorithmToolbox(base.Toolbox, DeapToolboxProtocol):
     def __init__(self) -> None:
         super().__init__()
-
-    def _get_registered(self, name: str) -> object:
-        if name not in self.__dict__:
-            _unregistered_stub(name)
-        return cast(object, self.__dict__[name])
-
-    @property
-    @override
-    def individual(self) -> IndividualGenerator:
-        return cast(IndividualGenerator, self._get_registered("individual"))
-
-    @property
-    @override
-    def population(self) -> PopulationGenerator:
-        return cast(PopulationGenerator, self._get_registered("population"))
-
-    @property
-    @override
-    def evaluate(self) -> FitnessEvaluator:
-        return cast(FitnessEvaluator, self._get_registered("evaluate"))
-
-    @property
-    @override
-    def mate(self) -> CrossoverOperator:
-        return cast(CrossoverOperator, self._get_registered("mate"))
-
-    @property
-    @override
-    def mutate(self) -> MutationOperator:
-        return cast(MutationOperator, self._get_registered("mutate"))
-
-    @property
-    @override
-    def select(self) -> SelectionOperator:
-        return cast(SelectionOperator, self._get_registered("select"))
 
     @override
     def register(
@@ -216,25 +127,6 @@ class GeneticAlgorithmToolbox(base.Toolbox, DeapToolboxProtocol):
         )
         base_unregister(self, alias)
 
-    @override
-    def clone(self, obj: _T) -> _T:
-        clone_function = cast(
-            Callable[[_T], _T], self._get_registered("clone")
-        )
-        return clone_function(obj)
-
-    @override
-    def map(
-        self,
-        function: Callable[[_T], _R],
-        iterable: Iterable[_T],
-    ) -> Iterable[_R]:
-        map_function = cast(
-            Callable[[Callable[[_T], _R], Iterable[_T]], Iterable[_R]],
-            self._get_registered("map"),
-        )
-        return map_function(function, iterable)
-
 
 def build_toolbox(
     evaluation_function: FitnessEvaluator,
@@ -242,7 +134,9 @@ def build_toolbox(
     weights: tuple[float, ...] = (1.0,),
 ) -> GeneticAlgorithmToolbox:
     individual_class = _create_individual_class(weights)
+
     toolbox = GeneticAlgorithmToolbox()
+
     toolbox.register("clone", copy.deepcopy)
     toolbox.register("map", map)
 
@@ -262,14 +156,13 @@ def build_toolbox(
         return typed_init_repeat(list, toolbox.individual, n)
 
     def configured_mate(
-        individual1: Individual,
-        individual2: Individual,
+        ind1: Individual, ind2: Individual
     ) -> tuple[Individual, Individual]:
         typed_cx = cast(
             Callable[[Individual, Individual], tuple[Individual, Individual]],
             tools.cxTwoPoint,
         )
-        return typed_cx(individual1, individual2)
+        return typed_cx(ind1, ind2)
 
     def configured_mutation(ind: Individual) -> tuple[Individual]:
         typed_mut_gaussian = cast(
@@ -280,8 +173,7 @@ def build_toolbox(
 
     def configured_selection(individuals: Population, k: int) -> Population:
         typed_sel_tournament = cast(
-            Callable[[Population, int, int], Population],
-            tools.selTournament,
+            Callable[[Population, int, int], Population], tools.selTournament
         )
         return typed_sel_tournament(individuals, k, 3)
 
