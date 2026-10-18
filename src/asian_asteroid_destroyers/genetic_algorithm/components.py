@@ -40,7 +40,7 @@ def _get_or_create_fitness_class(
     if weights in _FITNESS_CLASS_CACHE:
         return _FITNESS_CLASS_CACHE[weights]
     clean_weight_string = "_".join(
-        str(w).replace(".", "_").replace("-", "neg") for w in weights
+        str(weight).replace(".", "_").replace("-", "neg") for weight in weights
     )
     class_name = f"DynamicFitness_{clean_weight_string}"
     new_class = cast(
