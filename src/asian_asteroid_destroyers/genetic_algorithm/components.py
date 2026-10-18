@@ -58,7 +58,7 @@ def _create_individual_class(weights: tuple[float, ...]) -> type[Individual]:
         return _INDIVIDUAL_CLASS_CACHE[weights]
     fitness_type = _get_or_create_fitness_class(weights)
     clean_weight_string = "_".join(
-        str(w).replace(".", "_").replace("-", "neg") for w in weights
+        str(weight).replace(".", "_").replace("-", "neg") for weight in weights
     )
     class_name = f"DynamicIndividual_{clean_weight_string}"
 
