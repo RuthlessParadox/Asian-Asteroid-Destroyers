@@ -96,20 +96,24 @@ def reweight_population(
     new_weights: tuple[float, ...],
 ) -> None:
     new_fitness_type = _get_or_create_fitness_class(new_weights)
+    empty_prototype = new_fitness_type()
 
     for individual in population:
-        has_valid_values = hasattr(individual.fitness, "values") and getattr(
-            individual.fitness, "valid", False
-        )
-        raw_values: tuple[float, ...] | None = (
-            cast(tuple[float, ...], getattr(individual.fitness, "values"))
-            if has_valid_values
-            else None
-        )
+        fitness = individual.fitness
+        raw_values: tuple[float, ...] | None = None
 
-        individual.fitness = new_fitness_type()
+        if getattr(fitness, "valid", False):
+            try:
+                raw_values = fitness.values
+            except AttributeError:
+                pass
+
         if raw_values is not None:
-            individual.fitness.values = raw_values
+            new_fitness = new_fitness_type()
+            new_fitness.values = raw_values
+            individual.fitness = new_fitness
+        else:
+            individual.fitness = copy.copy(empty_prototype)
 
 
 def _unregistered_stub(*_args: object, **_kwargs: object) -> NoReturn:
