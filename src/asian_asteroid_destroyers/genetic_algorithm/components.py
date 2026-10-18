@@ -90,6 +90,27 @@ MutationOperator = Callable[[Individual], tuple[Individual]]
 SelectionOperator = Callable[[Population, int], Population]
 
 
+def reweight_population(
+    population: Population,
+    new_weights: tuple[float, ...],
+) -> None:
+    new_fitness_type = _get_or_create_fitness_class(new_weights)
+
+    for individual in population:
+        has_valid_values = hasattr(individual.fitness, "values") and getattr(
+            individual.fitness, "valid", False
+        )
+        raw_values: tuple[float, ...] | None = (
+            cast(tuple[float, ...], getattr(individual.fitness, "values"))
+            if has_valid_values
+            else None
+        )
+
+        individual.fitness = new_fitness_type()
+        if raw_values is not None:
+            individual.fitness.values = raw_values
+
+
 def _unregistered_stub(*_args: object, **_kwargs: object) -> NoReturn:
     raise NotImplementedError("This DEAP method has not been registered yet.")
 
