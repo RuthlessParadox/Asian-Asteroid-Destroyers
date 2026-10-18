@@ -27,7 +27,8 @@ class Individual(list[float]):
             super().__init__(iterable)
         else:
             super().__init__()
-        self.fitness = TypedFitness()
+        if not hasattr(self, "fitness"):
+            self.fitness = TypedFitness()
 
 
 _FITNESS_CLASS_CACHE: dict[tuple[float, ...], type[TypedFitness]] = {}
