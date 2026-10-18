@@ -116,15 +116,21 @@ def _unregistered_stub(*_args: object, **_kwargs: object) -> NoReturn:
 
 
 class GeneticAlgorithmToolbox(base.Toolbox):
-    individual: IndividualGenerator = _unregistered_stub
-    population: PopulationGenerator = _unregistered_stub
-    evaluate: FitnessEvaluator = _unregistered_stub
-    mate: CrossoverOperator = _unregistered_stub
-    mutate: MutationOperator = _unregistered_stub
-    select: SelectionOperator = _unregistered_stub
+    individual: IndividualGenerator
+    population: PopulationGenerator
+    evaluate: FitnessEvaluator
+    mate: CrossoverOperator
+    mutate: MutationOperator
+    select: SelectionOperator
 
     def __init__(self) -> None:
         super().__init__()
+        self.individual = _unregistered_stub
+        self.population = _unregistered_stub
+        self.evaluate = _unregistered_stub
+        self.mate = _unregistered_stub
+        self.mutate = _unregistered_stub
+        self.select = _unregistered_stub
 
     @override
     def register(
