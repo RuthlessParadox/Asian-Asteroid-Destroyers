@@ -51,7 +51,10 @@ def test_typed_fitness_dimension_mismatch_exact_error_message() -> None:
     with pytest.raises(ValueError) as exception_info:
         fitness.values = mismatch_values
 
-    expected_message = "Mismatched dimensions: Assigned 3 values, but fitness weights expect 2."
+    expected_message = (
+        "Mismatched dimensions: Assigned 3 values, "
+        + "but fitness weights expect 2."
+    )
     assert str(exception_info.value) == expected_message
 
 
