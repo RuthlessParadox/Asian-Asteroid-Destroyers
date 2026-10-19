@@ -30,11 +30,15 @@ def sample_evaluate_multi() -> Callable[[Individual], tuple[float, float]]:
 
 
 def test_typed_fitness_initialization() -> None:
-    fitness = TypedFitness(values=(1.0, 2.5))
-    assert fitness.values == (1.0, 2.5)
+    class TestDualObjectiveFitness(TypedFitness):
+        weights: tuple[float, float] = (1.0, -1.0)
 
-    empty_fitness = TypedFitness()
-    assert not hasattr(empty_fitness, "values")
+    fitness_with_values = TestDualObjectiveFitness(values=(4.2, 2.4))
+    assert fitness_with_values.values == (4.2, 2.4)
+    assert fitness_with_values.valid
+
+    empty_fitness = TestDualObjectiveFitness()
+    assert not empty_fitness.valid
 
 
 def test_individual_initialization() -> None:
