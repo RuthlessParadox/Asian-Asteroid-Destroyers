@@ -41,6 +41,20 @@ def test_typed_fitness_initialization() -> None:
     assert not empty_fitness.valid
 
 
+def test_typed_fitness_dimension_mismatch_exact_error_message() -> None:
+    class StrictDualFitness(TypedFitness):
+        weights: tuple[float, float] = (1.0, -1.0)
+
+    fitness = StrictDualFitness()
+
+    mismatch_values = (1.0, 2.0, 3.0)
+    with pytest.raises(ValueError) as exception_info:
+        fitness.values = mismatch_values
+
+    expected_message = "Mismatched dimensions: Assigned 3 values, but fitness weights expect 2."
+    assert str(exception_info.value) == expected_message
+
+
 def test_individual_initialization() -> None:
     data = [1.0, 2.0, 3.0]
     ind = Individual(iterable=data)
