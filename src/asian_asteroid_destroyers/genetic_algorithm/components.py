@@ -188,6 +188,8 @@ class GeneticAlgorithmToolbox(base.Toolbox):
             getattr(base.Toolbox, "unregister"),
         )
         base_unregister(self, alias)
+        if hasattr(self, alias):
+            delattr(self, alias)
 
 
 def _get_default_individual_factory(
