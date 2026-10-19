@@ -69,6 +69,28 @@ def test_individual_initialization() -> None:
     assert isinstance(empty_ind.fitness, TypedFitness)
 
 
+def test_individual_cache_and_type_propagation(
+    sample_evaluate_single: Callable[[Individual], tuple[float]],
+) -> None:
+    weights = (1.0, -0.5, 0.25)
+    toolbox_1 = build_toolbox(
+        evaluation_function=sample_evaluate_single,
+        gene_size=3,
+        weights=weights,
+    )
+    toolbox_2 = build_toolbox(
+        evaluation_function=sample_evaluate_single,
+        gene_size=3,
+        weights=weights,
+    )
+
+    ind_1 = toolbox_1.individual()
+    ind_2 = toolbox_2.individual()
+
+    assert type(ind_1) is type(ind_2)
+    assert type(ind_1.fitness) is type(ind_2.fitness)
+
+
 def test_toolbox_unregistered_stubs_raise_error() -> None:
     toolbox = GeneticAlgorithmToolbox()
 
