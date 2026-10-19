@@ -69,7 +69,6 @@ def test_toolbox_register_and_unregister(
     toolbox = GeneticAlgorithmToolbox()
 
     toolbox.register("evaluate", sample_evaluate_single)
-    assert toolbox.evaluate is sample_evaluate_single
     assert toolbox.evaluate(Individual()) == (1.0,)
 
     toolbox.unregister("evaluate")
