@@ -180,3 +180,114 @@ def crossover_messy_one_point(
         tools.cxMessyOnePoint,
     )
     return typed_cx_messy_one_point(individual_1, individual_2)
+
+
+def mutation_gaussian(
+    individual: Individual,
+    mu: float | Sequence[float],
+    sigma: float | Sequence[float],
+    independent_probability: float,
+) -> tuple[Individual]:
+    typed_mut_gaussian = cast(
+        Callable[
+            [
+                Individual,
+                float | Sequence[float],
+                float | Sequence[float],
+                float,
+            ],
+            tuple[Individual],
+        ],
+        tools.mutGaussian,
+    )
+    return typed_mut_gaussian(individual, mu, sigma, independent_probability)
+
+
+def mutation_shuffle_indices(
+    individual: Individual,
+    independent_probability: float,
+) -> tuple[Individual]:
+    typed_mut_shuffle_indices = cast(
+        Callable[[Individual, float], tuple[Individual]],
+        tools.mutShuffleIndexes,
+    )
+    return typed_mut_shuffle_indices(individual, independent_probability)
+
+
+def mutation_flip_bit(
+    individual: Individual,
+    independent_probability: float,
+) -> tuple[Individual]:
+    typed_mut_flip_bit = cast(
+        Callable[[Individual, float], tuple[Individual]],
+        tools.mutFlipBit,
+    )
+    return typed_mut_flip_bit(individual, independent_probability)
+
+
+def mutation_uniform_int(
+    individual: Individual,
+    lower_bound: float | Sequence[float],
+    upper_bound: float | Sequence[float],
+    independent_probability: float,
+) -> tuple[Individual]:
+    typed_mut_uniform_int = cast(
+        Callable[
+            [
+                Individual,
+                float | Sequence[float],
+                float | Sequence[float],
+                float,
+            ],
+            tuple[Individual],
+        ],
+        tools.mutUniformInt,
+    )
+    return typed_mut_uniform_int(
+        individual, lower_bound, upper_bound, independent_probability
+    )
+
+
+def mutation_polynomial_bounded(
+    individual: Individual,
+    eta: float,
+    lower_bound: float | Sequence[float],
+    upper_bound: float | Sequence[float],
+    independent_probability: float,
+) -> tuple[Individual]:
+    typed_mut_polynomial_bounded = cast(
+        Callable[
+            [
+                Individual,
+                float,
+                float | Sequence[float],
+                float | Sequence[float],
+                float,
+            ],
+            tuple[Individual],
+        ],
+        tools.mutPolynomialBounded,
+    )
+    return typed_mut_polynomial_bounded(
+        individual,
+        eta,
+        lower_bound,
+        upper_bound,
+        independent_probability,
+    )
+
+
+def mutation_evolution_strategy_log_normal(
+    individual: Individual,
+    c: float,
+    independent_probability: float,
+) -> tuple[Individual]:
+    typed_mut_evolution_strategy_log_normal = cast(
+        Callable[[Individual, float, float], tuple[Individual]],
+        tools.mutESLogNormal,
+    )
+    return typed_mut_evolution_strategy_log_normal(
+        individual,
+        c,
+        independent_probability,
+    )
