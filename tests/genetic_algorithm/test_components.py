@@ -134,6 +134,32 @@ def test_toolbox_register_and_unregister(
         _ = toolbox.evaluate
 
 
+def test_toolbox_register_overwrites_bound_methods_correctly(
+    sample_evaluate_single: Callable[[Individual], tuple[float]],
+    sample_evaluate_multi: Callable[[Individual], tuple[float, float]],
+) -> None:
+    toolbox = GeneticAlgorithmToolbox()
+
+    toolbox.register("evaluate", sample_evaluate_single)
+    assert toolbox.evaluate(Individual([2.5, 1.5])) == (4.0,)
+
+    toolbox.register("evaluate", sample_evaluate_multi)
+    assert toolbox.evaluate(Individual([2.5, 1.5])) == (4.0, 2.0)
+
+
+def test_toolbox_unregister_deletes_custom_attribute() -> None:
+    toolbox = GeneticAlgorithmToolbox()
+
+    def dummy_operator() -> str:
+        return "active"
+
+    toolbox.register("custom_operator", dummy_operator)
+    assert hasattr(toolbox, "custom_operator")
+
+    toolbox.unregister("custom_operator")
+    assert not hasattr(toolbox, "custom_operator")
+
+
 def test_build_toolbox_single_objective(
     sample_evaluate_single: Callable[[Individual], tuple[float]],
 ) -> None:
