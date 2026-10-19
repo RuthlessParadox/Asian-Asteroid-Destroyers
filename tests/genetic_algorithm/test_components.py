@@ -136,8 +136,8 @@ def test_build_toolbox_with_custom_operators(
     test_individual1 = Individual([1.0, 1.0])
     test_individual2 = Individual([2.0, 2.0])
     result1, result2 = toolbox.mate(test_individual1, test_individual2)
-    assert result1 == test_individual1
-    assert result2 == test_individual2
+    assert result1 == test_individual2
+    assert result2 == test_individual1
 
 
 def test_reweight_population_preserves_unevaluated_states(
