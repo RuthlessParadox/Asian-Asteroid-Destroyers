@@ -69,6 +69,16 @@ def test_individual_initialization() -> None:
     assert isinstance(empty_ind.fitness, TypedFitness)
 
 
+def test_subclass_individual_uninitialized_fitness_fallback() -> None:
+    class CustomSubclassIndividual(Individual):
+        pass
+
+    individual = CustomSubclassIndividual()
+    assert hasattr(individual, "fitness")
+    assert isinstance(individual.fitness, TypedFitness)
+    assert individual.fitness.weights == ()
+
+
 def test_individual_cache_and_type_propagation(
     sample_evaluate_single: Callable[[Individual], tuple[float]],
 ) -> None:
