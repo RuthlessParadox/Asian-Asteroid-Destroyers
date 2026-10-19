@@ -103,13 +103,22 @@ def test_individual_cache_and_type_propagation(
 
 def test_toolbox_unregistered_stubs_raise_error() -> None:
     toolbox = GeneticAlgorithmToolbox()
+    individual = Individual([1.0, 2.0])
 
-    with pytest.raises(NotImplementedError) as exception_info:
-        _ = toolbox.individual()
-    assert "individual" in str(exception_info.value)
+    unregistered_calls: list[Callable[..., object]] = [
+        lambda: toolbox.individual(),
+        lambda: toolbox.population(5),
+        lambda: toolbox.evaluate(individual),
+        lambda: toolbox.mate(individual, individual),
+        lambda: toolbox.mutate(individual),
+        lambda: toolbox.select([individual], 1),
+    ]
 
-    with pytest.raises(NotImplementedError):
-        _ = toolbox.mate(Individual([1.0]), Individual([2.0]))
+    for operation in unregistered_calls:
+        with pytest.raises(NotImplementedError) as exception_info:
+            _ = operation()
+        assert "The DEAP operation" in str(exception_info.value)
+        assert "has not been registered yet" in str(exception_info.value)
 
 
 def test_toolbox_register_and_unregister(
