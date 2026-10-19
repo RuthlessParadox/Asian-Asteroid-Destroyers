@@ -2,9 +2,10 @@ import copy
 import random
 import sys
 from collections.abc import Callable, Iterable
-from typing import NoReturn, TypeVar, cast, override
+from typing import NoReturn, TypeVar, cast
 
 from deap import base, tools
+from typing_extensions import override
 
 _T = TypeVar("_T")
 _R = TypeVar("_R")
@@ -166,7 +167,7 @@ class GeneticAlgorithmToolbox(base.Toolbox):
     def register(
         self,
         alias: str,
-        method: Callable[..., object],
+        function: Callable[..., object],
         *args: object,
         **kwargs: object,
     ) -> None:
@@ -174,7 +175,7 @@ class GeneticAlgorithmToolbox(base.Toolbox):
             Callable[..., None],
             getattr(base.Toolbox, "register"),
         )
-        base_register(self, alias, method, *args, **kwargs)
+        base_register(self, alias, function, *args, **kwargs)
         if hasattr(self, alias):
             setattr(
                 self, alias, cast(Callable[..., object], getattr(self, alias))
