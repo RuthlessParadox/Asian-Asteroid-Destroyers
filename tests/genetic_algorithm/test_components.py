@@ -2,6 +2,7 @@ from typing import Callable, Protocol, cast
 
 import pytest
 from deap import algorithms, base
+from typing_extensions import override
 
 from asian_asteroid_destroyers.genetic_algorithm.components import (
     GeneticAlgorithmToolbox,
@@ -202,6 +203,27 @@ def test_build_toolbox_multi_objective(
         assert individual.fitness.weights == weights
 
 
+def test_build_toolbox_fallback_defaults(
+    sample_evaluate_single: Callable[[Individual], tuple[float]],
+) -> None:
+    toolbox = build_toolbox(
+        evaluation_function=sample_evaluate_single,
+        gene_size=3,
+    )
+
+    individual = toolbox.individual()
+    assert len(individual) == 3
+    assert isinstance(individual.fitness, TypedFitness)
+
+    population = toolbox.population(2)
+    assert len(population) == 2
+
+    mutated_individual = toolbox.mutate(individual)
+    assert isinstance(mutated_individual, tuple)
+    assert len(mutated_individual) == 1
+    assert isinstance(mutated_individual[0], Individual)
+
+
 def test_build_toolbox_with_custom_operators(
     sample_evaluate_single: Callable[[Individual], tuple[float]],
 ) -> None:
@@ -248,6 +270,54 @@ def test_reweight_population_preserves_unevaluated_states(
     assert population[1].fitness.valid
     assert population[1].fitness.values == (10.0, 20.0)
     assert population[1].fitness.weights == new_weights
+
+
+def test_reweight_population_handles_uninitialized_and_corrupted_fitness(
+    sample_evaluate_single: Callable[[Individual], tuple[float]],
+) -> None:
+    toolbox = build_toolbox(
+        evaluation_function=sample_evaluate_single,
+        gene_size=2,
+        weights=(1.0,),
+    )
+    population = toolbox.population(2)
+    individual1 = population[0]
+    individual2 = population[1]
+
+    class MissingValidFitness(TypedFitness):
+        @override
+        def __getattribute__(self, name: str) -> object:
+            if name == "valid":
+                return False
+            return cast(object, super().__getattribute__(name))
+
+    individual1.fitness = MissingValidFitness()
+
+    class CorruptedFitness(TypedFitness):
+        @property
+        @override
+        def valid(self) -> bool:
+            return True
+
+        @valid.setter
+        def valid(self, value: bool) -> None:
+            pass
+
+        @override
+        def __getattribute__(self, name: str) -> object:
+            if name == "values":
+                raise AttributeError("Simulated execution failure")
+            return cast(object, super().__getattribute__(name))
+
+    individual2.fitness = CorruptedFitness()
+
+    new_weights = (1.0, -1.0)
+    reweight_population(population, new_weights)
+
+    assert individual1.fitness.weights == new_weights
+    assert individual2.fitness.weights == new_weights
+    assert not individual1.fitness.valid
+    assert not individual2.fitness.valid
 
 
 class _EaSimpleProtocol(Protocol):
