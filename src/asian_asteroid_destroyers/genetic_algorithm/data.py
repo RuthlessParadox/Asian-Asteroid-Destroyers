@@ -1,25 +1,94 @@
-from collections.abc import Sequence
+from collections.abc import Mapping
+from typing import TypedDict, cast
 
 import polars as pl
 from typing_extensions import override
 
 
+class GenerationStats(TypedDict):
+    max_fitness: float
+    min_fitness: float
+    mean_fitness: float
+    median_fitness: float
+    std_fitness: float
+
+
+LogValue = int | float
+LogRow = dict[str, LogValue]
+
+_TYPE_MAPPING: dict[type, pl.DataType] = {
+    int: pl.Int32(),
+    float: pl.Float32(),
+    str: pl.String(),
+    bool: pl.Boolean(),
+}
+
+
 class Logbook:
-    header: Sequence[str]
-    _records: list[dict[str, int | float]]
+    _buffer: list[LogRow]
+    _data_frames: list[pl.DataFrame]
+    _flush_interval: int
 
-    def __init__(self, header: Sequence[str] | None = None) -> None:
-        self.header = header if header is not None else []
-        self._records = []
+    def __init__(self, flush_interval: int = 100) -> None:
+        self._buffer = []
+        self._data_frames = []
+        self._flush_interval = flush_interval
 
-    def record(self, **kwargs: float) -> None:
-        self._records.append(kwargs)
+    @property
+    def dataframe(self) -> pl.DataFrame:
+        self._compile()
 
-    def to_dataframe(self) -> pl.DataFrame:
-        return pl.DataFrame(self._records)
+        if not self._data_frames:
+            return pl.DataFrame(schema=self._get_expected_schema())
+
+        return pl.concat(self._data_frames, how="vertical")
+
+    def record(self, generation: int, stats: GenerationStats) -> None:
+        stats_map = cast(Mapping[str, LogValue], stats)
+        record = {
+            "generation": generation,
+            **stats_map,
+        }
+        self._buffer.append(record)
+
+        if len(self._buffer) >= self._flush_interval:
+            self._compile()
+
+    def save_parquet(self, file_path: str) -> None:
+        self.dataframe.write_parquet(
+            file_path,
+            compression="zstd",
+            compression_level=3,
+        )
+
+    @staticmethod
+    def _get_expected_schema() -> dict[str, pl.DataType]:
+        schema: dict[str, pl.DataType] = {"generation": pl.Int32()}
+
+        annotations: dict[str, type] = GenerationStats.__annotations__
+        for field_name, python_type in annotations.items():
+            polars_type = _TYPE_MAPPING.get(python_type)
+            if polars_type is None:
+                raise TypeError(
+                    f"Unsupported type '{python_type.__name__}' detected on "
+                    + f"GenerationStats field '{field_name}'."
+                )
+            schema[field_name] = polars_type
+
+        return schema
+
+    def _compile(self) -> None:
+        if not self._buffer:
+            return
+
+        new_chunk = pl.DataFrame(
+            self._buffer,
+            schema=self._get_expected_schema(),
+        )
+
+        self._data_frames.append(new_chunk)
+        self._buffer.clear()
 
     @override
     def __str__(self) -> str:
-        if not self._records:
-            return "Empty Logbook"
-        return str(self.to_dataframe())
+        return str(self.dataframe)
