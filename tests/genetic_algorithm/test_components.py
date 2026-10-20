@@ -6,11 +6,13 @@ from typing_extensions import override
 
 from asian_asteroid_destroyers.genetic_algorithm.components import (
     GeneticAlgorithmToolbox,
+    build_toolbox,
+    reweight_population,
+)
+from asian_asteroid_destroyers.genetic_algorithm.types import (
     Individual,
     Population,
     TypedFitness,
-    build_toolbox,
-    reweight_population,
 )
 
 
