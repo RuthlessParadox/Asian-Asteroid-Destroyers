@@ -26,22 +26,22 @@ _TYPE_MAPPING: dict[type, pl.DataType] = {
 
 class Logbook:
     _buffer: list[LogRow]
-    _data_frames: list[pl.DataFrame]
+    _dataframes: list[pl.DataFrame]
     _flush_interval: int
 
     def __init__(self, flush_interval: int = 100) -> None:
         self._buffer = []
-        self._data_frames = []
+        self._dataframes = []
         self._flush_interval = flush_interval
 
     @property
     def dataframe(self) -> pl.DataFrame:
         self._compile()
 
-        if not self._data_frames:
+        if not self._dataframes:
             return pl.DataFrame(schema=self._get_expected_schema())
 
-        return pl.concat(self._data_frames, how="vertical")
+        return pl.concat(self._dataframes, how="vertical")
 
     def record(self, generation: int, stats: GenerationStats) -> None:
         stats_map = cast(Mapping[str, LogValue], stats)
@@ -86,7 +86,7 @@ class Logbook:
             schema=self._get_expected_schema(),
         )
 
-        self._data_frames.append(new_chunk)
+        self._dataframes.append(new_chunk)
         self._buffer.clear()
 
     @override
