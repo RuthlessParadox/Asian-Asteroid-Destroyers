@@ -7,6 +7,11 @@ from typing import NoReturn, TypeVar, cast
 from deap import base, tools
 from typing_extensions import override
 
+from asian_asteroid_destroyers.genetic_algorithm.operators import (
+    crossover_two_point,
+    mutation_gaussian,
+    selection_tournament,
+)
 from asian_asteroid_destroyers.genetic_algorithm.types import (
     CloneMethod,
     CrossoverOperator,
@@ -194,30 +199,16 @@ def _get_default_population_factory(
     return default_population_factory
 
 
-def _default_mate(
-    individual1: Individual,
-    individual2: Individual,
-) -> tuple[Individual, Individual]:
-    typed_cx = cast(
-        Callable[[Individual, Individual], tuple[Individual, Individual]],
-        tools.cxTwoPoint,
-    )
-    return typed_cx(individual1, individual2)
+def _default_mate() -> CrossoverOperator:
+    return crossover_two_point()
 
 
-def _default_mutation(individual: Individual) -> tuple[Individual]:
-    typed_mut_gaussian = cast(
-        Callable[[Individual, float, float, float], tuple[Individual]],
-        tools.mutGaussian,
-    )
-    return typed_mut_gaussian(individual, 0.0, 0.1, 0.2)
+def _default_mutation() -> MutationOperator:
+    return mutation_gaussian(0.0, 0.1, 0.2)
 
 
-def _default_selection(population: Population, k: int) -> Population:
-    typed_sel_tournament = cast(
-        Callable[[Population, int, int], Population], tools.selTournament
-    )
-    return typed_sel_tournament(population, k, 3)
+def _default_selection() -> SelectionOperator:
+    return selection_tournament(3)
 
 
 def build_toolbox(
@@ -243,8 +234,8 @@ def build_toolbox(
         "population",
         population_factory or _get_default_population_factory(toolbox),
     )
-    toolbox.register("mate", mate_operator or _default_mate)
-    toolbox.register("mutate", mutate_operator or _default_mutation)
-    toolbox.register("select", select_operator or _default_selection)
+    toolbox.register("mate", mate_operator or _default_mate())
+    toolbox.register("mutate", mutate_operator or _default_mutation())
+    toolbox.register("select", select_operator or _default_selection())
 
     return toolbox
