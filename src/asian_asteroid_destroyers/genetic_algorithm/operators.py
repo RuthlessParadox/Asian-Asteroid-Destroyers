@@ -1,22 +1,17 @@
 from collections.abc import Sequence
-from typing import Callable, TypeVar, cast
+from typing import Callable, cast
 
 import numpy as np
 from deap import tools
 
-from asian_asteroid_destroyers.genetic_algorithm.components import (
+from asian_asteroid_destroyers.genetic_algorithm.types import (
     CrossoverOperator,
+    FloatMatrix,
     Individual,
     MutationOperator,
     Population,
     SelectionOperator,
 )
-
-_Shape1D = TypeVar("_Shape1D", bound=tuple[int])
-_Shape2D = TypeVar("_Shape2D", bound=tuple[int, int])
-
-FloatVector = np.ndarray[_Shape1D, np.dtype[np.float64]]
-FloatMatrix = np.ndarray[_Shape2D, np.dtype[np.float64]]
 
 
 def crossover_one_point() -> CrossoverOperator:

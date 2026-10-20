@@ -7,42 +7,22 @@ from typing import NoReturn, TypeVar, cast
 from deap import base, tools
 from typing_extensions import override
 
+from asian_asteroid_destroyers.genetic_algorithm.types import (
+    CloneMethod,
+    CrossoverOperator,
+    FitnessEvaluator,
+    Individual,
+    IndividualGenerator,
+    MapMethod,
+    MutationOperator,
+    Population,
+    PopulationGenerator,
+    SelectionOperator,
+    TypedFitness,
+)
+
 _T = TypeVar("_T")
 _R = TypeVar("_R")
-
-
-class TypedFitness(base.Fitness):
-    weights: tuple[float, ...] = ()
-    values: tuple[float, ...]
-
-    def __init__(self, values: tuple[float, ...] | None = None) -> None:
-        super().__init__()
-        if values is not None:
-            self.values = values
-
-    @override
-    def __setattr__(self, name: str, value: object) -> None:
-        if name == "values" and isinstance(value, tuple):
-            tuple_length = value.__len__()
-            if tuple_length != len(self.weights):
-                raise ValueError(
-                    f"Mismatched dimensions: Assigned {tuple_length} values, "
-                    + f"but fitness weights expect {len(self.weights)}."
-                )
-
-        super().__setattr__(name, value)
-
-
-class Individual(list[float]):
-    fitness: TypedFitness
-
-    def __init__(self, iterable: Iterable[float] | None = None) -> None:
-        if iterable is not None:
-            super().__init__(iterable)
-        else:
-            super().__init__()
-        if not hasattr(self, "fitness"):
-            self.fitness = TypedFitness()
 
 
 _FITNESS_CLASS_CACHE: dict[tuple[float, ...], type[TypedFitness]] = {}
@@ -94,22 +74,6 @@ def _create_individual_class(weights: tuple[float, ...]) -> type[Individual]:
     new_class.__module__ = __name__
     _INDIVIDUAL_CLASS_CACHE[weights] = new_class
     return new_class
-
-
-Population = list[Individual]
-CloneMethod = Callable[[Individual], Individual]
-MapMethod = Callable[
-    [Callable[[Individual], tuple[float, ...]], list[Individual]],
-    Iterable[tuple[float, ...]],
-]
-IndividualGenerator = Callable[[], Individual]
-PopulationGenerator = Callable[[int], Population]
-FitnessEvaluator = Callable[[Individual], tuple[float, ...]]
-CrossoverOperator = Callable[
-    [Individual, Individual], tuple[Individual, Individual]
-]
-MutationOperator = Callable[[Individual], tuple[Individual]]
-SelectionOperator = Callable[[Population, int], Population]
 
 
 def reweight_population(
