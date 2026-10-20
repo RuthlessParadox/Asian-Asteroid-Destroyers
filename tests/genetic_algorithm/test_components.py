@@ -4,14 +4,16 @@ import pytest
 from deap import algorithms, base
 from typing_extensions import override
 
-from asian_asteroid_destroyers.genetic_algorithm.components import (
-    GeneticAlgorithmToolbox,
-    build_toolbox,
-    reweight_population,
-)
 from asian_asteroid_destroyers.genetic_algorithm.individuals import (
     Individual,
     TypedFitness,
+)
+from asian_asteroid_destroyers.genetic_algorithm.operators import (
+    reweight_population,
+)
+from asian_asteroid_destroyers.genetic_algorithm.toolbox import (
+    GeneticAlgorithmToolbox,
+    build_toolbox,
 )
 from asian_asteroid_destroyers.genetic_algorithm.types import Population
 
