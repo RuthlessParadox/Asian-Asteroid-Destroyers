@@ -3,7 +3,7 @@ from typing import TypeVar
 
 import numpy as np
 
-from asian_asteroid_destroyers.genetic_algorithm.individuals import Individual
+from .individuals import Individual
 
 _Shape1D = TypeVar("_Shape1D", bound=tuple[int])
 _Shape2D = TypeVar("_Shape2D", bound=tuple[int, int])

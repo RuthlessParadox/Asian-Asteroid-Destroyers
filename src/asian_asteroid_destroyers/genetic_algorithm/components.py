@@ -1,22 +1,20 @@
 import copy
 import random
-import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from typing import NoReturn, TypeVar, cast
 
 from deap import base, tools
 from typing_extensions import override
 
-from asian_asteroid_destroyers.genetic_algorithm.individuals import (
-    Individual,
-    TypedFitness,
-)
-from asian_asteroid_destroyers.genetic_algorithm.operators import (
+from .fitness_class_cache import get_fitness_class
+from .individual_class_cache import get_individual_class
+from .individuals import Individual
+from .operators import (
     crossover_two_point,
     mutation_gaussian,
     selection_tournament,
 )
-from asian_asteroid_destroyers.genetic_algorithm.types import (
+from .types import (
     CloneMethod,
     CrossoverOperator,
     FitnessEvaluator,
@@ -32,62 +30,11 @@ _T = TypeVar("_T")
 _R = TypeVar("_R")
 
 
-_FITNESS_CLASS_CACHE: dict[tuple[float, ...], type[TypedFitness]] = {}
-_INDIVIDUAL_CLASS_CACHE: dict[tuple[float, ...], type[Individual]] = {}
-
-
-def _get_or_create_fitness_class(
-    weights: tuple[float, ...],
-) -> type[TypedFitness]:
-    if weights in _FITNESS_CLASS_CACHE:
-        return _FITNESS_CLASS_CACHE[weights]
-    clean_weight_string = "_".join(
-        str(weight).replace(".", "_").replace("-", "neg") for weight in weights
-    )
-    class_name = f"DynamicFitness_{clean_weight_string}"
-    new_class = cast(
-        type[TypedFitness],
-        type(class_name, (TypedFitness,), {"weights": weights}),
-    )
-    current_module = sys.modules[__name__]
-    setattr(current_module, class_name, new_class)
-    new_class.__module__ = __name__
-    _FITNESS_CLASS_CACHE[weights] = new_class
-    return new_class
-
-
-def _create_individual_class(weights: tuple[float, ...]) -> type[Individual]:
-    if weights in _INDIVIDUAL_CLASS_CACHE:
-        return _INDIVIDUAL_CLASS_CACHE[weights]
-    fitness_type = _get_or_create_fitness_class(weights)
-    clean_weight_string = "_".join(
-        str(weight).replace(".", "_").replace("-", "neg") for weight in weights
-    )
-    class_name = f"DynamicIndividual_{clean_weight_string}"
-
-    def individual_init(
-        self: Individual,
-        iterable: Iterable[float] | None = None,
-    ) -> None:
-        super(Individual, self).__init__(iterable or [])
-        self.fitness = fitness_type()
-
-    new_class = cast(
-        type[Individual],
-        type(class_name, (Individual,), {"__init__": individual_init}),
-    )
-    current_module = sys.modules[__name__]
-    setattr(current_module, class_name, new_class)
-    new_class.__module__ = __name__
-    _INDIVIDUAL_CLASS_CACHE[weights] = new_class
-    return new_class
-
-
 def reweight_population(
     population: Population,
     new_weights: tuple[float, ...],
 ) -> None:
-    new_fitness_type = _get_or_create_fitness_class(new_weights)
+    new_fitness_type = get_fitness_class(new_weights)
     empty_prototype = new_fitness_type()
 
     for individual in population:
@@ -223,7 +170,7 @@ def build_toolbox(
     mutate_operator: MutationOperator | None = None,
     select_operator: SelectionOperator | None = None,
 ) -> GeneticAlgorithmToolbox:
-    individual_class = _create_individual_class(weights)
+    individual_class = get_individual_class(weights)
     toolbox = GeneticAlgorithmToolbox()
 
     toolbox.register("evaluate", evaluation_function)
