@@ -1,11 +1,20 @@
 from collections.abc import Sequence
-from typing import Callable, cast
+from typing import Callable, NamedTuple, TypeVar, cast
 
+import numpy as np
 from deap import tools
 
 from asian_asteroid_destroyers.genetic_algorithm.components import (
     Individual,
+    Population,
+    SelectionOperator,
 )
+
+_Shape1D = TypeVar("_Shape1D", bound=tuple[int])
+_Shape2D = TypeVar("_Shape2D", bound=tuple[int, int])
+
+FloatVector = np.ndarray[_Shape1D, np.dtype[np.float64]]
+FloatMatrix = np.ndarray[_Shape2D, np.dtype[np.float64]]
 
 
 def crossover_one_point(
@@ -291,3 +300,250 @@ def mutation_evolution_strategy_log_normal(
         c,
         independent_probability,
     )
+
+
+def selection_tournament(
+    population: Population,
+    k: int,
+    tournament_size: int,
+) -> Population:
+    typed_sel_tournament = cast(
+        Callable[[Population, int, int], Population],
+        tools.selTournament,
+    )
+    return typed_sel_tournament(
+        population,
+        k,
+        tournament_size,
+    )
+
+
+def selection_roulette(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_roulette = cast(
+        Callable[[Population, int], Population],
+        tools.selRoulette,
+    )
+    return typed_sel_roulette(population, k)
+
+
+def selection_non_dominated_sorting_genetic_algorithm_2(
+    population: Population,
+    k: int,
+    algorithm: str = "standard",
+) -> Population:
+    typed_sel_nsga_2 = cast(
+        Callable[[Population, int, str], Population],
+        tools.selNSGA2,
+    )
+    return typed_sel_nsga_2(population, k, algorithm)
+
+
+class NonDominatedSortingGeneticAlgorithm3Memory(NamedTuple):
+    best_point: FloatVector[tuple[int]] | None
+    worst_point: FloatVector[tuple[int]] | None
+    extreme_points: FloatMatrix[tuple[int, int]] | None
+
+
+def selection_non_dominated_sorting_genetic_algorithm_3(
+    population: Population,
+    k: int,
+    reference_points: FloatMatrix[tuple[int, int]],
+    algorithm: str = "log",
+    best_point: FloatVector[tuple[int]] | None = None,
+    worst_point: FloatVector[tuple[int]] | None = None,
+    extreme_points: FloatMatrix[tuple[int, int]] | None = None,
+    return_memory: bool = False,
+) -> (
+    Population | tuple[Population, NonDominatedSortingGeneticAlgorithm3Memory]
+):
+    typed_sel_nsga_3 = cast(
+        Callable[
+            [
+                Population,
+                int,
+                FloatMatrix[tuple[int, int]],
+                str,
+                FloatVector[tuple[int]] | None,
+                FloatVector[tuple[int]] | None,
+                FloatMatrix[tuple[int, int]] | None,
+                bool,
+            ],
+            Population
+            | tuple[Population, NonDominatedSortingGeneticAlgorithm3Memory],
+        ],
+        tools.selNSGA3,
+    )
+    return typed_sel_nsga_3(
+        population,
+        k,
+        reference_points,
+        algorithm,
+        best_point,
+        worst_point,
+        extreme_points,
+        return_memory,
+    )
+
+
+class _NSGA3Proxy:
+    def __init__(self, ref_points: FloatMatrix[tuple[int, int]]) -> None:
+        self._selector: tuple[object, ...] = (
+            tools.selNSGA3WithMemory(ref_points.tolist()),
+        )
+
+    def __call__(
+        self,
+        individuals: Population,
+        k: int,
+        non_dominated_values: FloatMatrix[tuple[int, int]],
+    ) -> Population:
+        raw_function = self._selector[0]
+        operator = cast(
+            Callable[[Population, int, list[list[float]]], Population],
+            raw_function,
+        )
+        return operator(individuals, k, non_dominated_values.tolist())
+
+
+def get_selection_non_dominated_sorting_genetic_algorithm_3_with_memory(
+    reference_points: FloatMatrix[tuple[int, int]],
+) -> SelectionOperator:
+    nsga_3_instance = _NSGA3Proxy(reference_points)
+
+    def nsga3_selector_wrapper(
+        population: Population,
+        k: int,
+    ) -> Population:
+        raw_list = [
+            list(individual.fitness.values) for individual in population
+        ]
+        non_dominated_values = cast(
+            FloatMatrix[tuple[int, int]],
+            np.array(raw_list, dtype=np.float64),
+        )
+        return nsga_3_instance(population, k, non_dominated_values)
+
+    return nsga3_selector_wrapper
+
+
+def selection_strength_pareto_evolutionary_algorithm_2(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_spea_2 = cast(
+        Callable[[Population, int], Population],
+        tools.selSPEA2,
+    )
+    return typed_sel_spea_2(population, k)
+
+
+def selection_random(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_random = cast(
+        Callable[[Population, int], Population],
+        tools.selRandom,
+    )
+    return typed_sel_random(population, k)
+
+
+def selection_best(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_best = cast(
+        Callable[[Population, int], Population],
+        tools.selBest,
+    )
+    return typed_sel_best(population, k)
+
+
+def selection_worst(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_worst = cast(
+        Callable[[Population, int], Population],
+        tools.selWorst,
+    )
+    return typed_sel_worst(population, k)
+
+
+def selection_double_tournament(
+    population: Population,
+    k: int,
+    fitness_size: int,
+    parsimony_size: float,
+    fitness_first: bool,
+) -> Population:
+    typed_sel_double_tournament = cast(
+        Callable[[Population, int, int, float, bool], Population],
+        tools.selDoubleTournament,
+    )
+    return typed_sel_double_tournament(
+        population,
+        k,
+        fitness_size,
+        parsimony_size,
+        fitness_first,
+    )
+
+
+def selection_stochastic_universal_sampling(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_stochastic_universal_sampling = cast(
+        Callable[[Population, int], Population],
+        tools.selStochasticUniversalSampling,
+    )
+    return typed_sel_stochastic_universal_sampling(population, k)
+
+
+def selection_tournament_dominance_crowding_distance(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_tournament_dcd = cast(
+        Callable[[Population, int], Population],
+        tools.selTournamentDCD,
+    )
+    return typed_sel_tournament_dcd(population, k)
+
+
+def selection_lexicase(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_lexicase = cast(
+        Callable[[Population, int], Population],
+        tools.selLexicase,
+    )
+    return typed_sel_lexicase(population, k)
+
+
+def selection_epsilon_lexicase(
+    population: Population,
+    k: int,
+    epsilon: float,
+) -> Population:
+    typed_sel_epsilon_lexicase = cast(
+        Callable[[Population, int, float], Population],
+        tools.selEpsilonLexicase,
+    )
+    return typed_sel_epsilon_lexicase(population, k, epsilon)
+
+
+def selection_automatic_epsilon_lexicase(
+    population: Population,
+    k: int,
+) -> Population:
+    typed_sel_automatic_epsilon_lexicase = cast(
+        Callable[[Population, int], Population],
+        tools.selAutomaticEpsilonLexicase,
+    )
+    return typed_sel_automatic_epsilon_lexicase(population, k)
