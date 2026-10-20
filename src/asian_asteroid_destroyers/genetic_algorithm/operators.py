@@ -4,10 +4,10 @@ from typing import Callable, cast
 import numpy as np
 from deap import tools
 
+from asian_asteroid_destroyers.genetic_algorithm.individuals import Individual
 from asian_asteroid_destroyers.genetic_algorithm.types import (
     CrossoverOperator,
     FloatMatrix,
-    Individual,
     MutationOperator,
     Population,
     SelectionOperator,

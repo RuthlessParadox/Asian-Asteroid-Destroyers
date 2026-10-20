@@ -9,11 +9,11 @@ from asian_asteroid_destroyers.genetic_algorithm.components import (
     build_toolbox,
     reweight_population,
 )
-from asian_asteroid_destroyers.genetic_algorithm.types import (
+from asian_asteroid_destroyers.genetic_algorithm.individuals import (
     Individual,
-    Population,
     TypedFitness,
 )
+from asian_asteroid_destroyers.genetic_algorithm.types import Population
 
 
 @pytest.fixture

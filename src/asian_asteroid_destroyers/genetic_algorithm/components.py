@@ -7,6 +7,10 @@ from typing import NoReturn, TypeVar, cast
 from deap import base, tools
 from typing_extensions import override
 
+from asian_asteroid_destroyers.genetic_algorithm.individuals import (
+    Individual,
+    TypedFitness,
+)
 from asian_asteroid_destroyers.genetic_algorithm.operators import (
     crossover_two_point,
     mutation_gaussian,
@@ -16,14 +20,12 @@ from asian_asteroid_destroyers.genetic_algorithm.types import (
     CloneMethod,
     CrossoverOperator,
     FitnessEvaluator,
-    Individual,
     IndividualGenerator,
     MapMethod,
     MutationOperator,
     Population,
     PopulationGenerator,
     SelectionOperator,
-    TypedFitness,
 )
 
 _T = TypeVar("_T")
