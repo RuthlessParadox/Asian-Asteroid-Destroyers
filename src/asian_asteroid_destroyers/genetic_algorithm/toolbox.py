@@ -33,7 +33,7 @@ def _raise_unregistered(name: str) -> NoReturn:
     )
 
 
-class GeneticAlgorithmToolbox(base.Toolbox):
+class Toolbox(base.Toolbox):
     clone: CloneMethod
     map: MapMethod
     individual: IndividualGenerator
@@ -105,7 +105,7 @@ def _get_default_individual_factory(
 
 
 def _get_default_population_factory(
-    toolbox: GeneticAlgorithmToolbox,
+    toolbox: Toolbox,
 ) -> PopulationGenerator:
     def default_population_factory(n: int) -> Population:
         typed_init_repeat = cast(
@@ -141,9 +141,9 @@ def build_toolbox(
     mate_operator: CrossoverOperator | None = None,
     mutate_operator: MutationOperator | None = None,
     select_operator: SelectionOperator | None = None,
-) -> GeneticAlgorithmToolbox:
+) -> Toolbox:
     individual_class = get_individual_class(weights)
-    toolbox = GeneticAlgorithmToolbox()
+    toolbox = Toolbox()
 
     toolbox.register("evaluate", evaluation_function)
     toolbox.register(

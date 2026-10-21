@@ -10,7 +10,7 @@ from asian_asteroid_destroyers.genetic_algorithm.population import (
     reweight_population,
 )
 from asian_asteroid_destroyers.genetic_algorithm.toolbox import (
-    GeneticAlgorithmToolbox,
+    Toolbox,
     build_toolbox,
 )
 from asian_asteroid_destroyers.genetic_algorithm.types import Population
@@ -105,7 +105,7 @@ def test_individual_cache_and_type_propagation(
 
 
 def test_toolbox_unregistered_stubs_raise_error() -> None:
-    toolbox = GeneticAlgorithmToolbox()
+    toolbox = Toolbox()
     individual = Individual([1.0, 2.0])
 
     unregistered_calls: list[Callable[..., object]] = [
@@ -127,7 +127,7 @@ def test_toolbox_unregistered_stubs_raise_error() -> None:
 def test_toolbox_register_and_unregister(
     sample_evaluate_single: Callable[[Individual], tuple[float]],
 ) -> None:
-    toolbox = GeneticAlgorithmToolbox()
+    toolbox = Toolbox()
 
     toolbox.register("evaluate", sample_evaluate_single)
     assert toolbox.evaluate(Individual([1.0])) == (1.0,)
@@ -141,7 +141,7 @@ def test_toolbox_register_overwrites_bound_methods_correctly(
     sample_evaluate_single: Callable[[Individual], tuple[float]],
     sample_evaluate_multi: Callable[[Individual], tuple[float, float]],
 ) -> None:
-    toolbox = GeneticAlgorithmToolbox()
+    toolbox = Toolbox()
 
     toolbox.register("evaluate", sample_evaluate_single)
     assert toolbox.evaluate(Individual([2.5, 1.5])) == (4.0,)
@@ -151,7 +151,7 @@ def test_toolbox_register_overwrites_bound_methods_correctly(
 
 
 def test_toolbox_unregister_deletes_custom_attribute() -> None:
-    toolbox = GeneticAlgorithmToolbox()
+    toolbox = Toolbox()
 
     def dummy_operator() -> str:
         return "active"
