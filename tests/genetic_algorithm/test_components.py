@@ -6,7 +6,7 @@ from typing_extensions import override
 
 from asian_asteroid_destroyers.genetic_algorithm.fitness import Fitness
 from asian_asteroid_destroyers.genetic_algorithm.individual import Individual
-from asian_asteroid_destroyers.genetic_algorithm.operators import (
+from asian_asteroid_destroyers.genetic_algorithm.population import (
     reweight_population,
 )
 from asian_asteroid_destroyers.genetic_algorithm.toolbox import (
