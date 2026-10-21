@@ -11,6 +11,11 @@ class Fitness(base.Fitness):
         if values is not None:
             self.values = values
 
+    @property
+    @override
+    def valid(self) -> bool:
+        return bool(self.values)
+
     @override
     def __setattr__(self, name: str, value: object) -> None:
         if name == "values" and isinstance(value, tuple):
