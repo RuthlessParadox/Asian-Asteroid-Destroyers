@@ -22,3 +22,10 @@ class Fitness(base.Fitness):
                 )
 
         super().__setattr__(name, value)
+
+    @staticmethod
+    def get_clean_weight_string(weights: tuple[float, ...]) -> str:
+        return "_".join(
+            str(weight).replace(".", "_").replace("-", "neg")
+            for weight in weights
+        )
