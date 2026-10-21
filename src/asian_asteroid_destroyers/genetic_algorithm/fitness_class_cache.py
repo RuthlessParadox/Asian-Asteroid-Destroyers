@@ -22,3 +22,18 @@ def get_fitness_class(weights: tuple[float, ...]) -> type[Fitness]:
     new_class.__module__ = __name__
     _FITNESS_CLASS_CACHE[weights] = new_class
     return new_class
+
+
+def clear_fitness_cache() -> None:
+    current_module = sys.modules[__name__]
+
+    for weight_key in list(_FITNESS_CLASS_CACHE.keys()):
+        clean_weight_string = "_".join(
+            str(weight).replace(".", "_").replace("-", "neg")
+            for weight in weight_key
+        )
+        class_name = f"DynamicFitness_{clean_weight_string}"
+        if hasattr(current_module, class_name):
+            delattr(current_module, class_name)
+
+    _FITNESS_CLASS_CACHE.clear()
