@@ -6,7 +6,7 @@ import numpy as np
 from deap import tools
 
 from .fitness_class_cache import get_fitness_class
-from .individuals import Individual
+from .individual import Individual
 from .types import (
     CrossoverOperator,
     FloatMatrix,

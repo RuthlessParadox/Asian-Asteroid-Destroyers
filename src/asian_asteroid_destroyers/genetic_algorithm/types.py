@@ -3,7 +3,7 @@ from typing import TypeVar
 
 import numpy as np
 
-from .individuals import Individual
+from .individual import Individual
 
 _Shape1D = TypeVar("_Shape1D", bound=tuple[int])
 _Shape2D = TypeVar("_Shape2D", bound=tuple[int, int])

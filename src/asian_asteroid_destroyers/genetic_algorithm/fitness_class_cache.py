@@ -1,7 +1,7 @@
 import sys
 from typing import cast
 
-from .individuals import TypedFitness
+from .individual import TypedFitness
 
 _FITNESS_CLASS_CACHE: dict[tuple[float, ...], type[TypedFitness]] = {}
 

@@ -7,7 +7,7 @@ from deap import base, tools
 from typing_extensions import override
 
 from .individual_class_cache import get_individual_class
-from .individuals import Individual
+from .individual import Individual
 from .operators import (
     crossover_two_point,
     mutation_gaussian,
