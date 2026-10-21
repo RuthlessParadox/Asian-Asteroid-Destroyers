@@ -4,7 +4,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm.data import (
+from asian_asteroid_destroyers.genetic_algorithm.logbook import (
     GenerationStats,
     Logbook,
 )
