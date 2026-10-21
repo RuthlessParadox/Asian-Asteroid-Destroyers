@@ -6,8 +6,8 @@ from typing import NoReturn, TypeVar, cast
 from deap import base, tools
 from typing_extensions import override
 
-from .individual_class_cache import get_individual_class
 from .individual import Individual
+from .individual_class_cache import get_individual_class
 from .operators import (
     crossover_two_point,
     mutation_gaussian,

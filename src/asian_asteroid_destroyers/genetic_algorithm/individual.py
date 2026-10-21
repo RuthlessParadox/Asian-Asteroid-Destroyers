@@ -4,7 +4,7 @@ from deap import base
 from typing_extensions import override
 
 
-class TypedFitness(base.Fitness):
+class Fitness(base.Fitness):
     weights: tuple[float, ...] = ()
     values: tuple[float, ...]
 
@@ -27,7 +27,7 @@ class TypedFitness(base.Fitness):
 
 
 class Individual(list[float]):
-    fitness: TypedFitness
+    fitness: Fitness
 
     def __init__(self, iterable: Iterable[float] | None = None) -> None:
         if iterable is not None:
@@ -35,4 +35,4 @@ class Individual(list[float]):
         else:
             super().__init__()
         if not hasattr(self, "fitness"):
-            self.fitness = TypedFitness()
+            self.fitness = Fitness()

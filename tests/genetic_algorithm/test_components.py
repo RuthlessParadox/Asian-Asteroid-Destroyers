@@ -5,8 +5,8 @@ from deap import algorithms, base
 from typing_extensions import override
 
 from asian_asteroid_destroyers.genetic_algorithm.individual import (
+    Fitness,
     Individual,
-    TypedFitness,
 )
 from asian_asteroid_destroyers.genetic_algorithm.operators import (
     reweight_population,
@@ -35,7 +35,7 @@ def sample_evaluate_multi() -> Callable[[Individual], tuple[float, float]]:
 
 
 def test_typed_fitness_initialization() -> None:
-    class TestDualObjectiveFitness(TypedFitness):
+    class TestDualObjectiveFitness(Fitness):
         weights: tuple[float, float] = (1.0, -1.0)
 
     fitness_with_values = TestDualObjectiveFitness(values=(4.2, 2.4))
@@ -47,7 +47,7 @@ def test_typed_fitness_initialization() -> None:
 
 
 def test_typed_fitness_dimension_mismatch_exact_error_message() -> None:
-    class StrictDualFitness(TypedFitness):
+    class StrictDualFitness(Fitness):
         weights: tuple[float, float] = (1.0, -1.0)
 
     fitness = StrictDualFitness()
@@ -67,11 +67,11 @@ def test_individual_initialization() -> None:
     data = [1.0, 2.0, 3.0]
     ind = Individual(iterable=data)
     assert list(ind) == data
-    assert isinstance(ind.fitness, TypedFitness)
+    assert isinstance(ind.fitness, Fitness)
 
     empty_ind = Individual()
     assert list(empty_ind) == []
-    assert isinstance(empty_ind.fitness, TypedFitness)
+    assert isinstance(empty_ind.fitness, Fitness)
 
 
 def test_subclass_individual_uninitialized_fitness_fallback() -> None:
@@ -80,7 +80,7 @@ def test_subclass_individual_uninitialized_fitness_fallback() -> None:
 
     individual = CustomSubclassIndividual()
     assert hasattr(individual, "fitness")
-    assert isinstance(individual.fitness, TypedFitness)
+    assert isinstance(individual.fitness, Fitness)
     assert individual.fitness.weights == ()
 
 
@@ -217,7 +217,7 @@ def test_build_toolbox_fallback_defaults(
 
     individual = toolbox.individual()
     assert len(individual) == 3
-    assert isinstance(individual.fitness, TypedFitness)
+    assert isinstance(individual.fitness, Fitness)
 
     population = toolbox.population(2)
     assert len(population) == 2
@@ -288,7 +288,7 @@ def test_reweight_population_handles_uninitialized_and_corrupted_fitness(
     individual1 = population[0]
     individual2 = population[1]
 
-    class MissingValidFitness(TypedFitness):
+    class MissingValidFitness(Fitness):
         @override
         def __getattribute__(self, name: str) -> object:
             if name == "valid":
@@ -297,7 +297,7 @@ def test_reweight_population_handles_uninitialized_and_corrupted_fitness(
 
     individual1.fitness = MissingValidFitness()
 
-    class CorruptedFitness(TypedFitness):
+    class CorruptedFitness(Fitness):
         @property
         @override
         def valid(self) -> bool:
