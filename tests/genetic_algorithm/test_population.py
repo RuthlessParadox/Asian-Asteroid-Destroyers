@@ -1,8 +1,10 @@
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm import fitness_class_cache
-from asian_asteroid_destroyers.genetic_algorithm.fitness import Fitness
-from asian_asteroid_destroyers.genetic_algorithm.fitness_class_cache import (
+from asian_asteroid_destroyers.genetic_algorithm import (
+    fitness as fitness_module,
+)
+from asian_asteroid_destroyers.genetic_algorithm.fitness import (
+    Fitness,
     clear_fitness_cache,
     get_fitness_class,
 )
@@ -105,4 +107,4 @@ def test_reweight_population_empty_population() -> None:
 
     clean_weight_string = Fitness.get_clean_weight_string(new_weights)
     expected_class_name = f"DynamicFitness_{clean_weight_string}"
-    assert hasattr(fitness_class_cache, expected_class_name)
+    assert hasattr(fitness_module, expected_class_name)

@@ -1,6 +1,6 @@
 import copy
 
-from .fitness_class_cache import get_fitness_class
+from .fitness import get_fitness_class
 from .types import Population
 
 

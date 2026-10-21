@@ -2,8 +2,7 @@ import sys
 from collections.abc import Iterable
 from typing import cast
 
-from .fitness import Fitness
-from .fitness_class_cache import get_fitness_class
+from .fitness import Fitness, get_fitness_class
 from .individual import Individual
 
 _INDIVIDUAL_CLASS_CACHE: dict[tuple[float, ...], type[Individual]] = {}

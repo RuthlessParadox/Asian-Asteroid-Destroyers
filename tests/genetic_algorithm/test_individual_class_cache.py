@@ -3,7 +3,7 @@ import pytest
 from asian_asteroid_destroyers.genetic_algorithm import (
     individual_class_cache as cache_module,
 )
-from asian_asteroid_destroyers.genetic_algorithm.fitness_class_cache import (
+from asian_asteroid_destroyers.genetic_algorithm.fitness import (
     clear_fitness_cache,
 )
 from asian_asteroid_destroyers.genetic_algorithm.individual import (
