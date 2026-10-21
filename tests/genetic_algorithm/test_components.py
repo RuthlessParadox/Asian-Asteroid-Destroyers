@@ -4,10 +4,8 @@ import pytest
 from deap import algorithms, base
 from typing_extensions import override
 
-from asian_asteroid_destroyers.genetic_algorithm.individual import (
-    Fitness,
-    Individual,
-)
+from asian_asteroid_destroyers.genetic_algorithm.fitness import Fitness
+from asian_asteroid_destroyers.genetic_algorithm.individual import Individual
 from asian_asteroid_destroyers.genetic_algorithm.operators import (
     reweight_population,
 )
