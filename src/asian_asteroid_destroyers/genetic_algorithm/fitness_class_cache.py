@@ -1,3 +1,4 @@
+import math
 import sys
 from typing import cast
 
@@ -7,6 +8,10 @@ _FITNESS_CLASS_CACHE: dict[tuple[float, ...], type[Fitness]] = {}
 
 
 def get_fitness_class(weights: tuple[float, ...]) -> type[Fitness]:
+    if any(not math.isfinite(weight) for weight in weights):
+        raise ValueError(
+            "Fitness weights must be finite numbers (e.g., 1.0, -1.0)."
+        )
     if weights in _FITNESS_CLASS_CACHE:
         return _FITNESS_CLASS_CACHE[weights]
     clean_weight_string = "_".join(
