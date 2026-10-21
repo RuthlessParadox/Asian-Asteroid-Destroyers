@@ -7,8 +7,7 @@ from deap import base, tools
 from typing_extensions import override
 
 from .crossover import crossover_two_point
-from .individual import Individual
-from .individual_class_cache import get_individual_class
+from .individual import Individual, get_individual_class
 from .mutation import mutation_gaussian
 from .selection import selection_tournament
 from .types import (
