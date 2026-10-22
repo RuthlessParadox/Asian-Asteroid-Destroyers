@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from pathlib import Path
 from typing import cast
 
 import polars as pl
@@ -47,7 +48,7 @@ class Logbook:
         if len(self._buffer) >= self._flush_interval:
             self._compile()
 
-    def save_parquet(self, file_path: str) -> None:
+    def save_parquet(self, file_path: str | Path) -> None:
         self.dataframe.write_parquet(
             file_path,
             compression="zstd",
