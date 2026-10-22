@@ -57,7 +57,7 @@ class Logbook:
 
     @staticmethod
     def _get_expected_schema() -> dict[str, pl.DataType]:
-        schema: dict[str, pl.DataType] = {"generation": pl.Int32()}
+        schema: dict[str, pl.DataType] = {"generation": pl.Int64()}
 
         annotations: dict[str, type] = GenerationStats.__annotations__
         for field_name, python_type in annotations.items():

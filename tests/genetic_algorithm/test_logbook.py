@@ -34,12 +34,12 @@ def test_empty_logbook_returns_empty_dataframe_with_correct_schema() -> None:
     assert isinstance(dataframe, pl.DataFrame)
     assert dataframe.height == 0
     assert dataframe.schema == {
-        "generation": pl.Int32(),
-        "max_fitness": pl.Float32(),
-        "min_fitness": pl.Float32(),
-        "mean_fitness": pl.Float32(),
-        "median_fitness": pl.Float32(),
-        "std_fitness": pl.Float32(),
+        "generation": pl.Int64(),
+        "max_fitness": pl.Float64(),
+        "min_fitness": pl.Float64(),
+        "mean_fitness": pl.Float64(),
+        "median_fitness": pl.Float64(),
+        "std_fitness": pl.Float64(),
     }
 
 
