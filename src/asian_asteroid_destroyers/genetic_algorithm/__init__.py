@@ -18,6 +18,7 @@ from .fitness import (
     get_fitness_class as get_fitness_class,
 )
 from .hall_of_fame import HallOfFame as HallOfFame
+from .history_logger import HistoryLogger as HistoryLogger
 from .individual import (
     Individual as Individual,
     clear_individual_cache as clear_individual_cache,
