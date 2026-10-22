@@ -44,9 +44,7 @@ class HallOfFame:
             raise IndexError(
                 "Cannot retrieve the best individual from an empty HallOfFame."
             )
-        if self.items[0].fitness.weights[0] < 0:
-            return self.items[0]
-        return self.items[-1]
+        return self.items[0]
 
     def update(self, population: Population) -> None:
         self._deap_hall_of_fame.update(population)
