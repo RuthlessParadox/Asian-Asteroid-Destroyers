@@ -1,7 +1,7 @@
 import copy
 import random
 from collections.abc import Callable
-from typing import NoReturn, TypeVar, cast
+from typing import NoReturn, cast
 
 from deap import base, tools
 from typing_extensions import override
@@ -21,9 +21,6 @@ from .types import (
     PopulationGenerator,
     SelectionOperator,
 )
-
-_T = TypeVar("_T")
-_R = TypeVar("_R")
 
 
 def _raise_unregistered(name: str) -> NoReturn:
