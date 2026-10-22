@@ -57,6 +57,7 @@ from .types import (
     FitnessEvaluator as FitnessEvaluator,
     FloatMatrix as FloatMatrix,
     FloatVector as FloatVector,
+    Gene as Gene,
     GenerationStats as GenerationStats,
     IndividualGenerator as IndividualGenerator,
     MapMethod as MapMethod,

@@ -4,11 +4,13 @@ from typing import cast
 
 from .fitness import Fitness, get_fitness_class
 
+Gene = float
 
-class Individual(list[float]):
+
+class Individual(list[Gene]):
     fitness: Fitness
 
-    def __init__(self, iterable: Iterable[float] | None = None) -> None:
+    def __init__(self, iterable: Iterable[Gene] | None = None) -> None:
         if iterable is not None:
             super().__init__(iterable)
         else:
@@ -29,7 +31,7 @@ def get_individual_class(weights: tuple[float, ...]) -> type[Individual]:
 
     def individual_init(
         self: Individual,
-        iterable: Iterable[float] | None = None,
+        iterable: Iterable[Gene] | None = None,
     ) -> None:
         super(Individual, self).__init__(iterable or [])
         self.fitness = fitness_type()
