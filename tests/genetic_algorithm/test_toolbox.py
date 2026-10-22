@@ -5,12 +5,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm.individual import Individual
-from asian_asteroid_destroyers.genetic_algorithm.toolbox import (
+from asian_asteroid_destroyers.genetic_algorithm import (
+    Individual,
+    Population,
     Toolbox,
     build_toolbox,
 )
-from asian_asteroid_destroyers.genetic_algorithm.types import Population
 
 
 @pytest.fixture

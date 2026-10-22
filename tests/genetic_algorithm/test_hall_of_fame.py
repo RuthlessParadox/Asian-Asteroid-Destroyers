@@ -1,7 +1,7 @@
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm.hall_of_fame import HallOfFame
-from asian_asteroid_destroyers.genetic_algorithm.individual import (
+from asian_asteroid_destroyers.genetic_algorithm import (
+    HallOfFame,
     Individual,
     clear_individual_cache,
     get_individual_class,

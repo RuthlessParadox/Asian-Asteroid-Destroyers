@@ -1,18 +1,14 @@
 import pytest
 
 from asian_asteroid_destroyers.genetic_algorithm import (
-    fitness as fitness_module,
-)
-from asian_asteroid_destroyers.genetic_algorithm.fitness import (
     Fitness,
+    Individual,
+    Population,
     clear_fitness_cache,
+    fitness as fitness_module,
     get_fitness_class,
-)
-from asian_asteroid_destroyers.genetic_algorithm.individual import Individual
-from asian_asteroid_destroyers.genetic_algorithm.population import (
     reweight_population,
 )
-from asian_asteroid_destroyers.genetic_algorithm.types import Population
 
 
 @pytest.fixture(autouse=True)

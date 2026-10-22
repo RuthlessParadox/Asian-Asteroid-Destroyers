@@ -3,15 +3,13 @@ from collections.abc import Callable, Sequence
 import numpy as np
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm.fitness import (
-    clear_fitness_cache,
-)
-from asian_asteroid_destroyers.genetic_algorithm.individual import (
+from asian_asteroid_destroyers.genetic_algorithm import (
     Individual,
+    Statistics,
+    clear_fitness_cache,
     clear_individual_cache,
     get_individual_class,
 )
-from asian_asteroid_destroyers.genetic_algorithm.statistics import Statistics
 
 
 @pytest.fixture(autouse=True)

@@ -2,11 +2,9 @@ import pytest
 from deap import base
 
 from asian_asteroid_destroyers.genetic_algorithm import (
-    fitness as fitness_module,
-)
-from asian_asteroid_destroyers.genetic_algorithm.fitness import (
     Fitness,
     clear_fitness_cache,
+    fitness as fitness_module,
     get_fitness_class,
 )
 

@@ -1,16 +1,12 @@
 import pytest
 
 from asian_asteroid_destroyers.genetic_algorithm import (
-    individual as individual_module,
-)
-from asian_asteroid_destroyers.genetic_algorithm.fitness import (
     Fitness,
-    clear_fitness_cache,
-)
-from asian_asteroid_destroyers.genetic_algorithm.individual import (
     Individual,
+    clear_fitness_cache,
     clear_individual_cache,
     get_individual_class,
+    individual as individual_module,
 )
 
 
