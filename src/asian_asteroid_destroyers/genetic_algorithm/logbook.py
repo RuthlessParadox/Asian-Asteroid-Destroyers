@@ -10,8 +10,8 @@ LogValue = int | float
 LogRow = dict[str, LogValue]
 
 _TYPE_MAPPING: dict[type, pl.DataType] = {
-    int: pl.Int32(),
-    float: pl.Float32(),
+    int: pl.Int64(),
+    float: pl.Float64(),
     str: pl.String(),
     bool: pl.Boolean(),
 }
