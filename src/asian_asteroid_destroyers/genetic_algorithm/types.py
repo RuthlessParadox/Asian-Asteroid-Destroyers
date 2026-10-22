@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from typing import TypeVar
 
 import numpy as np
@@ -8,7 +8,7 @@ from .individual import Individual
 _Shape1D = TypeVar("_Shape1D", bound=tuple[int])
 _Shape2D = TypeVar("_Shape2D", bound=tuple[int, int])
 
-Population = list[Individual]
+Population = Sequence[Individual]
 CloneMethod = Callable[[Individual], Individual]
 MapMethod = Callable[
     [Callable[[Individual], tuple[float, ...]], list[Individual]],
