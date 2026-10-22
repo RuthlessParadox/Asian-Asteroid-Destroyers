@@ -3,8 +3,7 @@ from collections.abc import Callable
 import numpy as np
 
 from .individual import Individual
-from .logbook import GenerationStats
-from .types import Population
+from .types import GenerationStats, Population
 
 
 class Statistics:

@@ -1,17 +1,10 @@
 from collections.abc import Mapping
-from typing import TypedDict, cast
+from typing import cast
 
 import polars as pl
 from typing_extensions import override
 
-
-class GenerationStats(TypedDict):
-    max_fitness: float
-    min_fitness: float
-    mean_fitness: float
-    median_fitness: float
-    std_fitness: float
-
+from .types import GenerationStats
 
 LogValue = int | float
 LogRow = dict[str, LogValue]
