@@ -97,18 +97,15 @@ def test_build_toolbox_with_defaults(
     mock_mutate = MagicMock()
     mock_select = MagicMock()
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox"
-        + ".crossover_two_point",
+        "asian_asteroid_destroyers.genetic_algorithm.toolbox.cx_two_point",
         MagicMock(return_value=mock_mate),
     )
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox"
-        + ".mutation_gaussian",
+        "asian_asteroid_destroyers.genetic_algorithm.toolbox.mut_gaussian",
         MagicMock(return_value=mock_mutate),
     )
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox"
-        + ".selection_tournament",
+        "asian_asteroid_destroyers.genetic_algorithm.toolbox.sel_tournament",
         MagicMock(return_value=mock_select),
     )
 

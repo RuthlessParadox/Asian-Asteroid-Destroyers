@@ -6,10 +6,10 @@ from typing import NoReturn, TypeVar, cast
 from deap import base, tools
 from typing_extensions import override
 
-from .crossover import crossover_two_point
+from .crossover import cx_two_point
 from .individual import Individual, get_individual_class
-from .mutation import mutation_gaussian
-from .selection import selection_tournament
+from .mutation import mut_gaussian
+from .selection import sel_tournament
 from .types import (
     CloneMethod,
     CrossoverOperator,
@@ -120,15 +120,15 @@ def _get_default_population_factory(
 
 
 def _default_mate() -> CrossoverOperator:
-    return crossover_two_point()
+    return cx_two_point()
 
 
-def _default_mutation() -> MutationOperator:
-    return mutation_gaussian(0.0, 0.1, 0.2)
+def _default_mut() -> MutationOperator:
+    return mut_gaussian(0.0, 0.1, 0.2)
 
 
-def _default_selection() -> SelectionOperator:
-    return selection_tournament(3)
+def _default_sel() -> SelectionOperator:
+    return sel_tournament(3)
 
 
 def build_toolbox(
@@ -155,7 +155,7 @@ def build_toolbox(
         population_factory or _get_default_population_factory(toolbox),
     )
     toolbox.register("mate", mate_operator or _default_mate())
-    toolbox.register("mutate", mutate_operator or _default_mutation())
-    toolbox.register("select", select_operator or _default_selection())
+    toolbox.register("mutate", mutate_operator or _default_mut())
+    toolbox.register("select", select_operator or _default_sel())
 
     return toolbox

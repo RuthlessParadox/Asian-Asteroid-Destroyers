@@ -6,7 +6,7 @@ from deap import tools
 from .types import FloatMatrix, Population, SelectionOperator
 
 
-def selection_tournament(
+def sel_tournament(
     tournament_size: int,
     fitness_attribute: str = "fitness",
 ) -> SelectionOperator:
@@ -15,7 +15,7 @@ def selection_tournament(
         tools.selTournament,
     )
 
-    def selection_tournament_wrapper(
+    def sel_tournament_wrapper(
         population: Population,
         k: int,
     ) -> Population:
@@ -26,10 +26,10 @@ def selection_tournament(
             fitness_attribute,
         )
 
-    return selection_tournament_wrapper
+    return sel_tournament_wrapper
 
 
-def selection_roulette(
+def sel_roulette(
     fitness_attribute: str = "fitness",
 ) -> SelectionOperator:
     typed_sel_roulette = cast(
@@ -37,16 +37,16 @@ def selection_roulette(
         tools.selRoulette,
     )
 
-    def selection_roulette_wrapper(
+    def sel_roulette_wrapper(
         population: Population,
         k: int,
     ) -> Population:
         return typed_sel_roulette(population, k, fitness_attribute)
 
-    return selection_roulette_wrapper
+    return sel_roulette_wrapper
 
 
-def selection_non_dominated_sorting_genetic_algorithm_2(
+def sel_nsga_2(
     algorithm: str = "standard",
 ) -> SelectionOperator:
     typed_sel_nsga_2 = cast(
@@ -54,16 +54,16 @@ def selection_non_dominated_sorting_genetic_algorithm_2(
         tools.selNSGA2,
     )
 
-    def selection_non_dominated_sorting_genetic_algorithm_2_wrapper(
+    def sel_nsga_2_wrapper(
         population: Population,
         k: int,
     ) -> Population:
         return typed_sel_nsga_2(population, k, algorithm)
 
-    return selection_non_dominated_sorting_genetic_algorithm_2_wrapper
+    return sel_nsga_2_wrapper
 
 
-def selection_non_dominated_sorting_genetic_algorithm_3(
+def sel_nsga_3(
     reference_points: FloatMatrix[tuple[int, int]],
 ) -> SelectionOperator:
     class NSGA3Proxy:
@@ -87,7 +87,7 @@ def selection_non_dominated_sorting_genetic_algorithm_3(
 
     nsga_3_instance = NSGA3Proxy(reference_points)
 
-    def selection_non_dominated_sorting_genetic_algorithm_3_wrapper(
+    def sel_nsga_3_wrapper(
         population: Population,
         k: int,
     ) -> Population:
@@ -100,61 +100,61 @@ def selection_non_dominated_sorting_genetic_algorithm_3(
         )
         return nsga_3_instance(population, k, non_dominated_values)
 
-    return selection_non_dominated_sorting_genetic_algorithm_3_wrapper
+    return sel_nsga_3_wrapper
 
 
-def selection_strength_pareto_evolutionary_algorithm_2() -> SelectionOperator:
+def sel_spea_2() -> SelectionOperator:
     typed_sel_spea_2 = cast(
         Callable[[Population, int], Population],
         tools.selSPEA2,
     )
 
-    def selection_strength_pareto_evolutionary_algorithm_2_wrapper(
+    def sel_spea_2_wrapper(
         population: Population,
         k: int,
     ) -> Population:
         return typed_sel_spea_2(population, k)
 
-    return selection_strength_pareto_evolutionary_algorithm_2_wrapper
+    return sel_spea_2_wrapper
 
 
-def selection_random() -> SelectionOperator:
+def sel_random() -> SelectionOperator:
     typed_sel_random = cast(
         Callable[[Population, int], Population],
         tools.selRandom,
     )
 
-    def selection_random_wrapper(population: Population, k: int) -> Population:
+    def sel_random_wrapper(population: Population, k: int) -> Population:
         return typed_sel_random(population, k)
 
-    return selection_random_wrapper
+    return sel_random_wrapper
 
 
-def selection_best(fitness_attribute: str = "fitness") -> SelectionOperator:
+def sel_best(fitness_attribute: str = "fitness") -> SelectionOperator:
     typed_sel_best = cast(
         Callable[[Population, int, str], Population],
         tools.selBest,
     )
 
-    def selection_best_wrapper(population: Population, k: int) -> Population:
+    def sel_best_wrapper(population: Population, k: int) -> Population:
         return typed_sel_best(population, k, fitness_attribute)
 
-    return selection_best_wrapper
+    return sel_best_wrapper
 
 
-def selection_worst(fitness_attribute: str = "fitness") -> SelectionOperator:
+def sel_worst(fitness_attribute: str = "fitness") -> SelectionOperator:
     typed_sel_worst = cast(
         Callable[[Population, int, str], Population],
         tools.selWorst,
     )
 
-    def selection_worst_wrapper(population: Population, k: int) -> Population:
+    def sel_worst_wrapper(population: Population, k: int) -> Population:
         return typed_sel_worst(population, k, fitness_attribute)
 
-    return selection_worst_wrapper
+    return sel_worst_wrapper
 
 
-def selection_double_tournament(
+def sel_double_tournament(
     fitness_size: int,
     parsimony_size: float,
     fitness_first: bool,
@@ -165,7 +165,7 @@ def selection_double_tournament(
         tools.selDoubleTournament,
     )
 
-    def selection_double_tournament_wrapper(
+    def sel_double_tournament_wrapper(
         population: Population,
         k: int,
     ) -> Population:
@@ -178,10 +178,10 @@ def selection_double_tournament(
             fitness_attribute,
         )
 
-    return selection_double_tournament_wrapper
+    return sel_double_tournament_wrapper
 
 
-def selection_stochastic_universal_sampling(
+def sel_stochastic_universal_sampling(
     fitness_attribute: str = "fitness",
 ) -> SelectionOperator:
     typed_sel_stochastic_universal_sampling = cast(
@@ -189,7 +189,7 @@ def selection_stochastic_universal_sampling(
         tools.selStochasticUniversalSampling,
     )
 
-    def selection_stochastic_universal_sampling_wrapper(
+    def sel_stochastic_universal_sampling_wrapper(
         population: Population,
         k: int,
     ) -> Population:
@@ -199,64 +199,64 @@ def selection_stochastic_universal_sampling(
             fitness_attribute,
         )
 
-    return selection_stochastic_universal_sampling_wrapper
+    return sel_stochastic_universal_sampling_wrapper
 
 
-def selection_tournament_dominance_crowding_distance() -> SelectionOperator:
+def sel_tournament_dcd() -> SelectionOperator:
     typed_sel_tournament_dcd = cast(
         Callable[[Population, int], Population],
         tools.selTournamentDCD,
     )
 
-    def selection_tournament_dominance_crowding_distance_wrapper(
+    def sel_tournament_dcd_wrapper(
         population: Population,
         k: int,
     ) -> Population:
         return typed_sel_tournament_dcd(population, k)
 
-    return selection_tournament_dominance_crowding_distance_wrapper
+    return sel_tournament_dcd_wrapper
 
 
-def selection_lexicase() -> SelectionOperator:
+def sel_lexicase() -> SelectionOperator:
     typed_sel_lexicase = cast(
         Callable[[Population, int], Population],
         tools.selLexicase,
     )
 
-    def selection_lexicase_wrapper(
+    def sel_lexicase_wrapper(
         population: Population,
         k: int,
     ) -> Population:
         return typed_sel_lexicase(population, k)
 
-    return selection_lexicase_wrapper
+    return sel_lexicase_wrapper
 
 
-def selection_epsilon_lexicase(epsilon: float) -> SelectionOperator:
+def sel_epsilon_lexicase(epsilon: float) -> SelectionOperator:
     typed_sel_epsilon_lexicase = cast(
         Callable[[Population, int, float], Population],
         tools.selEpsilonLexicase,
     )
 
-    def selection_epsilon_lexicase_wrapper(
+    def sel_epsilon_lexicase_wrapper(
         population: Population,
         k: int,
     ) -> Population:
         return typed_sel_epsilon_lexicase(population, k, epsilon)
 
-    return selection_epsilon_lexicase_wrapper
+    return sel_epsilon_lexicase_wrapper
 
 
-def selection_automatic_epsilon_lexicase() -> SelectionOperator:
+def sel_automatic_epsilon_lexicase() -> SelectionOperator:
     typed_sel_automatic_epsilon_lexicase = cast(
         Callable[[Population, int], Population],
         tools.selAutomaticEpsilonLexicase,
     )
 
-    def selection_automatic_epsilon_lexicase_wrapper(
+    def sel_automatic_epsilon_lexicase_wrapper(
         population: Population,
         k: int,
     ) -> Population:
         return typed_sel_automatic_epsilon_lexicase(population, k)
 
-    return selection_automatic_epsilon_lexicase_wrapper
+    return sel_automatic_epsilon_lexicase_wrapper

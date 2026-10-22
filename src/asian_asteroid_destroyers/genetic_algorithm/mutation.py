@@ -7,7 +7,7 @@ from .individual import Individual
 from .types import MutationOperator
 
 
-def mutation_gaussian(
+def mut_gaussian(
     mu: float | Sequence[float],
     sigma: float | Sequence[float],
     independent_probability: float,
@@ -25,7 +25,7 @@ def mutation_gaussian(
         tools.mutGaussian,
     )
 
-    def mutation_gaussian_wrapper(individual: Individual) -> tuple[Individual]:
+    def mut_gaussian_wrapper(individual: Individual) -> tuple[Individual]:
         return typed_mut_gaussian(
             individual,
             mu,
@@ -33,10 +33,10 @@ def mutation_gaussian(
             independent_probability,
         )
 
-    return mutation_gaussian_wrapper
+    return mut_gaussian_wrapper
 
 
-def mutation_shuffle_indices(
+def mut_shuffle_indices(
     independent_probability: float,
 ) -> MutationOperator:
     typed_mut_shuffle_indices = cast(
@@ -44,27 +44,27 @@ def mutation_shuffle_indices(
         tools.mutShuffleIndexes,
     )
 
-    def mutation_shuffle_indices_wrapper(
+    def mut_shuffle_indices_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
         return typed_mut_shuffle_indices(individual, independent_probability)
 
-    return mutation_shuffle_indices_wrapper
+    return mut_shuffle_indices_wrapper
 
 
-def mutation_flip_bit(independent_probability: float) -> MutationOperator:
+def mut_flip_bit(independent_probability: float) -> MutationOperator:
     typed_mut_flip_bit = cast(
         Callable[[Individual, float], tuple[Individual]],
         tools.mutFlipBit,
     )
 
-    def mutation_flip_bit_wrapper(individual: Individual) -> tuple[Individual]:
+    def mut_flip_bit_wrapper(individual: Individual) -> tuple[Individual]:
         return typed_mut_flip_bit(individual, independent_probability)
 
-    return mutation_flip_bit_wrapper
+    return mut_flip_bit_wrapper
 
 
-def mutation_uniform_int(
+def mut_uniform_int(
     lower_bound: float | Sequence[float],
     upper_bound: float | Sequence[float],
     independent_probability: float,
@@ -82,7 +82,7 @@ def mutation_uniform_int(
         tools.mutUniformInt,
     )
 
-    def mutation_uniform_int_wrapper(
+    def mut_uniform_int_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
         return typed_mut_uniform_int(
@@ -92,10 +92,10 @@ def mutation_uniform_int(
             independent_probability,
         )
 
-    return mutation_uniform_int_wrapper
+    return mut_uniform_int_wrapper
 
 
-def mutation_polynomial_bounded(
+def mut_polynomial_bounded(
     eta: float,
     lower_bound: float | Sequence[float],
     upper_bound: float | Sequence[float],
@@ -115,7 +115,7 @@ def mutation_polynomial_bounded(
         tools.mutPolynomialBounded,
     )
 
-    def mutation_polynomial_bounded_wrapper(
+    def mut_polynomial_bounded_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
         return typed_mut_polynomial_bounded(
@@ -126,10 +126,10 @@ def mutation_polynomial_bounded(
             independent_probability,
         )
 
-    return mutation_polynomial_bounded_wrapper
+    return mut_polynomial_bounded_wrapper
 
 
-def mutation_evolution_strategy_log_normal(
+def mut_evolution_strategy_log_normal(
     c: float,
     independent_probability: float,
 ) -> MutationOperator:
@@ -138,9 +138,9 @@ def mutation_evolution_strategy_log_normal(
         tools.mutESLogNormal,
     )
 
-    def mutation_evolution_strategy_log_normal_wrapper(
+    def mut_evolution_strategy_log_normal_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
         return typed_mut_es_log_normal(individual, c, independent_probability)
 
-    return mutation_evolution_strategy_log_normal_wrapper
+    return mut_evolution_strategy_log_normal_wrapper

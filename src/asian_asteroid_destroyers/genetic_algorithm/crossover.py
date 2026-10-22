@@ -7,37 +7,37 @@ from .individual import Individual
 from .types import CrossoverOperator
 
 
-def crossover_one_point() -> CrossoverOperator:
+def cx_one_point() -> CrossoverOperator:
     typed_cx_one_point = cast(
         Callable[[Individual, Individual], tuple[Individual, Individual]],
         tools.cxOnePoint,
     )
 
-    def crossover_one_point_wrapper(
+    def cx_one_point_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_one_point(individual_1, individual_2)
 
-    return crossover_one_point_wrapper
+    return cx_one_point_wrapper
 
 
-def crossover_two_point() -> CrossoverOperator:
+def cx_two_point() -> CrossoverOperator:
     typed_cx_two_point = cast(
         Callable[[Individual, Individual], tuple[Individual, Individual]],
         tools.cxTwoPoint,
     )
 
-    def crossover_two_point_wrapper(
+    def cx_two_point_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_two_point(individual_1, individual_2)
 
-    return crossover_two_point_wrapper
+    return cx_two_point_wrapper
 
 
-def crossover_uniform(independent_probability: float) -> CrossoverOperator:
+def cx_uniform(independent_probability: float) -> CrossoverOperator:
     typed_cx_uniform = cast(
         Callable[
             [Individual, Individual, float],
@@ -46,7 +46,7 @@ def crossover_uniform(independent_probability: float) -> CrossoverOperator:
         tools.cxUniform,
     )
 
-    def crossover_uniform_wrapper(
+    def cx_uniform_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
@@ -56,25 +56,25 @@ def crossover_uniform(independent_probability: float) -> CrossoverOperator:
             independent_probability,
         )
 
-    return crossover_uniform_wrapper
+    return cx_uniform_wrapper
 
 
-def crossover_partially_matched() -> CrossoverOperator:
+def cx_partially_matched() -> CrossoverOperator:
     typed_cx_partially_matched = cast(
         Callable[[Individual, Individual], tuple[Individual, Individual]],
         tools.cxPartialyMatched,
     )
 
-    def crossover_partially_matched_wrapper(
+    def cx_partially_matched_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_partially_matched(individual_1, individual_2)
 
-    return crossover_partially_matched_wrapper
+    return cx_partially_matched_wrapper
 
 
-def crossover_uniform_partially_matched(
+def cx_uniform_partially_matched(
     independent_probability: float,
 ) -> CrossoverOperator:
     typed_cx_uniform_partially_matched = cast(
@@ -85,7 +85,7 @@ def crossover_uniform_partially_matched(
         tools.cxUniformPartialyMatched,
     )
 
-    def crossover_uniform_partially_matched_wrapper(
+    def cx_uniform_partially_matched_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
@@ -95,25 +95,25 @@ def crossover_uniform_partially_matched(
             independent_probability,
         )
 
-    return crossover_uniform_partially_matched_wrapper
+    return cx_uniform_partially_matched_wrapper
 
 
-def crossover_ordered() -> CrossoverOperator:
+def cx_ordered() -> CrossoverOperator:
     typed_cx_ordered = cast(
         Callable[[Individual, Individual], tuple[Individual, Individual]],
         tools.cxOrdered,
     )
 
-    def crossover_ordered_wrapper(
+    def cx_ordered_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_ordered(individual_1, individual_2)
 
-    return crossover_ordered_wrapper
+    return cx_ordered_wrapper
 
 
-def crossover_blend(alpha: float) -> CrossoverOperator:
+def cx_blend(alpha: float) -> CrossoverOperator:
     typed_cx_blend = cast(
         Callable[
             [Individual, Individual, float],
@@ -122,16 +122,16 @@ def crossover_blend(alpha: float) -> CrossoverOperator:
         tools.cxBlend,
     )
 
-    def crossover_blend_wrapper(
+    def cx_blend_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_blend(individual_1, individual_2, alpha)
 
-    return crossover_blend_wrapper
+    return cx_blend_wrapper
 
 
-def crossover_evolution_strategy_blend(alpha: float) -> CrossoverOperator:
+def cx_evolution_strategy_blend(alpha: float) -> CrossoverOperator:
     typed_cx_es_blend = cast(
         Callable[
             [Individual, Individual, float],
@@ -140,31 +140,31 @@ def crossover_evolution_strategy_blend(alpha: float) -> CrossoverOperator:
         tools.cxESBlend,
     )
 
-    def crossover_evolution_strategy_blend_wrapper(
+    def cx_evolution_strategy_blend_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_es_blend(individual_1, individual_2, alpha)
 
-    return crossover_evolution_strategy_blend_wrapper
+    return cx_evolution_strategy_blend_wrapper
 
 
-def crossover_evolution_strategy_two_point() -> CrossoverOperator:
+def cx_evolution_strategy_two_point() -> CrossoverOperator:
     typed_cx_es_two_point = cast(
         Callable[[Individual, Individual], tuple[Individual, Individual]],
         tools.cxESTwoPoint,
     )
 
-    def crossover_evolution_strategy_two_point_wrapper(
+    def cx_evolution_strategy_two_point_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_es_two_point(individual_1, individual_2)
 
-    return crossover_evolution_strategy_two_point_wrapper
+    return cx_evolution_strategy_two_point_wrapper
 
 
-def crossover_simulated_binary(eta: float) -> CrossoverOperator:
+def cx_simulated_binary(eta: float) -> CrossoverOperator:
     typed_cx_simulated_binary = cast(
         Callable[
             [Individual, Individual, float],
@@ -173,16 +173,16 @@ def crossover_simulated_binary(eta: float) -> CrossoverOperator:
         tools.cxSimulatedBinary,
     )
 
-    def crossover_simulated_binary_wrapper(
+    def cx_simulated_binary_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_simulated_binary(individual_1, individual_2, eta)
 
-    return crossover_simulated_binary_wrapper
+    return cx_simulated_binary_wrapper
 
 
-def crossover_simulated_binary_bounded(
+def cx_simulated_binary_bounded(
     eta: float,
     lower_bound: float | Sequence[float],
     upper_bound: float | Sequence[float],
@@ -201,7 +201,7 @@ def crossover_simulated_binary_bounded(
         tools.cxSimulatedBinaryBounded,
     )
 
-    def crossover_simulated_binary_bounded_wrapper(
+    def cx_simulated_binary_bounded_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
@@ -213,19 +213,19 @@ def crossover_simulated_binary_bounded(
             upper_bound,
         )
 
-    return crossover_simulated_binary_bounded_wrapper
+    return cx_simulated_binary_bounded_wrapper
 
 
-def crossover_messy_one_point() -> CrossoverOperator:
+def cx_messy_one_point() -> CrossoverOperator:
     typed_cx_messy_one_point = cast(
         Callable[[Individual, Individual], tuple[Individual, Individual]],
         tools.cxMessyOnePoint,
     )
 
-    def crossover_messy_one_point_wrapper(
+    def cx_messy_one_point_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
         return typed_cx_messy_one_point(individual_1, individual_2)
 
-    return crossover_messy_one_point_wrapper
+    return cx_messy_one_point_wrapper
