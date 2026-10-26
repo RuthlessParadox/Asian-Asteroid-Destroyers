@@ -38,7 +38,7 @@ package = true
 line-length = 79
 
 [tool.ruff.lint]
-select = ["E", "F", "I"]
+select = ["E", "F", "I", "PLC", "PLE", "PYI"]
 ignore = ["E501"]
 
 [tool.ruff.lint.isort]
