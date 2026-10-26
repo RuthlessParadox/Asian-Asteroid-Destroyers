@@ -50,7 +50,7 @@ class HistoryLogger:
                 {
                     "rank": rank,
                     "fitness": fitness_values,
-                    "genome": list(individual),
+                    "genome": individual[:],
                 }
             )
 
