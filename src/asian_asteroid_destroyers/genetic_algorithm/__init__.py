@@ -1,3 +1,7 @@
+from .algorithms import (
+    TrainingResult as TrainingResult,
+    run_simple_evolution as run_simple_evolution,
+)
 from .crossover import (
     cx_blend as cx_blend,
     cx_evolution_strategy_blend as cx_evolution_strategy_blend,
@@ -18,6 +22,7 @@ from .fitness import (
     get_fitness_class as get_fitness_class,
 )
 from .hall_of_fame import HallOfFame as HallOfFame
+from .history_logger import HistoryLogger as HistoryLogger
 from .individual import (
     Individual as Individual,
     clear_individual_cache as clear_individual_cache,
@@ -57,6 +62,7 @@ from .types import (
     FitnessEvaluator as FitnessEvaluator,
     FloatMatrix as FloatMatrix,
     FloatVector as FloatVector,
+    Gene as Gene,
     GenerationStats as GenerationStats,
     IndividualGenerator as IndividualGenerator,
     MapMethod as MapMethod,

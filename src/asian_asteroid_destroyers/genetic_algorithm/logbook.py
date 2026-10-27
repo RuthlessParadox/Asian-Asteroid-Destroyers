@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from pathlib import Path
 from typing import cast
 
 import polars as pl
@@ -10,8 +11,8 @@ LogValue = int | float
 LogRow = dict[str, LogValue]
 
 _TYPE_MAPPING: dict[type, pl.DataType] = {
-    int: pl.Int32(),
-    float: pl.Float32(),
+    int: pl.Int64(),
+    float: pl.Float64(),
     str: pl.String(),
     bool: pl.Boolean(),
 }
@@ -47,7 +48,7 @@ class Logbook:
         if len(self._buffer) >= self._flush_interval:
             self._compile()
 
-    def save_parquet(self, file_path: str) -> None:
+    def save_parquet(self, file_path: str | Path) -> None:
         self.dataframe.write_parquet(
             file_path,
             compression="zstd",
@@ -56,7 +57,7 @@ class Logbook:
 
     @staticmethod
     def _get_expected_schema() -> dict[str, pl.DataType]:
-        schema: dict[str, pl.DataType] = {"generation": pl.Int32()}
+        schema: dict[str, pl.DataType] = {"generation": pl.Int64()}
 
         annotations: dict[str, type] = GenerationStats.__annotations__
         for field_name, python_type in annotations.items():

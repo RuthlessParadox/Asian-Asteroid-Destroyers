@@ -3,7 +3,24 @@ from typing import TypedDict, TypeVar
 
 import numpy as np
 
-from .individual import Individual
+from .individual import Gene, Individual
+
+__all__ = [
+    "Gene",
+    "Individual",
+    "Population",
+    "GenerationStats",
+    "FloatVector",
+    "FloatMatrix",
+    "IndividualGenerator",
+    "PopulationGenerator",
+    "CloneMethod",
+    "MapMethod",
+    "FitnessEvaluator",
+    "CrossoverOperator",
+    "MutationOperator",
+    "SelectionOperator",
+]
 
 _Shape1D = TypeVar("_Shape1D", bound=tuple[int])
 _Shape2D = TypeVar("_Shape2D", bound=tuple[int, int])
