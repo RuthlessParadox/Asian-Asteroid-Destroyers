@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import NamedTuple
 
 import numpy as np
@@ -28,6 +29,7 @@ def run_simple_evolution(
     statistics: Statistics | None = None,
     logbook: Logbook | None = None,
     history_logger: HistoryLogger | None = None,
+    checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
 ) -> TrainingResult:
     if not (0.0 <= cx_pb <= 1.0):
         raise ValueError(
@@ -116,6 +118,17 @@ def run_simple_evolution(
 
         if history_logger is not None and hall_of_fame is not None:
             history_logger.record(generation, hall_of_fame)
+
+        if checkpoint_callback is not None:
+            checkpoint_callback(
+                generation,
+                TrainingResult(
+                    final_population=population,
+                    logbook=logbook,
+                    history_logger=history_logger,
+                    hall_of_fame=hall_of_fame,
+                ),
+            )
 
     return TrainingResult(
         final_population=population,
