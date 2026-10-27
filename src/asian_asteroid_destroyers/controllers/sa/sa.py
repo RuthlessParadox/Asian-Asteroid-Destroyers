@@ -5,7 +5,7 @@
 
 import numpy as np
 
-from .saship import SAShip, OwnShip
+from .saship import OwnShip, SAShip
 
 
 class SA:
@@ -19,9 +19,9 @@ class SA:
         self.time = 0.0
         self.ownship = OwnShip()
         self.metrics = SAMetrics()
-        self.size_ratio_threshold = 2 # Used when determining whether or not we should shoot at a large asteroid
-
-        self.map_diagonal_length = 0        
+        self.size_ratio_threshold = 2  # Used when determining whether or not we should shoot at a large asteroid
+        self.redships = []
+        self.map_diagonal_length = 0
 
     def update(self, spaceship, observation):
 
@@ -29,8 +29,8 @@ class SA:
         self.ownship.update(observation, spaceship)
 
         self.redships = []
-        for ship in observation['ships']:
-            if ship['id'] != spaceship['id']:
+        for ship in observation["ships"]:
+            if ship["id"] != spaceship["id"]:
                 red = SAShip()
                 red.update(observation, ship)
                 self.redships.append(red)
@@ -39,10 +39,13 @@ class SA:
         self.metrics.update(observation, self)
 
         if self.map_diagonal_length == 0:
-            self.map_diagonal_length = np.sqrt(observation["map_size"][0]**2 + observation["map_size"][1]**2)
+            self.map_diagonal_length = np.sqrt(
+                observation["map_size"][0] ** 2
+                + observation["map_size"][1] ** 2
+            )
 
         # Update sim time
-        self.time = observation['time']
+        self.time = observation["time"]
 
     ##############################################################################################
     # What follows are a series of helper functions used for normalizing values to be fis inputs #
@@ -58,7 +61,7 @@ class SA:
 
     def norm_speed_ast(self, speed):
         # normal range is (0, inf) based on momentum effects and scenario
-        max = 240 # Use 240 since that is typically the fastest asteroids
+        max = 240  # Use 240 since that is typically the fastest asteroids
         return speed / max
 
     def norm_speed_ship(self, speed):
@@ -67,18 +70,18 @@ class SA:
 
     def norm_tti(self, tti):
         # normal range is (0, inf) based on speed and distance
-        max = 10 # Use 10 since that is typically the longer TTI for asteroids
+        max = 10  # Use 10 since that is typically the longer TTI for asteroids
         return tti / max
 
     def norm_size(self, size):
         # normal range is (1, 4) capped by fuzzy-asteroids
         max = 4
-        return size / (max/2) - 1
+        return size / (max / 2) - 1
 
     def norm_ast_num(self, num):
         # normal range is (0, inf) based on scenario
         # allow training to set normalization threshold for consistency across scenarios
-        max = 100 # Use 100 since that is a typical large number of asteroids
+        max = 100  # Use 100 since that is a typical large number of asteroids
         return num / max
 
     ##############################################################################################
@@ -88,6 +91,7 @@ class SAMetrics:
     """
     SAMetrics stores some general observations about the environment as a whole
     """
+
     def __init__(self):
         # Initiate properties that will be available to the AI
         self.avg_asteroid_size = 0
@@ -96,8 +100,16 @@ class SAMetrics:
         self.stddev_asteroid_speed = 0
 
     def update(self, observation, sa):
-        if len(observation['asteroids']) != 0:
-            self.avg_asteroid_size = np.mean([asteroid.size for asteroid in sa.ownship.asteroids])
-            self.stddev_asteroid_size = np.std([asteroid.size for asteroid in sa.ownship.asteroids])
-            self.avg_asteroid_speed = np.mean([asteroid.speed for asteroid in sa.ownship.asteroids])
-            self.stddev_asteroid_speed = np.std([asteroid.speed for asteroid in sa.ownship.asteroids])
+        if len(observation["asteroids"]) != 0:
+            self.avg_asteroid_size = np.mean(
+                [asteroid.size for asteroid in sa.ownship.asteroids]
+            )
+            self.stddev_asteroid_size = np.std(
+                [asteroid.size for asteroid in sa.ownship.asteroids]
+            )
+            self.avg_asteroid_speed = np.mean(
+                [asteroid.speed for asteroid in sa.ownship.asteroids]
+            )
+            self.stddev_asteroid_speed = np.std(
+                [asteroid.speed for asteroid in sa.ownship.asteroids]
+            )
