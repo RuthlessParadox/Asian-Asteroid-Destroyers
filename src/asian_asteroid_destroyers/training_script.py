@@ -18,7 +18,7 @@ from asian_asteroid_destroyers.infrastructure import (
 )
 
 
-def dummy_evaluator(individual: Individual) -> tuple[float, ...]:
+def _dummy_evaluator(individual: Individual) -> tuple[float, ...]:
     """Core individual fitness evaluation function.
 
     Must be top-level and serializable via pickle to work with multiprocessing.
@@ -36,7 +36,7 @@ def main() -> None:
     statistics = Statistics()
 
     toolbox = build_toolbox(
-        evaluation_function=dummy_evaluator,
+        evaluation_function=_dummy_evaluator,
         gene_size=args.gene_size,
         weights=(1.0,),
     )
