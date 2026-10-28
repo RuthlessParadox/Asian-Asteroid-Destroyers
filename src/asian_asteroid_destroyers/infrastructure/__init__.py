@@ -1,8 +1,6 @@
 from .checkpointing import (
     EmergencySaver as EmergencySaver,
+    create_experiment_directory as create_experiment_directory,
     make_checkpoint_saver as make_checkpoint_saver,
 )
-from .config import (
-    create_experiment_directory as create_experiment_directory,
-    get_config as get_config,
-)
+from .config import get_config as get_config

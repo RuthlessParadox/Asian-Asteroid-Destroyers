@@ -1,8 +1,6 @@
 import argparse
-import datetime
 import pathlib
 from dataclasses import dataclass
-from pathlib import Path
 from typing import cast
 
 import tomli
@@ -142,10 +140,3 @@ def _load_baseline_config(config_path: pathlib.Path) -> _EvolutionConfig:
         mut_pb=mut_pb,
         gene_size=gene_size,
     )
-
-
-def create_experiment_directory(base_directory: str | Path = "./data") -> Path:
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_directory = Path(base_directory) / f"run_{timestamp}"
-    run_directory.mkdir(parents=True, exist_ok=True)
-    return run_directory
