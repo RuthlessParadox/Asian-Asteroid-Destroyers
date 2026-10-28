@@ -1,6 +1,5 @@
 import signal
 from concurrent.futures import ProcessPoolExecutor
-from pathlib import Path
 
 from asian_asteroid_destroyers.genetic_algorithm import (
     HistoryLogger,
@@ -13,6 +12,7 @@ from asian_asteroid_destroyers.genetic_algorithm import (
 )
 from asian_asteroid_destroyers.infrastructure import (
     EmergencySaver,
+    create_experiment_directory,
     make_checkpoint_saver,
 )
 
@@ -29,8 +29,9 @@ def dummy_evaluator(individual: Individual) -> tuple[float, ...]:
 def main() -> None:
     generations = 100
     population_size = 100
-    checkpoint_directory = Path("./checkpoints")
     save_every_n_generations = 10
+
+    data_directory = create_experiment_directory()
 
     logbook = Logbook()
     history_logger = HistoryLogger()
@@ -42,9 +43,9 @@ def main() -> None:
         weights=(1.0,),
     )
 
-    emergency_saver = EmergencySaver(output_directory=checkpoint_directory)
+    emergency_saver = EmergencySaver(output_directory=data_directory)
     periodic_saver = make_checkpoint_saver(
-        output_directory=checkpoint_directory,
+        output_directory=data_directory,
         save_interval=save_every_n_generations,
     )
 
@@ -76,12 +77,12 @@ def main() -> None:
     final_logbook = final_result.logbook
     if final_logbook is not None:
         final_logbook.save_parquet(
-            checkpoint_directory / "final_logbook.parquet",
+            data_directory / "final_logbook.parquet",
         )
     final_history_logger = final_result.history_logger
     if final_history_logger is not None:
         final_history_logger.save_parquet(
-            checkpoint_directory / "final_history.parquet",
+            data_directory / "final_history.parquet",
         )
     print("Final run assets secured to disk.")
 
