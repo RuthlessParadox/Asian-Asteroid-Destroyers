@@ -14,6 +14,7 @@ dependencies = [
     "polars>=2.0.0",
     "scikit-fuzzy>=0.5.0",
     "scipy>=1.15.3",
+    "tomli==2.5.0",
     "typing-extensions>=4.16.0",
 ]
 
@@ -47,3 +48,11 @@ combine-as-imports = true
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.evolution]
+generations = 100
+population_size = 100
+save_interval = 10
+cx_pb = 0.6
+mut_pb = 0.2
+gene_size = 50

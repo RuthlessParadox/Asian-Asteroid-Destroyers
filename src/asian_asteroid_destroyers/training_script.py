@@ -13,6 +13,7 @@ from asian_asteroid_destroyers.genetic_algorithm import (
 from asian_asteroid_destroyers.infrastructure import (
     EmergencySaver,
     create_experiment_directory,
+    get_config,
     make_checkpoint_saver,
 )
 
@@ -27,10 +28,7 @@ def dummy_evaluator(individual: Individual) -> tuple[float, ...]:
 
 
 def main() -> None:
-    generations = 100
-    population_size = 100
-    save_every_n_generations = 10
-
+    args = get_config()
     data_directory = create_experiment_directory()
 
     logbook = Logbook()
@@ -39,14 +37,14 @@ def main() -> None:
 
     toolbox = build_toolbox(
         evaluation_function=dummy_evaluator,
-        gene_size=50,
+        gene_size=args.gene_size,
         weights=(1.0,),
     )
 
     emergency_saver = EmergencySaver(output_directory=data_directory)
     periodic_saver = make_checkpoint_saver(
         output_directory=data_directory,
-        save_interval=save_every_n_generations,
+        save_interval=args.save_interval,
     )
 
     _ = signal.signal(signal.SIGINT, emergency_saver.handle_interrupt)
@@ -62,10 +60,10 @@ def main() -> None:
 
         final_result = run_simple_evolution(
             toolbox=toolbox,
-            cx_pb=0.6,
-            mut_pb=0.2,
-            generations=generations,
-            population_size=population_size,
+            cx_pb=args.cx_pb,
+            mut_pb=args.mut_pb,
+            generations=args.generations,
+            population_size=args.population_size,
             logbook=logbook,
             history_logger=history_logger,
             statistics=statistics,
