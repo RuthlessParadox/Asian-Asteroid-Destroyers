@@ -91,6 +91,7 @@ def test_parameter_validation_cx_pb_bounds(
             cx_pb=-0.1,
             mut_pb=0.2,
             generations=5,
+            population_size=10,
         )
 
     with pytest.raises(ValueError, match="Crossover probability 'cx_pb'"):
@@ -99,6 +100,7 @@ def test_parameter_validation_cx_pb_bounds(
             cx_pb=1.1,
             mut_pb=0.2,
             generations=5,
+            population_size=10,
         )
 
 
@@ -111,6 +113,7 @@ def test_parameter_validation_mut_pb_bounds(
             cx_pb=0.5,
             mut_pb=-0.5,
             generations=5,
+            population_size=10,
         )
 
     with pytest.raises(ValueError, match="Mutation probability 'mut_pb'"):
@@ -119,6 +122,7 @@ def test_parameter_validation_mut_pb_bounds(
             cx_pb=0.5,
             mut_pb=1.5,
             generations=5,
+            population_size=10,
         )
 
 
@@ -129,18 +133,43 @@ def test_parameter_validation_generations(configured_toolbox: Toolbox) -> None:
             cx_pb=0.2,
             mut_pb=0.2,
             generations=-1,
+            population_size=10,
+        )
+
+
+def test_parameter_validation_population_size(
+    configured_toolbox: Toolbox,
+) -> None:
+    with pytest.raises(ValueError, match="Population size 'population_size'"):
+        _ = run_simple_evolution(
+            configured_toolbox,
+            cx_pb=0.2,
+            mut_pb=0.2,
+            generations=5,
+            population_size=0,
+        )
+
+    with pytest.raises(ValueError, match="Population size 'population_size'"):
+        _ = run_simple_evolution(
+            configured_toolbox,
+            cx_pb=0.2,
+            mut_pb=0.2,
+            generations=5,
+            population_size=-5,
         )
 
 
 def test_successful_zero_generation_run(configured_toolbox: Toolbox) -> None:
+    population_size = 15
     result = run_simple_evolution(
         toolbox=configured_toolbox,
         cx_pb=0.5,
         mut_pb=0.2,
         generations=0,
+        population_size=population_size,
     )
     assert isinstance(result, TrainingResult)
-    assert len(result.final_population) == 0
+    assert len(result.final_population) == population_size
     assert result.logbook is None
     assert result.history_logger is None
     assert result.hall_of_fame is None
@@ -148,14 +177,16 @@ def test_successful_zero_generation_run(configured_toolbox: Toolbox) -> None:
 
 def test_successful_multi_generation_run(configured_toolbox: Toolbox) -> None:
     generations_count = 2
+    population_size = 20
     result = run_simple_evolution(
         toolbox=configured_toolbox,
         cx_pb=0.2,
         mut_pb=0.1,
         generations=generations_count,
+        population_size=population_size,
         seed=42,
     )
-    assert len(result.final_population) == generations_count
+    assert len(result.final_population) == population_size
     for individual in result.final_population:
         assert isinstance(individual, Individual)
         assert individual.fitness.valid
@@ -164,14 +195,16 @@ def test_successful_multi_generation_run(configured_toolbox: Toolbox) -> None:
 
 def test_seed_as_generator_instance(configured_toolbox: Toolbox) -> None:
     rng = np.random.default_rng(12345)
+    population_size = 8
     result = run_simple_evolution(
         toolbox=configured_toolbox,
         cx_pb=0.9,
         mut_pb=0.9,
         generations=1,
+        population_size=population_size,
         seed=rng,
     )
-    assert len(result.final_population) == 1
+    assert len(result.final_population) == population_size
 
 
 def test_optional_components_recording(configured_toolbox: Toolbox) -> None:
@@ -179,12 +212,14 @@ def test_optional_components_recording(configured_toolbox: Toolbox) -> None:
     stats = Statistics()
     logbook = Logbook()
     history_logger = HistoryLogger()
+    population_size = 12
 
     result = run_simple_evolution(
         toolbox=configured_toolbox,
         cx_pb=0.5,
         mut_pb=0.5,
         generations=2,
+        population_size=population_size,
         hall_of_fame=hall_of_fame,
         statistics=stats,
         logbook=logbook,
@@ -202,16 +237,19 @@ def test_optional_components_recording(configured_toolbox: Toolbox) -> None:
 
 def test_checkpoint_callback_execution(configured_toolbox: Toolbox) -> None:
     captured_generations: list[int] = []
+    population_size = 10
 
     def sample_callback(generation: int, current_res: TrainingResult) -> None:
         captured_generations.append(generation)
         assert isinstance(current_res, TrainingResult)
+        assert len(current_res.final_population) == population_size
 
     _ = run_simple_evolution(
         toolbox=configured_toolbox,
         cx_pb=0.1,
         mut_pb=0.1,
         generations=3,
+        population_size=population_size,
         checkpoint_callback=sample_callback,
     )
 

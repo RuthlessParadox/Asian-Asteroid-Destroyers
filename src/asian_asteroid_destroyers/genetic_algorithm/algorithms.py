@@ -24,6 +24,7 @@ def run_simple_evolution(
     cx_pb: float,
     mut_pb: float,
     generations: int,
+    population_size: int,
     *,
     seed: int | np.random.Generator | None = None,
     hall_of_fame: HallOfFame | None = None,
@@ -32,7 +33,7 @@ def run_simple_evolution(
     history_logger: HistoryLogger | None = None,
     checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
 ) -> TrainingResult:
-    _validate_parameters(cx_pb, mut_pb, generations)
+    _validate_parameters(cx_pb, mut_pb, generations, population_size)
 
     rng = (
         seed
@@ -40,7 +41,7 @@ def run_simple_evolution(
         else np.random.default_rng(seed)
     )
 
-    population: Population = list(toolbox.population(generations))
+    population: Population = list(toolbox.population(population_size))
 
     _evaluate_invalid_fitness(toolbox, population)
     _record_generation_metrics(
@@ -85,6 +86,7 @@ def _validate_parameters(
     cx_pb: float,
     mut_pb: float,
     generations: int,
+    population_size: int,
 ) -> None:
     if not (0.0 <= cx_pb <= 1.0):
         raise ValueError(
@@ -100,6 +102,11 @@ def _validate_parameters(
         raise ValueError(
             "Number of generations 'n_gen' must be non-negative."
             + f"Got: {generations}"
+        )
+    if population_size <= 0:
+        raise ValueError(
+            "Population size 'population_size' must be a positive integer."
+            + f"Got: {population_size}"
         )
 
 
