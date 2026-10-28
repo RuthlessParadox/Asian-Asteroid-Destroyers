@@ -28,6 +28,7 @@ def dummy_evaluator(individual: Individual) -> tuple[float, ...]:
 
 def main() -> None:
     generations = 100
+    population_size = 100
     checkpoint_directory = Path("./checkpoints")
     save_every_n_generations = 10
 
@@ -63,6 +64,7 @@ def main() -> None:
             cx_pb=0.6,
             mut_pb=0.2,
             generations=generations,
+            population_size=population_size,
             logbook=logbook,
             history_logger=history_logger,
             statistics=statistics,
