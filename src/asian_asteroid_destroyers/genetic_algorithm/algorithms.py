@@ -41,7 +41,7 @@ def run_simple_evolution(
         else np.random.default_rng(seed)
     )
 
-    population: Population = list(toolbox.population(population_size))
+    population = toolbox.population(population_size)
 
     _evaluate_invalid_fitness(toolbox, population)
     _record_generation_metrics(
