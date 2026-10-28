@@ -14,12 +14,31 @@ from kesslergame import GraphicsType, KesslerGame
 from kesslergame.kessler_game import SettingsDict
 
 from asian_asteroid_destroyers.controllers.controller import MyFuzzyController
+from asian_asteroid_destroyers.scenarios.example_scenarios import training_set
+from asian_asteroid_destroyers.training import config
 
 # from controllers.example_controller_fuzzy2 import MyFuzzyController2
-from asian_asteroid_destroyers.scenarios.example_scenarios import training_set
 
+DEFAULT_WEIGHTS = {
+    "fraction_total_asteroids_hit": 1.0,
+    "accuracy": 1.0,
+    "deaths": -0.2,
+}
 
-def example_fitness(individual, settings=None):
+def calculate_fitness(team, weights):
+    score = 0.0
+    score += (
+        weights.get("fraction_total_asteroids_hit", 0.0)
+        + team.fraction_total_asteroids_hit
+    )
+    score += weights.get("accuracy", 0.0) * team.accuracy
+    score += weights.get("deaths", 0.0) * team.deaths
+
+    return score
+
+def example_fitness(individual, weights=None, settings=None):
+    if weights is None:
+        weights = DEFAULT_WEIGHTS
     controller = MyFuzzyController(chromosome=individual)
     total_score = 0
     game_settings: SettingsDict = {
@@ -31,6 +50,8 @@ def example_fitness(individual, settings=None):
         "time_limit": 30,
         "competition_safe_mode": False,
     }
+    if settings is not None:
+        game_settings.update(settings)
     game = KesslerGame(settings=game_settings)  # Instantiate the game object
     # game = TrainerEnvironment(settings=game_settings)  # Kessler default settings for training - has some defaults that override what we want though
 
@@ -48,10 +69,17 @@ def example_fitness(individual, settings=None):
             result.teams[0].fraction_total_asteroids_hit
             + result.teams[0].accuracy
         )
-        total_score += score
+        team = result.teams[0]
+        total_score += calculate_fitness(team, weights)
 
     return (total_score,)
 
+def create_fitness_function(weights = None):
+    seleted_weights = dict(
+        DEFAULT_WEIGHTS if weights is None else weights
+    )
+    def fitness(individual):
+        return example_fitness(individual, weights=seleted_weights)
 
 if __name__ == "__main__":
     test_individual = [random.random() for _ in range(24)]
@@ -67,3 +95,9 @@ if __name__ == "__main__":
     # print('Mean eval time: ' + str([team.mean_eval_time for team in score.teams]))
     # # test_controller = FuzzyController(individual)
     # print(test_controller)
+
+    fitness = create_fitness_function(
+        {"fraction_total_asteroids_hit": 2.0,
+        "accuracy": 1.0,
+        "deaths": -0.5,}
+    )

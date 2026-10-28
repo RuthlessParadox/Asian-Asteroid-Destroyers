@@ -157,26 +157,21 @@ class MyFuzzyController(KesslerController):
         return rules
 
     def run_fuzzy_systems(self, angle, distance):
-        assert self.aiming_fis_sim is not None
-        assert self.moving_fis_sim is not None
+        aiming_output = self.tsk_output(
+            angle,
+            distance,
+            self.aiming_centers,
+            self.aiming_consequents,
+            self.aiming_scale,
+        )
 
-        aiming_sim = self.aiming_fis_sim
-        moving_sim = self.moving_fis_sim
-
-        assert self.aiming_fis_sim is not None
-        assert self.moving_fis_sim is not None
-
-        aiming_sim.input["angle"] = angle
-        aiming_sim.input["distance"] = distance
-
-        moving_sim.input["angle"] = angle
-        moving_sim.input["distance"] = distance
-
-        aiming_sim.compute()
-        moving_sim.compute()
-
-        aiming_output = self.aiming_fis_sim.output["aiming_angle"]
-        thrust_output = self.moving_fis_sim.output["thrust"]
+        thrust_output = self.tsk_output(
+            angle,
+            distance,
+            self.moving_centers,
+            self.moving_components,
+            self.moving_scale,
+        )
 
         return aiming_output, thrust_output
 
@@ -280,22 +275,30 @@ class MyFuzzyController(KesslerController):
         self.create_moving_fis()
 
     def create_aiming_fis(self):
-        distance, angle, output = self.create_fuzzy_variables("aiming_angle")
         if self.chromosome is None:
-            self.setup_default_memberships(distance, angle, output)
-            rules = self.create_default_rules(distance, angle, output)
+            self.aiming_centers = (0.5, 0.0)
+            self.aiming_scale = 1.0
+            self.aiming_consequents = [
+                -1.0,
+                -0.5,
+                0.0,
+                -0.5,
+                0.0,
+                0.5,
+                0.0,
+                0.5,
+                1.0,
+            ]
         else:
-            self.setup_chromosome_memberships(
-                distance,
-                angle,
-                output,
-                distance_index=0,
-                angle_index=1,
-                output_index=2,
+            self.aiming_centers = (
+                float(np.clip(self.chromosome[0], 0.01, 0.09)),
+                float(np.clip(self.chromosome[1] * 2 - 1, 0.99, 0.99)),
             )
-            rules = self.create_chromosome_rules(distance, angle, output)
-        self.aiming_fis = ctrl.ControlSystem(rules)
-        self.aiming_fis_sim = ctrl.ControlSystemSimulation(self.aiming_fis)
+            self.aiming_scale = float(np.clip(self.chromosome[2], 0.01, 1.0))
+            self.aiming_consequents = [
+                float(np.clip(gene * 2 - 1, -1.0, 1.0))
+                for gene in self.aiming_consequents
+            ]
 
     def update_situational_awareness(self, ship_state, game_state):
         self.sa.update(ship_state, game_state)
@@ -304,24 +307,30 @@ class MyFuzzyController(KesslerController):
         return self.sa.ownship.nearest_n(1)[0]
 
     def create_moving_fis(self):
-        distance, angle, output = self.create_fuzzy_variables("thrust")
         if self.chromosome is None:
-            self.setup_default_memberships(distance, angle, output)
-            rules = self.create_default_rules(distance, angle, output)
+            self.moving_centers = (0.5, 0.0)
+            self.moving_scale = 1.0
+            self.moving_consequents = [
+                -1.0,
+                -0.5,
+                0.0,
+                -0.5,
+                0.0,
+                0.5,
+                0.0,
+                0.5,
+                1.0,
+            ]
         else:
-            self.setup_chromosome_memberships(
-                distance,
-                angle,
-                output,
-                distance_index=12,
-                angle_index=13,
-                output_index=14,
+            self.moving_centers = (
+                float(np.clip(self.chromosome[12], 0.01, 0.99)),
+                float(np.clip(self.chromosome[13] * 2 - 1, -0.99, 0.99)),
             )
-            rules = self.create_chromosome_rules(
-                distance, angle, output, rule_start=15
-            )
-        self.moving_fis = ctrl.ControlSystem(rules)
-        self.moving_fis_sim = ctrl.ControlSystemSimulation(self.moving_fis)
+            self.moving_scale = float(np.clip(self.chromosome[14], 0.01, 1.0))
+            self.moving_consequents = [
+                float(np.clip(gene * 2 - 1, -1.0, 1.0))
+                for gene in self.chromosome[15:24]
+            ]
 
     @property
     def name(self) -> str:
@@ -336,3 +345,42 @@ class MyFuzzyController(KesslerController):
     # @property
     # def custom_sprite_path(self) -> str:
     #     return "Neo.png"
+    def get_memberships(self, value, variable_type, center):
+        if variable_type == "distance":
+            triangles = [
+                [0.0, 0.0, center],
+                [0.0, center, 0.0],
+                [center, 0.0, 0.0],
+            ]
+        else:
+            triangles = [
+                [-1.0, -1.0, center],
+                [-1.0, center, 1.0],
+                [center, 1.0, 1.0],
+            ]
+        return [
+            float(skf.trimf(np.array([value]), triangle)[0])
+            for triangle in triangles
+        ]
+
+    def tsk_output(self, angle, distance, output, centers, consequents, scale):
+        angle_memberships = self.get_memberships(angle, "angle", centers[1])
+        distance_memberships = self.get_memberships(
+            distance, "distance", centers[0]
+        )
+        weighted_sum = 0.0
+        activation_sum = 0.0
+        rule_index = 0
+        for angle_index in range(3):
+            for distance_index in range(3):
+                activation = (
+                    angle_memberships[angle_index]
+                    * distance_memberships[distance_index]
+                )
+                consequent = scale * consequents[rule_index]
+                weighted_sum += activation * consequent
+                activation_sum += activation
+                rule_index += 1
+        if activation_sum == 0:
+            return 0.0
+        return weighted_sum / activation_sum
