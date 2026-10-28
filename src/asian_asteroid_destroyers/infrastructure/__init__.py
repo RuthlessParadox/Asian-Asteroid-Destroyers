@@ -3,4 +3,4 @@ from .checkpointing import (
     create_experiment_directory as create_experiment_directory,
     make_checkpoint_saver as make_checkpoint_saver,
 )
-from .config import get_config as get_config
+from .config import RuntimeArgs as RuntimeArgs, get_config as get_config
