@@ -1,6 +1,8 @@
 import signal
 from concurrent.futures import ProcessPoolExecutor
 
+import numpy as np
+
 from asian_asteroid_destroyers.genetic_algorithm import (
     HistoryLogger,
     Individual,
@@ -29,7 +31,10 @@ def _dummy_evaluator(individual: Individual) -> tuple[float, ...]:
 
 def main() -> None:
     args = get_config()
+
     data_directory = create_experiment_directory()
+    rng = np.random.default_rng()
+    algorithm = run_simple_evolution
 
     logbook = Logbook()
     history_logger = HistoryLogger()
@@ -41,9 +46,15 @@ def main() -> None:
         weights=(1.0,),
     )
 
-    emergency_saver = EmergencySaver(output_directory=data_directory)
+    emergency_saver = EmergencySaver(
+        output_directory=data_directory,
+        rng=rng,
+        algorithm=algorithm,
+    )
     periodic_saver = make_checkpoint_saver(
         output_directory=data_directory,
+        rng=rng,
+        algorithm=algorithm,
         save_interval=args.save_interval,
     )
 
@@ -58,7 +69,7 @@ def main() -> None:
     with ProcessPoolExecutor() as executor:
         toolbox.register("map", executor.map)
 
-        final_result = run_simple_evolution(
+        final_result = algorithm(
             toolbox=toolbox,
             cx_pb=args.cx_pb,
             mut_pb=args.mut_pb,
