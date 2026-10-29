@@ -1,4 +1,5 @@
 from .algorithms import (
+    EvolutionAlgorithm as EvolutionAlgorithm,
     TrainingResult as TrainingResult,
     run_simple_evolution as run_simple_evolution,
 )

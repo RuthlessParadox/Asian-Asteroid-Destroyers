@@ -1,5 +1,5 @@
 from collections.abc import Callable, MutableSequence
-from typing import NamedTuple
+from typing import NamedTuple, Protocol, TypeVar
 
 import numpy as np
 
@@ -17,6 +17,31 @@ class TrainingResult(NamedTuple):
     logbook: Logbook | None
     history_logger: HistoryLogger | None
     hall_of_fame: HallOfFame | None
+
+
+R_co = TypeVar("R_co", bound=TrainingResult, covariant=True)
+
+
+class EvolutionAlgorithm(Protocol[R_co]):
+    __name__: str
+    __module__: str
+
+    def __call__(
+        self,
+        toolbox: Toolbox,
+        cx_pb: float,
+        mut_pb: float,
+        generations: int,
+        population_size: int,
+        *,
+        seed: int | object | None = None,
+        hall_of_fame: HallOfFame | None = None,
+        logbook: Logbook | None = None,
+        history_logger: HistoryLogger | None = None,
+        checkpoint_callback: Callable[[int, R_co], None] | None = None,
+        initial_population: Population | None = None,
+        start_generation: int = 1,
+    ) -> R_co: ...
 
 
 def run_simple_evolution(

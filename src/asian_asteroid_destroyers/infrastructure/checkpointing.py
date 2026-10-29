@@ -1,21 +1,36 @@
 import datetime
+import pickle
 import sys
 from pathlib import Path
 from types import FrameType
 from typing import Callable
 
-from asian_asteroid_destroyers.genetic_algorithm import TrainingResult
+import numpy as np
+
+from asian_asteroid_destroyers.genetic_algorithm import (
+    EvolutionAlgorithm,
+    TrainingResult,
+)
 
 
 class EmergencySaver:
     output_directory: Path
     _last_known_state: TrainingResult | None
     _last_known_generation: int
+    _rng: np.random.Generator
+    _algorithm_path: str
 
-    def __init__(self, output_directory: str | Path) -> None:
+    def __init__(
+        self,
+        output_directory: str | Path,
+        rng: np.random.Generator,
+        algorithm: EvolutionAlgorithm[TrainingResult],
+    ) -> None:
         self.output_directory = Path(output_directory)
         self._last_known_state = None
         self._last_known_generation = 0
+        self._rng = rng
+        self._algorithm_path = f"{algorithm.__module__}.{algorithm.__name__}"
 
     def update_state(self, generation: int, state: TrainingResult) -> None:
         self._last_known_generation = generation
@@ -48,16 +63,34 @@ class EmergencySaver:
             last_known_history_logger.save_parquet(history_path)
             print(f"   -> Hall of fame history saved to: {history_path}")
 
+        runtime_path = self.output_directory / "emergency_runtime.pkl"
+        with open(runtime_path, "wb") as file:
+            pickle.dump(
+                {
+                    "generation": self._last_known_generation,
+                    "state": self._last_known_state,
+                    "rng_state": self._rng.bit_generator.state,
+                    "algorithm_path": self._algorithm_path,
+                },
+                file,
+            )
+        print(
+            f"   -> Complete runtime state pickling secured to: {runtime_path}"
+        )
+
         print("Emergency checkpoint sequence completed. Exiting.")
         sys.exit(0)
 
 
 def make_checkpoint_saver(
     output_directory: str | Path,
+    rng: np.random.Generator,
+    algorithm: EvolutionAlgorithm[TrainingResult],
     save_interval: int = 10,
 ) -> Callable[[int, TrainingResult], None]:
     path = Path(output_directory)
     path.mkdir(parents=True, exist_ok=True)
+    algorithm_path = f"{algorithm.__module__}.{algorithm.__name__}"
 
     def saver_callback(generation: int, current_state: TrainingResult) -> None:
         if generation % save_interval == 0:
@@ -73,6 +106,18 @@ def make_checkpoint_saver(
             if current_history_logger is not None:
                 current_history_logger.save_parquet(
                     path / f"history_gen_{generation}.parquet"
+                )
+
+            runtime_path = path / f"runtime_gen_{generation}.pkl"
+            with open(runtime_path, "wb") as file:
+                pickle.dump(
+                    {
+                        "generation": generation,
+                        "state": current_state,
+                        "rng_state": rng.bit_generator.state,
+                        "algorithm_path": algorithm_path,
+                    },
+                    file,
                 )
 
     return saver_callback

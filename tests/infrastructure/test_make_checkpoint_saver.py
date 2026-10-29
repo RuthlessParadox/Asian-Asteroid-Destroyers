@@ -1,8 +1,12 @@
+import pickle
 from pathlib import Path
+from typing import TypedDict, cast
 
+import numpy as np
 import pytest
 
 from asian_asteroid_destroyers.genetic_algorithm import (
+    EvolutionAlgorithm,
     HistoryLogger,
     Logbook,
     TrainingResult,
@@ -31,9 +35,46 @@ def sample_history() -> HistoryLogger:
     return HistoryLogger(flush_interval=1)
 
 
-def test_make_checkpoint_saver_creates_directory(tmp_path: Path) -> None:
+@pytest.fixture
+def shared_rng() -> np.random.Generator:
+    return np.random.default_rng(12345)
+
+
+@pytest.fixture
+def mock_algorithm() -> EvolutionAlgorithm[TrainingResult]:
+    class MockAlgorithm:
+        __name__: str = "periodic_evolution_loop"
+        __module__: str = "test_package.mock_module"
+
+        def __call__(self, *args: object, **kwargs: object) -> TrainingResult:
+            return TrainingResult(
+                final_population=[],
+                logbook=None,
+                history_logger=None,
+                hall_of_fame=None,
+            )
+
+    return MockAlgorithm()
+
+
+class _CheckpointPayload(TypedDict):
+    generation: int
+    state: TrainingResult
+    rng_state: dict[str, object]
+    algorithm_path: str
+
+
+def test_make_checkpoint_saver_creates_directory(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
     output_dir = tmp_path / "checkpoints"
-    _ = make_checkpoint_saver(output_dir)
+    _ = make_checkpoint_saver(
+        output_directory=output_dir,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+    )
 
     assert output_dir.is_dir()
 
@@ -42,9 +83,16 @@ def test_saver_callback_saves_on_matching_interval(
     tmp_path: Path,
     sample_logbook: Logbook,
     sample_history: HistoryLogger,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
 ) -> None:
     output_dir = tmp_path / "checkpoints"
-    checkpoint_saver = make_checkpoint_saver(output_dir, save_interval=10)
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_dir,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
 
     state = TrainingResult(
         final_population=[],
@@ -56,18 +104,36 @@ def test_saver_callback_saves_on_matching_interval(
 
     expected_logbook = output_dir / "logbook_gen_10.parquet"
     expected_history = output_dir / "history_gen_10.parquet"
+    expected_runtime = output_dir / "runtime_gen_10.pkl"
 
     assert expected_logbook.is_file()
     assert expected_history.is_file()
+    assert expected_runtime.is_file()
+
+    with open(expected_runtime, "rb") as file:
+        payload = cast(_CheckpointPayload, pickle.load(file))
+        assert payload["generation"] == 10
+        assert (
+            payload["algorithm_path"]
+            == "test_package.mock_module.periodic_evolution_loop"
+        )
+        assert payload["rng_state"] == shared_rng.bit_generator.state
 
 
 def test_saver_callback_skips_on_non_matching_interval(
     tmp_path: Path,
     sample_logbook: Logbook,
     sample_history: HistoryLogger,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
 ) -> None:
     output_dir = tmp_path / "checkpoints"
-    checkpoint_saver = make_checkpoint_saver(output_dir, save_interval=10)
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_dir,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
 
     state = TrainingResult(
         final_population=[],
@@ -81,9 +147,18 @@ def test_saver_callback_skips_on_non_matching_interval(
     assert len(written_files) == 0
 
 
-def test_saver_callback_handles_none_components(tmp_path: Path) -> None:
+def test_saver_callback_handles_none_components(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
     output_dir = tmp_path / "checkpoints"
-    checkpoint_saver = make_checkpoint_saver(output_dir, save_interval=1)
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_dir,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=1,
+    )
 
     state = TrainingResult(
         final_population=[],
@@ -93,5 +168,8 @@ def test_saver_callback_handles_none_components(tmp_path: Path) -> None:
     )
     checkpoint_saver(1, state)
 
-    written_files = [f for f in output_dir.iterdir() if f.is_file()]
-    assert len(written_files) == 0
+    expected_runtime = output_dir / "runtime_gen_1.pkl"
+    assert expected_runtime.is_file()
+
+    written_files = [file for file in output_dir.iterdir() if file.is_file()]
+    assert len(written_files) == 1
