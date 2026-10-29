@@ -34,7 +34,7 @@ class EvolutionAlgorithm(Protocol[R_co]):
         generations: int,
         population_size: int,
         *,
-        seed: int | object | None = None,
+        seed: int | np.random.Generator | None = None,
         hall_of_fame: HallOfFame | None = None,
         logbook: Logbook | None = None,
         history_logger: HistoryLogger | None = None,
