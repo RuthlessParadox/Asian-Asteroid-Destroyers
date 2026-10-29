@@ -13,6 +13,9 @@ from asian_asteroid_destroyers.genetic_algorithm import (
 )
 from asian_asteroid_destroyers.infrastructure import (
     CheckpointPayload,
+    get_periodic_history_filename,
+    get_periodic_logbook_filename,
+    get_periodic_runtime_filename,
     make_checkpoint_saver,
 )
 
@@ -98,9 +101,9 @@ def test_saver_callback_saves_on_matching_interval(
     )
     checkpoint_saver(10, state)
 
-    expected_logbook = output_dir / "logbook_gen_10.parquet"
-    expected_history = output_dir / "history_gen_10.parquet"
-    expected_runtime = output_dir / "runtime_gen_10.pkl"
+    expected_logbook = output_dir / get_periodic_logbook_filename(10)
+    expected_history = output_dir / get_periodic_history_filename(10)
+    expected_runtime = output_dir / get_periodic_runtime_filename(10)
 
     assert expected_logbook.is_file()
     assert expected_history.is_file()
@@ -164,7 +167,7 @@ def test_saver_callback_handles_none_components(
     )
     checkpoint_saver(1, state)
 
-    expected_runtime = output_dir / "runtime_gen_1.pkl"
+    expected_runtime = output_dir / get_periodic_runtime_filename(1)
     assert expected_runtime.is_file()
 
     written_files = [file for file in output_dir.iterdir() if file.is_file()]

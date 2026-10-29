@@ -13,6 +13,24 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     TrainingResult,
 )
 
+EMERGENCY_RUNTIME_FILENAME = "emergency_runtime.pkl"
+EMERGENCY_LOGBOOK_FILENAME = "emergency_logbook.parquet"
+EMERGENCY_HISTORY_FILENAME = "emergency_history.parquet"
+
+PERIODIC_RUNTIME_PATTERN = "runtime_gen_*.pkl"
+
+
+def get_periodic_runtime_filename(generation: int) -> str:
+    return f"runtime_gen_{generation}.pkl"
+
+
+def get_periodic_logbook_filename(generation: int) -> str:
+    return f"logbook_gen_{generation}.parquet"
+
+
+def get_periodic_history_filename(generation: int) -> str:
+    return f"history_gen_{generation}.parquet"
+
 
 class CheckpointPayload(TypedDict):
     algorithm_path: str
@@ -61,17 +79,17 @@ class EmergencySaver:
 
         last_known_logbook = self._last_known_state.logbook
         if last_known_logbook is not None:
-            log_path = self.output_directory / "emergency_logbook.parquet"
+            log_path = self.output_directory / EMERGENCY_LOGBOOK_FILENAME
             last_known_logbook.save_parquet(log_path)
             print(f"   -> Metrics logbook saved to: {log_path}")
 
         last_known_history_logger = self._last_known_state.history_logger
         if last_known_history_logger is not None:
-            history_path = self.output_directory / "emergency_history.parquet"
+            history_path = self.output_directory / EMERGENCY_HISTORY_FILENAME
             last_known_history_logger.save_parquet(history_path)
             print(f"   -> Hall of fame history saved to: {history_path}")
 
-        runtime_path = self.output_directory / "emergency_runtime.pkl"
+        runtime_path = self.output_directory / EMERGENCY_RUNTIME_FILENAME
         payload_data: CheckpointPayload = {
             "algorithm_path": self._algorithm_path,
             "generation": self._last_known_generation,
@@ -105,16 +123,16 @@ def make_checkpoint_saver(
             current_logbook = current_state.logbook
             if current_logbook is not None:
                 current_logbook.save_parquet(
-                    path / f"logbook_gen_{generation}.parquet"
+                    path / get_periodic_logbook_filename(generation)
                 )
 
             current_history_logger = current_state.history_logger
             if current_history_logger is not None:
                 current_history_logger.save_parquet(
-                    path / f"history_gen_{generation}.parquet"
+                    path / get_periodic_history_filename(generation)
                 )
 
-            runtime_path = path / f"runtime_gen_{generation}.pkl"
+            runtime_path = path / get_periodic_runtime_filename(generation)
             payload_data: CheckpointPayload = {
                 "algorithm_path": algorithm_path,
                 "generation": generation,

@@ -13,6 +13,9 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     TrainingResult,
 )
 from asian_asteroid_destroyers.infrastructure import (
+    EMERGENCY_HISTORY_FILENAME,
+    EMERGENCY_LOGBOOK_FILENAME,
+    EMERGENCY_RUNTIME_FILENAME,
     CheckpointPayload,
     EmergencySaver,
 )
@@ -112,9 +115,9 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
 
     assert exception_info.value.code == 0
 
-    expected_logbook_path = temp_output_dir / "emergency_logbook.parquet"
-    expected_history_path = temp_output_dir / "emergency_history.parquet"
-    expected_runtime_path = temp_output_dir / "emergency_runtime.pkl"
+    expected_logbook_path = temp_output_dir / EMERGENCY_LOGBOOK_FILENAME
+    expected_history_path = temp_output_dir / EMERGENCY_HISTORY_FILENAME
+    expected_runtime_path = temp_output_dir / EMERGENCY_RUNTIME_FILENAME
 
     assert expected_logbook_path.is_file()
     assert expected_history_path.is_file()
@@ -156,5 +159,5 @@ def test_handle_interrupt_handles_missing_loggers_gracefully(
     assert exception_info.value.code == 0
     assert temp_output_dir.exists()
 
-    expected_runtime_path = temp_output_dir / "emergency_runtime.pkl"
+    expected_runtime_path = temp_output_dir / EMERGENCY_RUNTIME_FILENAME
     assert expected_runtime_path.is_file()

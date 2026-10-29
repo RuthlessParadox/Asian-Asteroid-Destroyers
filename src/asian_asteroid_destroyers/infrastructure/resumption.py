@@ -10,6 +10,8 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     TrainingResult,
 )
 from asian_asteroid_destroyers.infrastructure.checkpointing import (
+    EMERGENCY_RUNTIME_FILENAME,
+    PERIODIC_RUNTIME_PATTERN,
     CheckpointPayload,
 )
 
@@ -39,13 +41,15 @@ def _load_algorithm(path_str: str) -> EvolutionAlgorithm[TrainingResult]:
 def load_resumption_workspace(
     experiment_directory: Path,
 ) -> ResumptionWorkspace:
-    pkl_files = list(experiment_directory.glob("*.pkl"))
-    if not pkl_files:
+    pkl_files = list(experiment_directory.glob(PERIODIC_RUNTIME_PATTERN))
+
+    emergency_file = experiment_directory / EMERGENCY_RUNTIME_FILENAME
+
+    if not pkl_files and not emergency_file.exists():
         raise FileNotFoundError(
-            f"No valid state snapshot (.pkl) detected in {experiment_directory}"
+            f"No valid state snapshots detected in {experiment_directory}"
         )
 
-    emergency_file = experiment_directory / "emergency_runtime.pkl"
     target_checkpoint = (
         emergency_file if emergency_file.exists() else max(pkl_files)
     )
