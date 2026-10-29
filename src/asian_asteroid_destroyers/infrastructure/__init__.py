@@ -5,3 +5,7 @@ from .checkpointing import (
     make_checkpoint_saver as make_checkpoint_saver,
 )
 from .config import RuntimeArgs as RuntimeArgs, get_config as get_config
+from .resumption import (
+    ResumptionWorkspace as ResumptionWorkspace,
+    load_resumption_workspace as load_resumption_workspace,
+)
