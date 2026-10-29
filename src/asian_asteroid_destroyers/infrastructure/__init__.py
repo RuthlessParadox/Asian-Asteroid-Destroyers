@@ -1,4 +1,5 @@
 from .checkpointing import (
+    CheckpointPayload as CheckpointPayload,
     EmergencySaver as EmergencySaver,
     create_experiment_directory as create_experiment_directory,
     make_checkpoint_saver as make_checkpoint_saver,

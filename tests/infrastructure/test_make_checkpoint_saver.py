@@ -1,6 +1,6 @@
 import pickle
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import cast
 
 import numpy as np
 import pytest
@@ -11,7 +11,10 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     Logbook,
     TrainingResult,
 )
-from asian_asteroid_destroyers.infrastructure import make_checkpoint_saver
+from asian_asteroid_destroyers.infrastructure import (
+    CheckpointPayload,
+    make_checkpoint_saver,
+)
 
 
 @pytest.fixture
@@ -55,13 +58,6 @@ def mock_algorithm() -> EvolutionAlgorithm[TrainingResult]:
             )
 
     return MockAlgorithm()
-
-
-class _CheckpointPayload(TypedDict):
-    generation: int
-    state: TrainingResult
-    rng_state: dict[str, object]
-    algorithm_path: str
 
 
 def test_make_checkpoint_saver_creates_directory(
@@ -111,7 +107,7 @@ def test_saver_callback_saves_on_matching_interval(
     assert expected_runtime.is_file()
 
     with open(expected_runtime, "rb") as file:
-        payload = cast(_CheckpointPayload, pickle.load(file))
+        payload = cast(CheckpointPayload, pickle.load(file))
         assert payload["generation"] == 10
         assert (
             payload["algorithm_path"]

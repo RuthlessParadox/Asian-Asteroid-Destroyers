@@ -1,7 +1,7 @@
 import inspect
 import pickle
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import cast
 
 import numpy as np
 import pytest
@@ -12,7 +12,10 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     Logbook,
     TrainingResult,
 )
-from asian_asteroid_destroyers.infrastructure import EmergencySaver
+from asian_asteroid_destroyers.infrastructure import (
+    CheckpointPayload,
+    EmergencySaver,
+)
 
 
 @pytest.fixture
@@ -50,13 +53,6 @@ def mock_algorithm() -> EvolutionAlgorithm[TrainingResult]:
             )
 
     return MockAlgorithm()
-
-
-class _CheckpointPayload(TypedDict):
-    generation: int
-    state: TrainingResult
-    rng_state: dict[str, object]
-    algorithm_path: str
 
 
 def test_emergency_saver_initialization(
@@ -125,7 +121,7 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
     assert expected_runtime_path.is_file()
 
     with open(expected_runtime_path, "rb") as file:
-        payload = cast(_CheckpointPayload, pickle.load(file))
+        payload = cast(CheckpointPayload, pickle.load(file))
         assert payload["generation"] == 42
         assert (
             payload["algorithm_path"]
