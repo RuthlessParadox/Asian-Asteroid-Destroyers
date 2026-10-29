@@ -159,6 +159,73 @@ def test_parameter_validation_population_size(
         )
 
 
+def test_parameter_validation_start_generation_bounds(
+    configured_toolbox: Toolbox,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="Start generation 'start_generation' must be a positive integer",
+    ):
+        _ = run_simple_evolution(
+            configured_toolbox,
+            cx_pb=0.2,
+            mut_pb=0.2,
+            generations=5,
+            population_size=10,
+            start_generation=0,
+        )
+
+
+def test_parameter_validation_start_generation_exceeds_generations(
+    configured_toolbox: Toolbox,
+) -> None:
+    initial_population = configured_toolbox.population(10)
+    with pytest.raises(ValueError, match="cannot exceed 'generations' \\+ 1"):
+        _ = run_simple_evolution(
+            configured_toolbox,
+            cx_pb=0.2,
+            mut_pb=0.2,
+            generations=5,
+            population_size=10,
+            initial_population=initial_population,
+            start_generation=7,
+        )
+
+
+def test_parameter_validation_midpoint_without_initial_population(
+    configured_toolbox: Toolbox,
+) -> None:
+    with pytest.raises(
+        ValueError,
+        match="Initial population 'initial_population' cannot be None "
+        + "with mid-point generation",
+    ):
+        _ = run_simple_evolution(
+            configured_toolbox,
+            cx_pb=0.2,
+            mut_pb=0.2,
+            generations=5,
+            population_size=10,
+            start_generation=3,
+        )
+
+
+def test_parameter_validation_population_size_mismatch(
+    configured_toolbox: Toolbox,
+) -> None:
+    initial_population = configured_toolbox.population(5)
+    with pytest.raises(ValueError, match="does not match 'population_size'"):
+        _ = run_simple_evolution(
+            configured_toolbox,
+            cx_pb=0.2,
+            mut_pb=0.2,
+            generations=5,
+            population_size=10,
+            initial_population=initial_population,
+            start_generation=2,
+        )
+
+
 def test_successful_zero_generation_run(configured_toolbox: Toolbox) -> None:
     population_size = 15
     result = run_simple_evolution(
@@ -254,3 +321,30 @@ def test_checkpoint_callback_execution(configured_toolbox: Toolbox) -> None:
     )
 
     assert captured_generations == [0, 1, 2, 3]
+
+
+def test_resumption_skips_generation_zero_and_runs_correct_generations(
+    configured_toolbox: Toolbox,
+) -> None:
+    population_size = 10
+    initial_population = configured_toolbox.population(population_size)
+    captured_generations: list[int] = []
+
+    def sample_callback(
+        generation: int,
+        _current_state: TrainingResult,
+    ) -> None:
+        captured_generations.append(generation)
+
+    _ = run_simple_evolution(
+        toolbox=configured_toolbox,
+        cx_pb=0.1,
+        mut_pb=0.1,
+        generations=4,
+        population_size=population_size,
+        checkpoint_callback=sample_callback,
+        initial_population=initial_population,
+        start_generation=3,
+    )
+
+    assert captured_generations == [3, 4]

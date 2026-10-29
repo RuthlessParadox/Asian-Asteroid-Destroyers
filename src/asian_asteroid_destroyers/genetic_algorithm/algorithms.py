@@ -32,8 +32,17 @@ def run_simple_evolution(
     logbook: Logbook | None = None,
     history_logger: HistoryLogger | None = None,
     checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
+    initial_population: Population | None = None,
+    start_generation: int = 1,
 ) -> TrainingResult:
-    _validate_parameters(cx_pb, mut_pb, generations, population_size)
+    _validate_parameters(
+        cx_pb,
+        mut_pb,
+        generations,
+        population_size,
+        initial_population,
+        start_generation,
+    )
 
     rng = (
         seed
@@ -41,20 +50,22 @@ def run_simple_evolution(
         else np.random.default_rng(seed)
     )
 
-    population = toolbox.population(population_size)
+    if initial_population is not None:
+        population = initial_population
+    else:
+        population = toolbox.population(population_size)
+        _evaluate_invalid_fitness(toolbox, population)
+        _record_generation_metrics(
+            generation=0,
+            population=population,
+            hall_of_fame=hall_of_fame,
+            statistics=statistics,
+            logbook=logbook,
+            history_logger=history_logger,
+            checkpoint_callback=checkpoint_callback,
+        )
 
-    _evaluate_invalid_fitness(toolbox, population)
-    _record_generation_metrics(
-        generation=0,
-        population=population,
-        hall_of_fame=hall_of_fame,
-        statistics=statistics,
-        logbook=logbook,
-        history_logger=history_logger,
-        checkpoint_callback=checkpoint_callback,
-    )
-
-    for generation in range(1, generations + 1):
+    for generation in range(start_generation, generations + 1):
         offspring = list(toolbox.select(population, len(population)))
         offspring = [toolbox.clone(individual) for individual in offspring]
 
@@ -87,26 +98,51 @@ def _validate_parameters(
     mut_pb: float,
     generations: int,
     population_size: int,
+    initial_population: Population | None,
+    start_generation: int,
 ) -> None:
     if not (0.0 <= cx_pb <= 1.0):
         raise ValueError(
-            "Crossover probability 'cx_pb' must be between 0.0 and 1.0."
+            "Crossover probability 'cx_pb' must be between 0.0 and 1.0. "
             + f"Got: {cx_pb}"
         )
     if not (0.0 <= mut_pb <= 1.0):
         raise ValueError(
-            "Mutation probability 'mut_pb' must be between 0.0 and 1.0."
+            "Mutation probability 'mut_pb' must be between 0.0 and 1.0. "
             + f"Got: {mut_pb}"
         )
     if generations < 0:
         raise ValueError(
-            "Number of generations 'n_gen' must be non-negative."
+            "Number of generations 'n_gen' must be non-negative. "
             + f"Got: {generations}"
         )
     if population_size <= 0:
         raise ValueError(
-            "Population size 'population_size' must be a positive integer."
+            "Population size 'population_size' must be a positive integer. "
             + f"Got: {population_size}"
+        )
+    if start_generation < 1:
+        raise ValueError(
+            "Start generation 'start_generation' must be a positive integer. "
+            + f"Got: {start_generation}"
+        )
+    if start_generation > generations + 1:
+        raise ValueError(
+            f"Start generation 'start_generation' ({start_generation}) "
+            + f"cannot exceed 'generations' + 1 ({generations + 1})."
+        )
+    if start_generation > 1 and initial_population is None:
+        raise ValueError(
+            "Initial population 'initial_population' cannot be None with "
+            + f"mid-point generation {start_generation}."
+        )
+    if (
+        initial_population is not None
+        and len(initial_population) != population_size
+    ):
+        raise ValueError(
+            f"The length of 'initial_population' ({len(initial_population)}) "
+            + f"does not match 'population_size' ({population_size})."
         )
 
 
