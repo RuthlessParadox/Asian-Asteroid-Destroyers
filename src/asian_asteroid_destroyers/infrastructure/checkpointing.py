@@ -15,10 +15,10 @@ from asian_asteroid_destroyers.genetic_algorithm import (
 
 
 class CheckpointPayload(TypedDict):
+    algorithm_path: str
     generation: int
     state: TrainingResult
     rng_state: Mapping[str, object]
-    algorithm_path: str
 
 
 class EmergencySaver:
@@ -73,10 +73,10 @@ class EmergencySaver:
 
         runtime_path = self.output_directory / "emergency_runtime.pkl"
         payload_data: CheckpointPayload = {
+            "algorithm_path": self._algorithm_path,
             "generation": self._last_known_generation,
             "state": self._last_known_state,
             "rng_state": self._rng.bit_generator.state,
-            "algorithm_path": self._algorithm_path,
         }
         with open(runtime_path, "wb") as file:
             pickle.dump(payload_data, file)
@@ -116,10 +116,10 @@ def make_checkpoint_saver(
 
             runtime_path = path / f"runtime_gen_{generation}.pkl"
             payload_data: CheckpointPayload = {
+                "algorithm_path": algorithm_path,
                 "generation": generation,
                 "state": current_state,
                 "rng_state": rng.bit_generator.state,
-                "algorithm_path": algorithm_path,
             }
             with open(runtime_path, "wb") as file:
                 pickle.dump(payload_data, file)
