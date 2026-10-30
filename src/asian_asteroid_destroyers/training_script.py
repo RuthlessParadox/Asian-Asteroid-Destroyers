@@ -1,7 +1,8 @@
 import signal
-from concurrent.futures import ProcessPoolExecutor
 
+import dill
 import numpy as np
+from pathos.multiprocessing import ProcessPool
 
 from asian_asteroid_destroyers.genetic_algorithm import (
     HistoryLogger,
@@ -30,6 +31,8 @@ def _dummy_evaluator(individual: Individual) -> tuple[float, ...]:
 
 
 def main() -> None:
+    dill.settings["recurse"] = True
+
     args = get_config()
 
     data_directory = create_experiment_directory()
@@ -66,7 +69,7 @@ def main() -> None:
 
     print("Commencing evolutionary loop...")
 
-    with ProcessPoolExecutor() as executor:
+    with ProcessPool() as executor:
         toolbox.register("map", executor.map)
 
         final_result = algorithm(
