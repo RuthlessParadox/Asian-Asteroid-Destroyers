@@ -1,3 +1,4 @@
+import gzip
 import pickle
 from pathlib import Path
 from typing import cast
@@ -109,7 +110,7 @@ def test_saver_callback_saves_on_matching_interval(
     assert expected_history.is_file()
     assert expected_runtime.is_file()
 
-    with open(expected_runtime, "rb") as file:
+    with gzip.open(expected_runtime, "rb") as file:
         payload = cast(CheckpointPayload, pickle.load(file))
         assert payload["generation"] == 10
         assert (
@@ -117,6 +118,8 @@ def test_saver_callback_saves_on_matching_interval(
             == "test_package.mock_module.periodic_evolution_loop"
         )
         assert payload["rng_state"] == shared_rng.bit_generator.state
+        assert payload["state"].logbook is None
+        assert payload["state"].history_logger is None
 
 
 def test_saver_callback_skips_on_non_matching_interval(

@@ -1,3 +1,4 @@
+import gzip
 import inspect
 import pickle
 from pathlib import Path
@@ -123,7 +124,7 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
     assert expected_history_path.is_file()
     assert expected_runtime_path.is_file()
 
-    with open(expected_runtime_path, "rb") as file:
+    with gzip.open(expected_runtime_path, "rb") as file:
         payload = cast(CheckpointPayload, pickle.load(file))
         assert payload["generation"] == 42
         assert (
@@ -131,6 +132,9 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
             == "test_package.mock_module.mock_evolution_loop"
         )
         assert payload["rng_state"] == shared_rng.bit_generator.state
+
+        assert payload["state"].logbook is None
+        assert payload["state"].history_logger is None
 
 
 def test_handle_interrupt_handles_missing_loggers_gracefully(

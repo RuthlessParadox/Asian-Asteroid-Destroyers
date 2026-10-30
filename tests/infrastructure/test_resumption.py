@@ -1,3 +1,4 @@
+import gzip
 import pickle
 import sys
 from collections.abc import Generator
@@ -84,13 +85,13 @@ def test_load_resumption_workspace_prefers_emergency_snapshot(
     periodic_payload = sample_payload.copy()
     periodic_payload["generation"] = 20
     periodic_path = workspace_directory / get_periodic_runtime_filename(20)
-    with open(periodic_path, "wb") as file:
+    with gzip.open(periodic_path, "wb") as file:
         pickle.dump(periodic_payload, file)
 
     emergency_payload = sample_payload.copy()
     emergency_payload["generation"] = 42
     emergency_path = workspace_directory / EMERGENCY_RUNTIME_FILENAME
-    with open(emergency_path, "wb") as file:
+    with gzip.open(emergency_path, "wb") as file:
         pickle.dump(emergency_payload, file)
 
     workspace = load_resumption_workspace(workspace_directory)
@@ -98,6 +99,9 @@ def test_load_resumption_workspace_prefers_emergency_snapshot(
     assert workspace.last_generation == 42
     assert isinstance(workspace.rng, np.random.Generator)
     assert workspace.saved_state.final_population == []
+
+    assert workspace.saved_state.logbook is not None
+    assert workspace.saved_state.history_logger is not None
 
 
 def test_load_resumption_workspace_fallback_to_max_periodic(
@@ -111,7 +115,7 @@ def test_load_resumption_workspace_fallback_to_max_periodic(
         file_path = workspace_directory / get_periodic_runtime_filename(
             generation,
         )
-        with open(file_path, "wb") as file:
+        with gzip.open(file_path, "wb") as file:
             pickle.dump(payload, file)
 
     workspace = load_resumption_workspace(workspace_directory)
@@ -136,7 +140,7 @@ def test_load_resumption_workspace_rng_state_restoration(
     sample_payload["rng_state"] = base_bit_gen.state
 
     emergency_path = workspace_directory / EMERGENCY_RUNTIME_FILENAME
-    with open(emergency_path, "wb") as file:
+    with gzip.open(emergency_path, "wb") as file:
         pickle.dump(sample_payload, file)
 
     workspace = load_resumption_workspace(workspace_directory)
@@ -152,7 +156,7 @@ def test_load_resumption_workspace_invalid_algorithm_path_raises_import_error(
     sample_payload["algorithm_path"] = "non_existent_module.some_function"
 
     emergency_path = workspace_directory / EMERGENCY_RUNTIME_FILENAME
-    with open(emergency_path, "wb") as file:
+    with gzip.open(emergency_path, "wb") as file:
         pickle.dump(sample_payload, file)
 
     with pytest.raises(
