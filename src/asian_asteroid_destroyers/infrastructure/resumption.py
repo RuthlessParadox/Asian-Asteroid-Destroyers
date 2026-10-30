@@ -1,6 +1,5 @@
 import gzip
 import importlib
-import pickle
 from pathlib import Path
 from typing import NamedTuple, cast
 
@@ -21,6 +20,9 @@ from asian_asteroid_destroyers.infrastructure.checkpointing import (
     CheckpointPayload,
     get_periodic_history_filename,
     get_periodic_logbook_filename,
+)
+from asian_asteroid_destroyers.infrastructure.unpickling import (
+    MainHydratingUnpickler,
 )
 
 
@@ -64,7 +66,10 @@ def load_resumption_workspace(
 
     print(f"Reading simulation workspace metadata: {target_checkpoint.name}")
     with gzip.open(target_checkpoint, "rb") as file:
-        payload = cast(CheckpointPayload, pickle.load(file))
+        payload = cast(
+            CheckpointPayload,
+            MainHydratingUnpickler(file).load(),
+        )
 
     algorithm = _load_algorithm(payload["algorithm_path"])
 
