@@ -12,7 +12,8 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     Logbook,
     TrainingResult,
 )
-from asian_asteroid_destroyers.infrastructure.checkpointing import (
+
+from .checkpointing import (
     EMERGENCY_HISTORY_FILENAME,
     EMERGENCY_LOGBOOK_FILENAME,
     EMERGENCY_RUNTIME_FILENAME,
@@ -21,9 +22,7 @@ from asian_asteroid_destroyers.infrastructure.checkpointing import (
     get_periodic_history_filename,
     get_periodic_logbook_filename,
 )
-from asian_asteroid_destroyers.infrastructure.unpickling import (
-    MainHydratingUnpickler,
-)
+from .unpickling import MainHydratingUnpickler
 
 
 class ResumptionWorkspace(NamedTuple):
