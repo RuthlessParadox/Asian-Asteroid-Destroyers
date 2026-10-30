@@ -1,10 +1,11 @@
+import sys
+
 import pytest
 from deap import base
 
 from asian_asteroid_destroyers.genetic_algorithm import (
     Fitness,
     clear_fitness_cache,
-    fitness as fitness_module,
     get_fitness_class,
 )
 
@@ -19,7 +20,12 @@ def configure_weights(request: pytest.FixtureRequest) -> None:
 
 @pytest.fixture(autouse=True)
 def clear_module_attributes(request: pytest.FixtureRequest) -> None:
-    request.addfinalizer(clear_fitness_cache)
+    clear_fitness_cache()
+
+    def finalizer() -> None:
+        clear_fitness_cache()
+
+    request.addfinalizer(finalizer)
 
 
 @pytest.mark.usefixtures("configure_weights")
@@ -93,10 +99,11 @@ def test_get_fitness_class_injects_into_sys_modules() -> None:
     weights: tuple[float, ...] = (1.0,)
     fitness_class = get_fitness_class(weights)
     class_name = fitness_class.__name__
+    main_module = sys.modules["__main__"]
 
-    assert hasattr(fitness_module, class_name)
-    assert getattr(fitness_module, class_name) is fitness_class
-    assert fitness_class.__module__ == fitness_module.__name__
+    assert hasattr(main_module, class_name)
+    assert getattr(main_module, class_name) is fitness_class
+    assert fitness_class.__module__ == "__main__"
 
 
 def test_get_fitness_class_returns_identical_class_for_same_weights() -> None:
@@ -175,11 +182,12 @@ def test_clear_fitness_cache_removes_classes_and_empties_dict() -> None:
     weights: tuple[float, ...] = (4.2,)
     fitness_class = get_fitness_class(weights)
     class_name = fitness_class.__name__
+    main_module = sys.modules["__main__"]
 
-    assert hasattr(fitness_module, class_name)
+    assert hasattr(main_module, class_name)
 
-    fitness_module.clear_fitness_cache()
-    assert not hasattr(fitness_module, class_name)
+    clear_fitness_cache()
+    assert not hasattr(main_module, class_name)
 
     new_class_instance = get_fitness_class(weights)
     assert new_class_instance is not fitness_class

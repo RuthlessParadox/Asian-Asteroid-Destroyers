@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from asian_asteroid_destroyers.genetic_algorithm import (
@@ -6,7 +8,6 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     clear_fitness_cache,
     clear_individual_cache,
     get_individual_class,
-    individual as individual_module,
 )
 
 
@@ -20,6 +21,9 @@ def configure_weights(request: pytest.FixtureRequest) -> None:
 
 @pytest.fixture(autouse=True)
 def clear_module_attributes(request: pytest.FixtureRequest) -> None:
+    clear_individual_cache()
+    clear_fitness_cache()
+
     def finalizer() -> None:
         clear_individual_cache()
         clear_fitness_cache()
@@ -84,10 +88,10 @@ def test_individual_list_mutations() -> None:
 @pytest.mark.usefixtures("configure_weights")
 def test_multi_objective_fitness_equality() -> None:
     Fitness.weights = (-1.0, 1.0, -1.0)
-    ind = Individual([1.0, 2.0, 3.0])
-    ind.fitness.values = (0.5, 10.0, -2.3)
+    individual = Individual([1.0, 2.0, 3.0])
+    individual.fitness.values = (0.5, 10.0, -2.3)
 
-    assert ind.fitness.values == (0.5, 10.0, -2.3)
+    assert individual.fitness.values == (0.5, 10.0, -2.3)
 
 
 def test_get_individual_class_creates_valid_subclass() -> None:
@@ -102,10 +106,11 @@ def test_get_individual_class_injects_into_sys_modules() -> None:
     weights: tuple[float, ...] = (1.0,)
     individual_class = get_individual_class(weights)
     class_name = individual_class.__name__
+    main_module = sys.modules["__main__"]
 
-    assert hasattr(individual_module, class_name)
-    assert getattr(individual_module, class_name) is individual_class
-    assert individual_class.__module__ == individual_module.__name__
+    assert hasattr(main_module, class_name)
+    assert getattr(main_module, class_name) is individual_class
+    assert individual_class.__module__ == "__main__"
 
 
 def test_get_individual_class_returns_identical_class_for_same_weights() -> (
@@ -176,11 +181,12 @@ def test_clear_individual_cache_removes_classes_and_empties_dict() -> None:
     weights: tuple[float, ...] = (4.2,)
     individual_class = get_individual_class(weights)
     class_name = individual_class.__name__
+    main_module = sys.modules["__main__"]
 
-    assert hasattr(individual_module, class_name)
+    assert hasattr(main_module, class_name)
 
-    individual_module.clear_individual_cache()
-    assert not hasattr(individual_module, class_name)
+    clear_individual_cache()
+    assert not hasattr(main_module, class_name)
 
     new_class_instance = get_individual_class(weights)
     assert new_class_instance is not individual_class

@@ -9,6 +9,7 @@ Gene = float
 
 class Individual(list[Gene]):
     fitness: Fitness
+    fitness_type: type[Fitness]
 
     def __init__(self, iterable: Iterable[Gene] | None = None) -> None:
         if iterable is not None:
@@ -22,38 +23,45 @@ class Individual(list[Gene]):
 _INDIVIDUAL_CLASS_CACHE: dict[tuple[float, ...], type[Individual]] = {}
 
 
+def _dynamic_individual_init(
+    self: Individual, iterable: Iterable[Gene] | None = None
+) -> None:
+    super(Individual, self).__init__(iterable or [])
+    self.fitness = self.fitness_type()
+
+
 def get_individual_class(weights: tuple[float, ...]) -> type[Individual]:
     if weights in _INDIVIDUAL_CLASS_CACHE:
         return _INDIVIDUAL_CLASS_CACHE[weights]
-    fitness_type = get_fitness_class(weights)
+
+    fitness_class = get_fitness_class(weights)
     clean_weight_string = Fitness.get_clean_weight_string(weights)
     class_name = f"DynamicIndividual_{clean_weight_string}"
 
-    def individual_init(
-        self: Individual,
-        iterable: Iterable[Gene] | None = None,
-    ) -> None:
-        super(Individual, self).__init__(iterable or [])
-        self.fitness = fitness_type()
+    class_dict = {
+        "__init__": _dynamic_individual_init,
+        "fitness_type": fitness_class,
+    }
 
     new_class = cast(
         type[Individual],
-        type(class_name, (Individual,), {"__init__": individual_init}),
+        type(class_name, (Individual,), class_dict),
     )
-    current_module = sys.modules[__name__]
-    setattr(current_module, class_name, new_class)
-    new_class.__module__ = __name__
+
+    main_module = sys.modules["__main__"]
+    setattr(main_module, class_name, new_class)
+    new_class.__module__ = "__main__"
     _INDIVIDUAL_CLASS_CACHE[weights] = new_class
     return new_class
 
 
 def clear_individual_cache() -> None:
-    current_module = sys.modules[__name__]
+    main_module = sys.modules["__main__"]
 
     for weight_key in list(_INDIVIDUAL_CLASS_CACHE.keys()):
         clean_weight_string = Fitness.get_clean_weight_string(weight_key)
         class_name = f"DynamicIndividual_{clean_weight_string}"
-        if hasattr(current_module, class_name):
-            delattr(current_module, class_name)
+        if hasattr(main_module, class_name):
+            delattr(main_module, class_name)
 
     _INDIVIDUAL_CLASS_CACHE.clear()
