@@ -1,18 +1,26 @@
+import gzip
 import importlib
 import pickle
 from pathlib import Path
 from typing import NamedTuple, cast
 
 import numpy as np
+import polars as pl
 
 from asian_asteroid_destroyers.genetic_algorithm import (
     EvolutionAlgorithm,
+    HistoryLogger,
+    Logbook,
     TrainingResult,
 )
 from asian_asteroid_destroyers.infrastructure.checkpointing import (
+    EMERGENCY_HISTORY_FILENAME,
+    EMERGENCY_LOGBOOK_FILENAME,
     EMERGENCY_RUNTIME_FILENAME,
     PERIODIC_RUNTIME_PATTERN,
     CheckpointPayload,
+    get_periodic_history_filename,
+    get_periodic_logbook_filename,
 )
 
 
@@ -55,12 +63,37 @@ def load_resumption_workspace(
     )
 
     print(f"Reading simulation workspace metadata: {target_checkpoint.name}")
-    with open(target_checkpoint, "rb") as file:
+    with gzip.open(target_checkpoint, "rb") as file:
         payload = cast(CheckpointPayload, pickle.load(file))
 
     algorithm = _load_algorithm(payload["algorithm_path"])
+
     last_generation = payload["generation"]
+
     saved_state = payload["state"]
+    if target_checkpoint.name == EMERGENCY_RUNTIME_FILENAME:
+        logbook_path = experiment_directory / EMERGENCY_LOGBOOK_FILENAME
+        history_path = experiment_directory / EMERGENCY_HISTORY_FILENAME
+    else:
+        logbook_path = experiment_directory / get_periodic_logbook_filename(
+            last_generation,
+        )
+        history_path = experiment_directory / get_periodic_history_filename(
+            last_generation,
+        )
+    rebuilt_logbook = Logbook()
+    if logbook_path.exists():
+        rebuilt_logbook.hydrate(pl.read_parquet(logbook_path))
+    rebuilt_history = HistoryLogger()
+    if history_path.exists():
+        rebuilt_history.hydrate(pl.read_parquet(history_path))
+    hydrated_state = TrainingResult(
+        final_population=saved_state.final_population,
+        logbook=rebuilt_logbook,
+        history_logger=rebuilt_history,
+        hall_of_fame=saved_state.hall_of_fame,
+    )
+
     bit_generator = np.random.PCG64()
     setattr(bit_generator, "state", payload["rng_state"])
     rng = np.random.Generator(bit_generator)
@@ -68,6 +101,6 @@ def load_resumption_workspace(
     return ResumptionWorkspace(
         algorithm=algorithm,
         last_generation=last_generation,
-        saved_state=saved_state,
+        saved_state=hydrated_state,
         rng=rng,
     )

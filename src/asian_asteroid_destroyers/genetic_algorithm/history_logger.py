@@ -70,6 +70,10 @@ class HistoryLogger:
             compression_level=3,
         )
 
+    def hydrate(self, dataframe: pl.DataFrame) -> None:
+        self._compile()
+        self._dataframes = [dataframe]
+
     @staticmethod
     def _get_expected_schema() -> dict[str, pl.DataType]:
         return {

@@ -1,4 +1,5 @@
 import datetime
+import gzip
 import pickle
 import sys
 from collections.abc import Mapping
@@ -13,15 +14,15 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     TrainingResult,
 )
 
-EMERGENCY_RUNTIME_FILENAME = "emergency_runtime.pkl"
+EMERGENCY_RUNTIME_FILENAME = "emergency_runtime.pkl.gz"
 EMERGENCY_LOGBOOK_FILENAME = "emergency_logbook.parquet"
 EMERGENCY_HISTORY_FILENAME = "emergency_history.parquet"
 
-PERIODIC_RUNTIME_PATTERN = "runtime_gen_*.pkl"
+PERIODIC_RUNTIME_PATTERN = "runtime_gen_*.pkl.gz"
 
 
 def get_periodic_runtime_filename(generation: int) -> str:
-    return f"runtime_gen_{generation}.pkl"
+    return f"runtime_gen_{generation}.pkl.gz"
 
 
 def get_periodic_logbook_filename(generation: int) -> str:
@@ -93,13 +94,14 @@ class EmergencySaver:
         payload_data: CheckpointPayload = {
             "algorithm_path": self._algorithm_path,
             "generation": self._last_known_generation,
-            "state": self._last_known_state,
+            "state": _create_lightweight_state(self._last_known_state),
             "rng_state": self._rng.bit_generator.state,
         }
-        with open(runtime_path, "wb") as file:
+        with gzip.open(runtime_path, "wb") as file:
             pickle.dump(payload_data, file)
         print(
-            f"   -> Complete runtime state pickling secured to: {runtime_path}"
+            "   -> Compressed complete runtime state secured to: "
+            + f"{runtime_path}"
         )
 
         print("Emergency checkpoint sequence completed. Exiting.")
@@ -136,13 +138,22 @@ def make_checkpoint_saver(
             payload_data: CheckpointPayload = {
                 "algorithm_path": algorithm_path,
                 "generation": generation,
-                "state": current_state,
+                "state": _create_lightweight_state(current_state),
                 "rng_state": rng.bit_generator.state,
             }
-            with open(runtime_path, "wb") as file:
+            with gzip.open(runtime_path, "wb") as file:
                 pickle.dump(payload_data, file)
 
     return saver_callback
+
+
+def _create_lightweight_state(state: TrainingResult) -> TrainingResult:
+    return TrainingResult(
+        final_population=state.final_population,
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=state.hall_of_fame,
+    )
 
 
 def create_experiment_directory(base_directory: str | Path = "./data") -> Path:
