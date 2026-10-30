@@ -2,8 +2,9 @@ import sys
 from collections.abc import Iterable
 from typing import cast
 
-from .fitness import Fitness, get_fitness_class
+from .fitness import Fitness, get_fitness_class, reconstruct_fitness_weights
 
+DYNAMIC_INDIVIDUAL_PREFIX = "DynamicIndividual_"
 Gene = float
 
 
@@ -36,7 +37,7 @@ def get_individual_class(weights: tuple[float, ...]) -> type[Individual]:
 
     fitness_class = get_fitness_class(weights)
     clean_weight_string = Fitness.get_clean_weight_string(weights)
-    class_name = f"DynamicIndividual_{clean_weight_string}"
+    class_name = f"{DYNAMIC_INDIVIDUAL_PREFIX}{clean_weight_string}"
 
     class_dict = {
         "__init__": _dynamic_individual_init,
@@ -60,8 +61,17 @@ def clear_individual_cache() -> None:
 
     for weight_key in list(_INDIVIDUAL_CLASS_CACHE.keys()):
         clean_weight_string = Fitness.get_clean_weight_string(weight_key)
-        class_name = f"DynamicIndividual_{clean_weight_string}"
+        class_name = f"{DYNAMIC_INDIVIDUAL_PREFIX}{clean_weight_string}"
         if hasattr(main_module, class_name):
             delattr(main_module, class_name)
 
     _INDIVIDUAL_CLASS_CACHE.clear()
+
+
+def is_dynamic_individual_name(name: str) -> bool:
+    return name.startswith(DYNAMIC_INDIVIDUAL_PREFIX)
+
+
+def reconstruct_individual_weights(name: str) -> tuple[float, ...]:
+    raw_weight_string = name[len(DYNAMIC_INDIVIDUAL_PREFIX) :]
+    return reconstruct_fitness_weights(raw_weight_string)

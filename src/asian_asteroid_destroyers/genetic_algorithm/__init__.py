@@ -21,6 +21,8 @@ from .fitness import (
     Fitness as Fitness,
     clear_fitness_cache as clear_fitness_cache,
     get_fitness_class as get_fitness_class,
+    is_dynamic_fitness_name as is_dynamic_fitness_name,
+    reconstruct_fitness_weights as reconstruct_fitness_weights,
 )
 from .hall_of_fame import HallOfFame as HallOfFame
 from .history_logger import HistoryLogger as HistoryLogger
@@ -28,6 +30,8 @@ from .individual import (
     Individual as Individual,
     clear_individual_cache as clear_individual_cache,
     get_individual_class as get_individual_class,
+    is_dynamic_individual_name as is_dynamic_individual_name,
+    reconstruct_individual_weights as reconstruct_individual_weights,
 )
 from .logbook import Logbook as Logbook, LogRow as LogRow, LogValue as LogValue
 from .mutation import (

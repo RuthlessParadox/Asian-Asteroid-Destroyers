@@ -5,6 +5,8 @@ from typing import cast
 from deap import base
 from typing_extensions import override
 
+DYNAMIC_FITNESS_PREFIX = "DynamicFitness_"
+
 
 class Fitness(base.Fitness):
     weights: tuple[float, ...] = ()
@@ -51,7 +53,7 @@ def get_fitness_class(weights: tuple[float, ...]) -> type[Fitness]:
     if weights in _FITNESS_CLASS_CACHE:
         return _FITNESS_CLASS_CACHE[weights]
     clean_weight_string = Fitness.get_clean_weight_string(weights)
-    class_name = f"DynamicFitness_{clean_weight_string}"
+    class_name = f"{DYNAMIC_FITNESS_PREFIX}{clean_weight_string}"
     new_class = cast(
         type[Fitness],
         type(class_name, (Fitness,), {"weights": weights}),
@@ -70,8 +72,37 @@ def clear_fitness_cache() -> None:
 
     for weight_key in list(_FITNESS_CLASS_CACHE.keys()):
         clean_weight_string = Fitness.get_clean_weight_string(weight_key)
-        class_name = f"DynamicFitness_{clean_weight_string}"
+        class_name = f"{DYNAMIC_FITNESS_PREFIX}{clean_weight_string}"
         if hasattr(main_module, class_name):
             delattr(main_module, class_name)
 
     _FITNESS_CLASS_CACHE.clear()
+
+
+def is_dynamic_fitness_name(name: str) -> bool:
+    return name.startswith(DYNAMIC_FITNESS_PREFIX)
+
+
+def reconstruct_fitness_weights(name: str) -> tuple[float, ...]:
+    raw_weight_string = (
+        name[len(DYNAMIC_FITNESS_PREFIX) :]
+        if name.startswith(DYNAMIC_FITNESS_PREFIX)
+        else name
+    )
+
+    parts = raw_weight_string.split("_")
+    weights: list[float] = []
+    i = 0
+    while i < len(parts):
+        value_str = parts[i]
+        if value_str.startswith("neg"):
+            value_str = "-" + value_str[3:]
+        if i + 1 < len(parts) and parts[i + 1].isdigit():
+            value_str = f"{value_str}.{parts[i + 1]}"
+            i += 1
+        try:
+            weights.append(float(value_str))
+        except ValueError:
+            pass
+        i += 1
+    return tuple(weights)
