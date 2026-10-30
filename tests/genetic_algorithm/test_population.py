@@ -7,6 +7,7 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     Individual,
     Population,
     clear_fitness_cache,
+    get_clean_weight_string,
     get_fitness_class,
     reweight_population,
 )
@@ -102,7 +103,7 @@ def test_reweight_population_empty_population() -> None:
 
     reweight_population(population, new_weights)
 
-    clean_weight_string = Fitness.get_clean_weight_string(new_weights)
+    clean_weight_string = get_clean_weight_string(new_weights)
     expected_class_name = f"DynamicFitness_{clean_weight_string}"
 
     main_module = sys.modules["__main__"]

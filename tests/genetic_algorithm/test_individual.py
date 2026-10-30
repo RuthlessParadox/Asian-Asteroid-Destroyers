@@ -8,6 +8,8 @@ from asian_asteroid_destroyers.genetic_algorithm import (
     clear_fitness_cache,
     clear_individual_cache,
     get_individual_class,
+    is_dynamic_individual_name,
+    reconstruct_individual_weights,
 )
 
 
@@ -190,3 +192,17 @@ def test_clear_individual_cache_removes_classes_and_empties_dict() -> None:
 
     new_class_instance = get_individual_class(weights)
     assert new_class_instance is not individual_class
+
+
+def test_is_dynamic_individual_name_matches_prefix() -> None:
+    assert is_dynamic_individual_name("DynamicIndividual_1_0")
+    assert not is_dynamic_individual_name("DynamicFitness_1_0")
+    assert not is_dynamic_individual_name("SomeOtherClassName")
+
+
+def test_reconstruct_individual_weights_extracts_tuple() -> None:
+    expected = (-0.5, 100.25)
+    class_name = "DynamicIndividual_neg0_5_100_25"
+
+    result = reconstruct_individual_weights(class_name)
+    assert result == expected
