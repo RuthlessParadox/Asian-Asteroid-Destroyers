@@ -5,6 +5,9 @@ from typing import cast
 from deap import base
 from typing_extensions import override
 
+from .cache_teardown import clear_dynamic_namespace_cache
+from .weight_naming import get_clean_weight_string
+
 DYNAMIC_FITNESS_PREFIX = "DynamicFitness_"
 
 
@@ -34,13 +37,6 @@ class Fitness(base.Fitness):
 
         super().__setattr__(name, value)
 
-    @staticmethod
-    def get_clean_weight_string(weights: tuple[float, ...]) -> str:
-        return "_".join(
-            str(weight).replace(".", "_").replace("-", "neg")
-            for weight in weights
-        )
-
 
 _FITNESS_CLASS_CACHE: dict[tuple[float, ...], type[Fitness]] = {}
 
@@ -52,7 +48,7 @@ def get_fitness_class(weights: tuple[float, ...]) -> type[Fitness]:
         )
     if weights in _FITNESS_CLASS_CACHE:
         return _FITNESS_CLASS_CACHE[weights]
-    clean_weight_string = Fitness.get_clean_weight_string(weights)
+    clean_weight_string = get_clean_weight_string(weights)
     class_name = f"{DYNAMIC_FITNESS_PREFIX}{clean_weight_string}"
     new_class = cast(
         type[Fitness],
@@ -68,15 +64,10 @@ def get_fitness_class(weights: tuple[float, ...]) -> type[Fitness]:
 
 
 def clear_fitness_cache() -> None:
-    main_module = sys.modules["__main__"]
-
-    for weight_key in list(_FITNESS_CLASS_CACHE.keys()):
-        clean_weight_string = Fitness.get_clean_weight_string(weight_key)
-        class_name = f"{DYNAMIC_FITNESS_PREFIX}{clean_weight_string}"
-        if hasattr(main_module, class_name):
-            delattr(main_module, class_name)
-
-    _FITNESS_CLASS_CACHE.clear()
+    generic_cache = cast(
+        dict[tuple[float, ...], type[object]], _FITNESS_CLASS_CACHE
+    )
+    clear_dynamic_namespace_cache(generic_cache, DYNAMIC_FITNESS_PREFIX)
 
 
 def is_dynamic_fitness_name(name: str) -> bool:

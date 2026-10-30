@@ -2,7 +2,9 @@ import sys
 from collections.abc import Iterable
 from typing import cast
 
+from .cache_teardown import clear_dynamic_namespace_cache
 from .fitness import Fitness, get_fitness_class, reconstruct_fitness_weights
+from .weight_naming import get_clean_weight_string
 
 DYNAMIC_INDIVIDUAL_PREFIX = "DynamicIndividual_"
 Gene = float
@@ -36,7 +38,7 @@ def get_individual_class(weights: tuple[float, ...]) -> type[Individual]:
         return _INDIVIDUAL_CLASS_CACHE[weights]
 
     fitness_class = get_fitness_class(weights)
-    clean_weight_string = Fitness.get_clean_weight_string(weights)
+    clean_weight_string = get_clean_weight_string(weights)
     class_name = f"{DYNAMIC_INDIVIDUAL_PREFIX}{clean_weight_string}"
 
     class_dict = {
@@ -57,15 +59,10 @@ def get_individual_class(weights: tuple[float, ...]) -> type[Individual]:
 
 
 def clear_individual_cache() -> None:
-    main_module = sys.modules["__main__"]
-
-    for weight_key in list(_INDIVIDUAL_CLASS_CACHE.keys()):
-        clean_weight_string = Fitness.get_clean_weight_string(weight_key)
-        class_name = f"{DYNAMIC_INDIVIDUAL_PREFIX}{clean_weight_string}"
-        if hasattr(main_module, class_name):
-            delattr(main_module, class_name)
-
-    _INDIVIDUAL_CLASS_CACHE.clear()
+    generic_cache = cast(
+        dict[tuple[float, ...], type[object]], _INDIVIDUAL_CLASS_CACHE
+    )
+    clear_dynamic_namespace_cache(generic_cache, DYNAMIC_INDIVIDUAL_PREFIX)
 
 
 def is_dynamic_individual_name(name: str) -> bool:

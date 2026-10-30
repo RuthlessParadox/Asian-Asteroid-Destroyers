@@ -3,6 +3,9 @@ from .algorithms import (
     TrainingResult as TrainingResult,
     run_simple_evolution as run_simple_evolution,
 )
+from .cache_teardown import (
+    clear_dynamic_namespace_cache as clear_dynamic_namespace_cache,
+)
 from .crossover import (
     cx_blend as cx_blend,
     cx_evolution_strategy_blend as cx_evolution_strategy_blend,
@@ -76,3 +79,4 @@ from .types import (
     PopulationGenerator as PopulationGenerator,
     SelectionOperator as SelectionOperator,
 )
+from .weight_naming import get_clean_weight_string as get_clean_weight_string
