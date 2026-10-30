@@ -133,3 +133,32 @@ def test_history_logger_string_representation(
     history_logger.record(generation=5, hall_of_fame=sample_hall_of_fame)
 
     assert str(history_logger) == str(history_logger.dataframe)
+
+
+def test_hydrate_restores_internal_dataframe() -> None:
+    mock_data = {
+        "generation": [10, 20],
+        "hall_of_fame": [
+            [{"rank": 1, "fitness": [1.2], "genome": [0.5]}],
+            [{"rank": 1, "fitness": [3.4], "genome": [0.6]}],
+        ],
+    }
+    schema = {
+        "generation": pl.Int64(),
+        "hall_of_fame": pl.List(
+            pl.Struct(
+                [
+                    pl.Field("rank", pl.Int64()),
+                    pl.Field("fitness", pl.List(pl.Float64())),
+                    pl.Field("genome", pl.List(pl.Float64())),
+                ]
+            )
+        ),
+    }
+    input_dataframe = pl.DataFrame(mock_data, schema=schema)
+
+    history_logger = HistoryLogger()
+    history_logger.hydrate(input_dataframe)
+
+    assert history_logger.dataframe.equals(input_dataframe)
+    assert history_logger.dataframe.height == 2

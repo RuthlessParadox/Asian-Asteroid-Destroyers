@@ -118,3 +118,31 @@ def test_string_representation_matches_dataframe_string(
     logbook.record(generation=1, stats=valid_stats)
 
     assert str(logbook) == str(logbook.dataframe)
+
+
+def test_hydrate_restores_internal_dataframe() -> None:
+    schema = {
+        "generation": pl.Int64(),
+        "max_fitness": pl.Float64(),
+        "min_fitness": pl.Float64(),
+        "mean_fitness": pl.Float64(),
+        "median_fitness": pl.Float64(),
+        "std_fitness": pl.Float64(),
+    }
+    input_dataframe = pl.DataFrame(
+        {
+            "generation": [1, 2],
+            "max_fitness": [12.5, 15.0],
+            "min_fitness": [2.0, 3.5],
+            "mean_fitness": [7.0, 9.2],
+            "median_fitness": [6.5, 9.0],
+            "std_fitness": [3.1, 4.0],
+        },
+        schema=schema,
+    )
+
+    logbook = Logbook()
+    logbook.hydrate(input_dataframe)
+
+    assert logbook.dataframe.equals(input_dataframe)
+    assert logbook.dataframe.height == 2
