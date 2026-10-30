@@ -16,3 +16,4 @@ from .resumption import (
     ResumptionWorkspace as ResumptionWorkspace,
     load_resumption_workspace as load_resumption_workspace,
 )
+from .unpickling import MainHydratingUnpickler as MainHydratingUnpickler
