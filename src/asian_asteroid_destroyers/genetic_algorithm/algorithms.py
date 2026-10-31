@@ -178,6 +178,8 @@ def _evaluate_invalid_fitness(
     invalid_individuals = [
         individual for individual in population if not individual.fitness.valid
     ]
+    if not invalid_individuals:
+        return
     fitnesses = toolbox.map(toolbox.evaluate, invalid_individuals)
     for individual, fitness in zip(invalid_individuals, fitnesses):
         individual.fitness.values = fitness
@@ -195,14 +197,8 @@ def _apply_crossover(
                 offspring[i - 1],
                 offspring[i],
             )
-            try:
-                del offspring[i - 1].fitness.values
-            except AttributeError:
-                pass
-            try:
-                del offspring[i].fitness.values
-            except AttributeError:
-                pass
+            del offspring[i - 1].fitness.values
+            del offspring[i].fitness.values
 
 
 def _apply_mutation(
@@ -214,10 +210,7 @@ def _apply_mutation(
     for i in range(len(offspring)):
         if rng.random() < mut_pb:
             (offspring[i],) = toolbox.mutate(offspring[i])
-            try:
-                del offspring[i].fitness.values
-            except AttributeError:
-                pass
+            del offspring[i].fitness.values
 
 
 def _record_generation_metrics(
