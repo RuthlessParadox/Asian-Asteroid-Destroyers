@@ -112,3 +112,52 @@ def test_get_config_invalid_types(
 
     with pytest.raises(TypeError):
         _ = get_config()
+
+
+def test_get_config_resume_blocks_forbidden_hyperparameters(
+    tmp_path: pathlib.Path,
+    valid_toml_content: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_file = tmp_path / "pyproject.toml"
+    _ = config_file.write_text(valid_toml_content, encoding="utf-8")
+
+    custom_args = [
+        "test_program",
+        "--resume",
+        str(tmp_path),
+        "--population-size",
+        "100",
+    ]
+    monkeypatch.setattr(sys, "argv", custom_args)
+
+    with pytest.raises(
+        ValueError,
+        match="Configuration Conflict: The following flags cannot be changed",
+    ):
+        _ = get_config()
+
+
+def test_get_config_resume_allows_extending_generations_and_saves(
+    tmp_path: pathlib.Path,
+    valid_toml_content: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config_file = tmp_path / "pyproject.toml"
+    _ = config_file.write_text(valid_toml_content, encoding="utf-8")
+
+    custom_args = [
+        "test_program",
+        "--resume",
+        str(tmp_path),
+        "--generations",
+        "500",
+        "--save-interval",
+        "25",
+    ]
+    monkeypatch.setattr(sys, "argv", custom_args)
+
+    result = get_config()
+    assert result.resume == str(tmp_path)
+    assert result.generations == 500
+    assert result.save_interval == 25

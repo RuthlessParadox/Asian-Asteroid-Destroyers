@@ -6,10 +6,17 @@ from pathlib import Path
 from types import ModuleType
 
 import numpy as np
+import polars as pl
 import pytest
 
-from asian_asteroid_destroyers.evokit import TrainingResult
+from asian_asteroid_destroyers.evokit import (
+    HistoryLogger,
+    Logbook,
+    TrainingResult,
+)
 from asian_asteroid_destroyers.infrastructure import (
+    EMERGENCY_HISTORY_FILENAME,
+    EMERGENCY_LOGBOOK_FILENAME,
     EMERGENCY_RUNTIME_FILENAME,
     CheckpointPayload,
     get_periodic_runtime_filename,
@@ -98,8 +105,8 @@ def test_load_resumption_workspace_prefers_emergency_snapshot(
     assert isinstance(workspace.rng, np.random.Generator)
     assert workspace.saved_state.final_population == []
 
-    assert workspace.saved_state.logbook is not None
-    assert workspace.saved_state.history_logger is not None
+    assert workspace.saved_state.logbook is None
+    assert workspace.saved_state.history_logger is None
 
 
 def test_load_resumption_workspace_fallback_to_max_periodic(
@@ -162,3 +169,33 @@ def test_load_resumption_workspace_invalid_algorithm_path_raises_import_error(
         match="Failed to dynamically import the target evolution module",
     ):
         _ = load_resumption_workspace(workspace_directory)
+
+
+def test_load_resumption_workspace_hydrates_logs_when_files_exist(
+    workspace_directory: Path,
+    sample_payload: CheckpointPayload,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    emergency_path = workspace_directory / EMERGENCY_RUNTIME_FILENAME
+    with gzip.open(emergency_path, "wb") as file:
+        pickle.dump(sample_payload, file)
+
+    mock_dataframe = pl.DataFrame({"generation": [1], "metric": [0.5]})
+
+    def mock_read_parquet(_path: object) -> pl.DataFrame:
+        return mock_dataframe
+
+    def mock_hydrate(_self: object, _dataframe: pl.DataFrame) -> None:
+        return None
+
+    monkeypatch.setattr("polars.read_parquet", mock_read_parquet)
+    monkeypatch.setattr(Logbook, "hydrate", mock_hydrate)
+    monkeypatch.setattr(HistoryLogger, "hydrate", mock_hydrate)
+
+    (workspace_directory / EMERGENCY_LOGBOOK_FILENAME).touch()
+    (workspace_directory / EMERGENCY_HISTORY_FILENAME).touch()
+
+    workspace = load_resumption_workspace(workspace_directory)
+
+    assert workspace.saved_state.logbook is not None
+    assert workspace.saved_state.history_logger is not None
