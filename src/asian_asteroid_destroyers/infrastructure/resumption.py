@@ -16,14 +16,17 @@ from asian_asteroid_destroyers.evokit import (
 from .checkpointing import (
     EMERGENCY_HISTORY_FILENAME,
     EMERGENCY_LOGBOOK_FILENAME,
-    EMERGENCY_RUNTIME_FILENAME,
-    PERIODIC_RUNTIME_PATTERN,
     CheckpointPayload,
     get_periodic_history_filename,
     get_periodic_logbook_filename,
 )
 from .parsing import extract_generation_number
 from .unpickling import MainHydratingUnpickler
+from .workspace import (
+    EMERGENCY_RUNTIME_FILENAME,
+    PERIODIC_RUNTIME_PATTERN,
+    POINTER_FILENAME,
+)
 
 
 class ResumptionWorkspace(NamedTuple):
@@ -51,20 +54,25 @@ def _load_algorithm(path_str: str) -> EvolutionAlgorithm[TrainingResult]:
 def load_resumption_workspace(
     experiment_directory: Path,
 ) -> ResumptionWorkspace:
-    pkl_files = list(experiment_directory.glob(PERIODIC_RUNTIME_PATTERN))
+    pointer_path = experiment_directory / POINTER_FILENAME
 
-    emergency_file = experiment_directory / EMERGENCY_RUNTIME_FILENAME
+    if pointer_path.exists():
+        checkpoint_name = pointer_path.read_text(encoding="utf-8").strip()
+        target_checkpoint = experiment_directory / checkpoint_name
+    else:
+        pkl_files = list(experiment_directory.glob(PERIODIC_RUNTIME_PATTERN))
+        emergency_file = experiment_directory / EMERGENCY_RUNTIME_FILENAME
 
-    if not pkl_files and not emergency_file.exists():
-        raise FileNotFoundError(
-            f"No valid state snapshots detected in {experiment_directory}"
+        if not pkl_files and not emergency_file.exists():
+            raise FileNotFoundError(
+                f"No valid state snapshots detected in {experiment_directory}"
+            )
+
+        target_checkpoint = (
+            emergency_file
+            if emergency_file.exists()
+            else max(pkl_files, key=extract_generation_number)
         )
-
-    target_checkpoint = (
-        emergency_file
-        if emergency_file.exists()
-        else max(pkl_files, key=extract_generation_number)
-    )
 
     print(f"Reading simulation workspace metadata: {target_checkpoint.name}")
     with gzip.open(target_checkpoint, "rb") as file:
@@ -74,7 +82,6 @@ def load_resumption_workspace(
         )
 
     algorithm = _load_algorithm(payload["algorithm_path"])
-
     last_generation = payload["generation"]
 
     if target_checkpoint.name == EMERGENCY_RUNTIME_FILENAME:
@@ -87,6 +94,7 @@ def load_resumption_workspace(
         history_path = experiment_directory / get_periodic_history_filename(
             last_generation,
         )
+
     rebuilt_logbook = None
     if logbook_path.exists():
         rebuilt_logbook = Logbook()
@@ -97,6 +105,7 @@ def load_resumption_workspace(
                 low_memory=True,
             )
         )
+
     rebuilt_history = None
     if history_path.exists():
         rebuilt_history = HistoryLogger()
@@ -107,6 +116,7 @@ def load_resumption_workspace(
                 low_memory=True,
             )
         )
+
     hydrated_state = TrainingResult(
         final_population=payload["final_population"],
         logbook=rebuilt_logbook,

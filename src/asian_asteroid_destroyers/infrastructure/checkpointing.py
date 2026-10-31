@@ -1,4 +1,3 @@
-import datetime
 import gzip
 import pickle
 import sys
@@ -17,16 +16,15 @@ from asian_asteroid_destroyers.evokit import (
 )
 
 from .parsing import extract_generation_number
+from .workspace import (
+    EMERGENCY_RUNTIME_FILENAME,
+    PERIODIC_RUNTIME_PATTERN,
+    get_periodic_runtime_filename,
+    update_active_pointer,
+)
 
-EMERGENCY_RUNTIME_FILENAME = "emergency_runtime.pkl.gz"
 EMERGENCY_LOGBOOK_FILENAME = "emergency_logbook.parquet"
 EMERGENCY_HISTORY_FILENAME = "emergency_history.parquet"
-
-PERIODIC_RUNTIME_PATTERN = "runtime_gen_*.pkl.gz"
-
-
-def get_periodic_runtime_filename(generation: int) -> str:
-    return f"runtime_gen_{generation}.pkl.gz"
 
 
 def get_periodic_logbook_filename(generation: int) -> str:
@@ -110,6 +108,11 @@ class EmergencySaver:
             + f"{runtime_path}"
         )
 
+        update_active_pointer(
+            self.output_directory,
+            EMERGENCY_RUNTIME_FILENAME,
+        )
+
         print("Emergency checkpoint sequence completed. Exiting.")
         sys.exit(0)
 
@@ -141,7 +144,8 @@ def make_checkpoint_saver(
                     path / get_periodic_history_filename(generation)
                 )
 
-            runtime_path = path / get_periodic_runtime_filename(generation)
+            runtime_name = get_periodic_runtime_filename(generation)
+            runtime_path = path / runtime_name
             payload_data: CheckpointPayload = {
                 "algorithm_path": algorithm_path,
                 "generation": generation,
@@ -151,6 +155,8 @@ def make_checkpoint_saver(
             }
             with gzip.open(runtime_path, "wb") as file:
                 pickle.dump(payload_data, file)
+
+            update_active_pointer(path, runtime_name)
 
             current_runtime_files = list(path.glob(PERIODIC_RUNTIME_PATTERN))
             for file_path in current_runtime_files:
@@ -185,10 +191,3 @@ def _safely_delete_generation_files(directory: Path, generation: int) -> None:
                 f"Warning: Could not prune intermediate asset {target.name}: "
                 + f"{error}"
             )
-
-
-def create_experiment_directory(base_directory: str | Path = "./data") -> Path:
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_directory = Path(base_directory) / f"run_{timestamp}"
-    run_directory.mkdir(parents=True, exist_ok=True)
-    return run_directory
