@@ -85,11 +85,13 @@ def load_resumption_workspace(
         history_path = experiment_directory / get_periodic_history_filename(
             last_generation,
         )
-    rebuilt_logbook = Logbook()
+    rebuilt_logbook = None
     if logbook_path.exists():
+        rebuilt_logbook = Logbook()
         rebuilt_logbook.hydrate(pl.read_parquet(logbook_path))
-    rebuilt_history = HistoryLogger()
+    rebuilt_history = None
     if history_path.exists():
+        rebuilt_history = HistoryLogger()
         rebuilt_history.hydrate(pl.read_parquet(history_path))
     hydrated_state = TrainingResult(
         final_population=saved_state.final_population,
