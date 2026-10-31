@@ -19,6 +19,7 @@ from asian_asteroid_destroyers.infrastructure import (
     EMERGENCY_HISTORY_FILENAME,
     EMERGENCY_LOGBOOK_FILENAME,
     EMERGENCY_RUNTIME_FILENAME,
+    POINTER_FILENAME,
     CheckpointPayload,
     EmergencySaver,
 )
@@ -127,10 +128,16 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
     expected_logbook_path = temp_output_dir / EMERGENCY_LOGBOOK_FILENAME
     expected_history_path = temp_output_dir / EMERGENCY_HISTORY_FILENAME
     expected_runtime_path = temp_output_dir / EMERGENCY_RUNTIME_FILENAME
+    expected_pointer_path = temp_output_dir / POINTER_FILENAME
 
     assert expected_logbook_path.is_file()
     assert expected_history_path.is_file()
     assert expected_runtime_path.is_file()
+    assert expected_pointer_path.is_file()
+    assert (
+        expected_pointer_path.read_text(encoding="utf-8").strip()
+        == EMERGENCY_RUNTIME_FILENAME
+    )
 
     with gzip.open(expected_runtime_path, "rb") as file:
         payload = cast(CheckpointPayload, pickle.load(file))

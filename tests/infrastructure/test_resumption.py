@@ -20,6 +20,7 @@ from asian_asteroid_destroyers.infrastructure import (
     EMERGENCY_HISTORY_FILENAME,
     EMERGENCY_LOGBOOK_FILENAME,
     EMERGENCY_RUNTIME_FILENAME,
+    POINTER_FILENAME,
     CheckpointPayload,
     get_periodic_runtime_filename,
     load_resumption_workspace,
@@ -80,13 +81,14 @@ def sample_payload() -> CheckpointPayload:
     }
 
 
-def test_load_resumption_workspace_prefers_emergency_snapshot(
+def test_load_resumption_workspace_follows_pointer_explicitly(
     workspace_directory: Path,
     sample_payload: CheckpointPayload,
 ) -> None:
     periodic_payload = sample_payload.copy()
     periodic_payload["generation"] = 20
-    periodic_path = workspace_directory / get_periodic_runtime_filename(20)
+    periodic_name = get_periodic_runtime_filename(20)
+    periodic_path = workspace_directory / periodic_name
     with gzip.open(periodic_path, "wb") as file:
         pickle.dump(periodic_payload, file)
 
@@ -95,6 +97,11 @@ def test_load_resumption_workspace_prefers_emergency_snapshot(
     emergency_path = workspace_directory / EMERGENCY_RUNTIME_FILENAME
     with gzip.open(emergency_path, "wb") as file:
         pickle.dump(emergency_payload, file)
+
+    _ = (workspace_directory / POINTER_FILENAME).write_text(
+        EMERGENCY_RUNTIME_FILENAME,
+        encoding="utf-8",
+    )
 
     workspace = load_resumption_workspace(workspace_directory)
 
@@ -110,7 +117,7 @@ def test_load_resumption_workspace_prefers_emergency_snapshot(
     assert workspace.saved_state.history_logger is None
 
 
-def test_load_resumption_workspace_fallback_to_max_periodic(
+def test_load_resumption_workspace_fallback_when_pointer_missing(
     workspace_directory: Path,
     sample_payload: CheckpointPayload,
 ) -> None:
@@ -123,6 +130,8 @@ def test_load_resumption_workspace_fallback_to_max_periodic(
         )
         with gzip.open(file_path, "wb") as file:
             pickle.dump(payload, file)
+
+    assert not (workspace_directory / POINTER_FILENAME).exists()
 
     workspace = load_resumption_workspace(workspace_directory)
 
@@ -149,6 +158,11 @@ def test_load_resumption_workspace_rng_state_restoration(
     with gzip.open(emergency_path, "wb") as file:
         pickle.dump(sample_payload, file)
 
+    _ = (workspace_directory / POINTER_FILENAME).write_text(
+        EMERGENCY_RUNTIME_FILENAME,
+        encoding="utf-8",
+    )
+
     workspace = load_resumption_workspace(workspace_directory)
 
     expected_rng = np.random.Generator(np.random.PCG64(seed=12345))
@@ -165,6 +179,11 @@ def test_load_resumption_workspace_invalid_algorithm_path_raises_import_error(
     with gzip.open(emergency_path, "wb") as file:
         pickle.dump(sample_payload, file)
 
+    _ = (workspace_directory / POINTER_FILENAME).write_text(
+        EMERGENCY_RUNTIME_FILENAME,
+        encoding="utf-8",
+    )
+
     with pytest.raises(
         ImportError,
         match="Failed to dynamically import the target evolution module",
@@ -180,6 +199,11 @@ def test_load_resumption_workspace_hydrates_logs_when_files_exist(
     emergency_path = workspace_directory / EMERGENCY_RUNTIME_FILENAME
     with gzip.open(emergency_path, "wb") as file:
         pickle.dump(sample_payload, file)
+
+    _ = (workspace_directory / POINTER_FILENAME).write_text(
+        EMERGENCY_RUNTIME_FILENAME,
+        encoding="utf-8",
+    )
 
     mock_dataframe = pl.DataFrame({"generation": [1], "metric": [0.5]})
 
@@ -250,6 +274,10 @@ def test_load_resumption_workspace_enforces_memory_optimizations(
     with gzip.open(emergency_path, "wb") as file:
         pickle.dump(sample_payload, file)
 
+    _ = (workspace_directory / POINTER_FILENAME).write_text(
+        EMERGENCY_RUNTIME_FILENAME,
+        encoding="utf-8",
+    )
     (workspace_directory / EMERGENCY_LOGBOOK_FILENAME).touch()
 
     captured_kwargs: dict[str, object] = {}

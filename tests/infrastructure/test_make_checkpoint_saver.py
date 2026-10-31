@@ -15,6 +15,7 @@ from asian_asteroid_destroyers.evokit import (
     TrainingResult,
 )
 from asian_asteroid_destroyers.infrastructure import (
+    POINTER_FILENAME,
     CheckpointPayload,
     get_periodic_history_filename,
     get_periodic_logbook_filename,
@@ -113,10 +114,15 @@ def test_saver_callback_saves_on_matching_interval(
     expected_logbook = output_directory / get_periodic_logbook_filename(10)
     expected_history = output_directory / get_periodic_history_filename(10)
     expected_runtime = output_directory / get_periodic_runtime_filename(10)
+    expected_pointer = output_directory / POINTER_FILENAME
 
     assert expected_logbook.is_file()
     assert expected_history.is_file()
     assert expected_runtime.is_file()
+    assert expected_pointer.is_file()
+    assert expected_pointer.read_text(
+        encoding="utf-8"
+    ).strip() == get_periodic_runtime_filename(10)
 
     with gzip.open(expected_runtime, "rb") as file:
         payload = cast(CheckpointPayload, pickle.load(file))
@@ -186,7 +192,8 @@ def test_saver_callback_handles_none_components(
     written_files = [
         file for file in output_directory.iterdir() if file.is_file()
     ]
-    assert len(written_files) == 1
+    assert len(written_files) == 2
+    assert (output_directory / POINTER_FILENAME).is_file()
 
 
 def test_saver_callback_prunes_intermediate_generations(
