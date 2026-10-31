@@ -36,6 +36,7 @@ class EvolutionAlgorithm(Protocol[R_co]):
         *,
         seed: int | np.random.Generator | None = None,
         hall_of_fame: HallOfFame | None = None,
+        statistics: Statistics | None = None,
         logbook: Logbook | None = None,
         history_logger: HistoryLogger | None = None,
         checkpoint_callback: Callable[[int, R_co], None] | None = None,
