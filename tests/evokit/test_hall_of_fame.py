@@ -1,6 +1,6 @@
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     HallOfFame,
     Individual,
     clear_individual_cache,

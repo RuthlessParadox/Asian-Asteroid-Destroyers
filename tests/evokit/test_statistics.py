@@ -3,7 +3,7 @@ from collections.abc import Callable, Sequence
 import numpy as np
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     Individual,
     Statistics,
     clear_fitness_cache,

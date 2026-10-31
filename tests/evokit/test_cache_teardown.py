@@ -1,8 +1,6 @@
 import sys
 
-from asian_asteroid_destroyers.genetic_algorithm import (
-    clear_dynamic_namespace_cache,
-)
+from asian_asteroid_destroyers.evokit import clear_dynamic_namespace_cache
 
 
 def test_clear_dynamic_namespace_cache_purges_attributes() -> None:

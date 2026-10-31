@@ -8,9 +8,7 @@ from types import ModuleType
 import numpy as np
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm import (
-    TrainingResult,
-)
+from asian_asteroid_destroyers.evokit import TrainingResult
 from asian_asteroid_destroyers.infrastructure import (
     EMERGENCY_RUNTIME_FILENAME,
     CheckpointPayload,

@@ -3,7 +3,7 @@ import sys
 import pytest
 from deap import base
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     Fitness,
     clear_fitness_cache,
     get_fitness_class,

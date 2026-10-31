@@ -4,7 +4,7 @@ import dill
 import numpy as np
 from pathos.multiprocessing import ProcessPool
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     HistoryLogger,
     Individual,
     Logbook,

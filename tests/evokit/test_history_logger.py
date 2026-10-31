@@ -5,7 +5,7 @@ from typing import TypedDict, cast
 import polars as pl
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     HallOfFame,
     HistoryLogger,
     clear_fitness_cache,

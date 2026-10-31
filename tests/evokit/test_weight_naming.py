@@ -1,4 +1,4 @@
-from asian_asteroid_destroyers.genetic_algorithm import get_clean_weight_string
+from asian_asteroid_destroyers.evokit import get_clean_weight_string
 
 
 def test_weight_naming_handles_integers() -> None:

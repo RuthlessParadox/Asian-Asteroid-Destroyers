@@ -7,7 +7,7 @@ from typing import cast
 import numpy as np
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     TrainingResult,
     clear_fitness_cache,
     clear_individual_cache,

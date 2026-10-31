@@ -6,7 +6,7 @@ from typing import NamedTuple, cast
 import numpy as np
 import polars as pl
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     EvolutionAlgorithm,
     HistoryLogger,
     Logbook,

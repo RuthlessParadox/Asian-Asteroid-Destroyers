@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     Individual,
     Population,
     Toolbox,
@@ -89,23 +89,22 @@ def test_build_toolbox_with_defaults(
 ) -> None:
     mock_get_individual_class = MagicMock(return_value=mock_individual_class)
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox"
-        + ".get_individual_class",
+        "asian_asteroid_destroyers.evokit.toolbox" + ".get_individual_class",
         mock_get_individual_class,
     )
     mock_mate = MagicMock()
     mock_mutate = MagicMock()
     mock_select = MagicMock()
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox.cx_two_point",
+        "asian_asteroid_destroyers.evokit.toolbox.cx_two_point",
         MagicMock(return_value=mock_mate),
     )
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox.mut_gaussian",
+        "asian_asteroid_destroyers.evokit.toolbox.mut_gaussian",
         MagicMock(return_value=mock_mutate),
     )
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox.sel_tournament",
+        "asian_asteroid_destroyers.evokit.toolbox.sel_tournament",
         MagicMock(return_value=mock_select),
     )
 
@@ -134,8 +133,7 @@ def test_build_toolbox_with_custom_dependencies(
 ) -> None:
     mock_get_individual_class = MagicMock(return_value=mock_individual_class)
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox"
-        + ".get_individual_class",
+        "asian_asteroid_destroyers.evokit.toolbox" + ".get_individual_class",
         mock_get_individual_class,
     )
     mock_individual_factory = MagicMock()
@@ -170,7 +168,7 @@ def test_default_individual_factory_via_build(
 ) -> None:
     mock_random = MagicMock(side_effect=[0.1, 0.2, 0.3])
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox.random.random",
+        "asian_asteroid_destroyers.evokit.toolbox.random.random",
         mock_random,
     )
 
@@ -186,14 +184,13 @@ def test_default_population_factory_via_build(
     mock_individual_class: MagicMock,
 ) -> None:
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox"
-        + ".get_individual_class",
+        "asian_asteroid_destroyers.evokit.toolbox" + ".get_individual_class",
         MagicMock(return_value=mock_individual_class),
     )
     mock_population = MagicMock(spec=Population)
     mock_init_repeat = MagicMock(return_value=mock_population)
     monkeypatch.setattr(
-        "asian_asteroid_destroyers.genetic_algorithm.toolbox.tools.initRepeat",
+        "asian_asteroid_destroyers.evokit.toolbox.tools.initRepeat",
         mock_init_repeat,
     )
 

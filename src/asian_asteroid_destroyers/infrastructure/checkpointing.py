@@ -9,7 +9,7 @@ from typing import Callable, TypedDict
 
 import numpy as np
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     EvolutionAlgorithm,
     TrainingResult,
 )

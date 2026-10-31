@@ -4,7 +4,7 @@ from typing import cast
 
 from typing_extensions import override
 
-from asian_asteroid_destroyers.genetic_algorithm import (
+from asian_asteroid_destroyers.evokit import (
     get_individual_class,
     is_dynamic_fitness_name,
     is_dynamic_individual_name,

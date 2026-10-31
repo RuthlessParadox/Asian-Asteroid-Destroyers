@@ -4,10 +4,7 @@ from pathlib import Path
 import polars as pl
 import pytest
 
-from asian_asteroid_destroyers.genetic_algorithm import (
-    GenerationStats,
-    Logbook,
-)
+from asian_asteroid_destroyers.evokit import GenerationStats, Logbook
 
 
 @pytest.fixture
