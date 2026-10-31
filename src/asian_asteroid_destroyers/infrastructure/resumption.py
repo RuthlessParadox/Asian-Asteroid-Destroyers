@@ -101,11 +101,23 @@ def load_resumption_workspace(
     rebuilt_logbook = None
     if logbook_path.exists():
         rebuilt_logbook = Logbook()
-        rebuilt_logbook.hydrate(pl.read_parquet(logbook_path))
+        rebuilt_logbook.hydrate(
+            pl.read_parquet(
+                logbook_path,
+                memory_map=True,
+                low_memory=True,
+            )
+        )
     rebuilt_history = None
     if history_path.exists():
         rebuilt_history = HistoryLogger()
-        rebuilt_history.hydrate(pl.read_parquet(history_path))
+        rebuilt_history.hydrate(
+            pl.read_parquet(
+                history_path,
+                memory_map=True,
+                low_memory=True,
+            )
+        )
     hydrated_state = TrainingResult(
         final_population=payload["final_population"],
         logbook=rebuilt_logbook,
