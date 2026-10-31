@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import sys
 from dataclasses import dataclass
 from typing import cast
 
@@ -89,6 +90,23 @@ def _parse_args(baseline: _EvolutionConfig) -> RuntimeArgs:
     mut_pb = cast(float, namespace.mut_pb)
     gene_size = cast(int, namespace.gene_size)
     resume = cast(str | None, namespace.resume)
+
+    if resume is not None:
+        forbidden_resume_flags = {
+            "--population-size",
+            "--cx-pb",
+            "--mut-pb",
+            "--gene-size",
+        }
+        conflicting_flags = forbidden_resume_flags.intersection(sys.argv)
+        if conflicting_flags:
+            flag_str = ", ".join(conflicting_flags)
+            raise ValueError(
+                "Configuration Conflict: The following flags cannot be "
+                + f"changed when resuming an existing run: [{flag_str}]. "
+                + "To alter hyperparameters, you must initiate "
+                + "a fresh training run."
+            )
 
     return RuntimeArgs(
         generations=generations,
