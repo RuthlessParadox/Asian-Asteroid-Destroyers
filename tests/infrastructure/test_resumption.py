@@ -239,3 +239,47 @@ def test_load_resumption_workspace_raises_value_error_on_malformed_filename(
         match="Malformed or corrupted checkpoint filename encountered",
     ):
         _ = load_resumption_workspace(workspace_directory)
+
+
+def test_load_resumption_workspace_enforces_memory_optimizations(
+    workspace_directory: Path,
+    sample_payload: CheckpointPayload,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    emergency_path = workspace_directory / EMERGENCY_RUNTIME_FILENAME
+    with gzip.open(emergency_path, "wb") as file:
+        pickle.dump(sample_payload, file)
+
+    (workspace_directory / EMERGENCY_LOGBOOK_FILENAME).touch()
+
+    captured_kwargs: dict[str, object] = {}
+
+    def spy_read_parquet(
+        _path: object,
+        *_args: object,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        captured_kwargs.update(kwargs)
+        return pl.DataFrame({"generation": [1]})
+
+    def mock_hydrate(_self: object, _dataframe: pl.DataFrame) -> None:
+        return None
+
+    monkeypatch.setattr("polars.read_parquet", spy_read_parquet)
+    monkeypatch.setattr(Logbook, "hydrate", mock_hydrate)
+
+    _ = load_resumption_workspace(workspace_directory)
+
+    assert "low_memory" in captured_kwargs, (
+        "low_memory option was omitted from pl.read_parquet"
+    )
+    assert captured_kwargs["low_memory"] is True, (
+        "low_memory must be explicitly set to True"
+    )
+
+    assert "memory_map" in captured_kwargs, (
+        "memory_map option was omitted from pl.read_parquet"
+    )
+    assert captured_kwargs["memory_map"] is True, (
+        "memory_map must be explicitly set to True"
+    )
