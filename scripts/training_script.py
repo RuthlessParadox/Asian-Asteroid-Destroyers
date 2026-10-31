@@ -41,6 +41,16 @@ def main() -> None:
         print(f"Resuming evolution context from: {data_directory.name}")
 
         workspace = load_resumption_workspace(data_directory)
+
+        if args.generations <= workspace.last_generation:
+            raise ValueError(
+                "Horizon Conflict: Your target limit "
+                + f"'--generations {args.generations}' has already been "
+                + "reached or exceeded by this checkpoint (Current progress: "
+                + f"generation {workspace.last_generation}). Please supply a "
+                + "higher '--generations' value to extend training."
+            )
+
         algorithm = workspace.algorithm
         start_generation = workspace.last_generation + 1
         rng = workspace.rng
