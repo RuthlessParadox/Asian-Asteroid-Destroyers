@@ -183,7 +183,11 @@ def test_load_resumption_workspace_hydrates_logs_when_files_exist(
 
     mock_dataframe = pl.DataFrame({"generation": [1], "metric": [0.5]})
 
-    def mock_read_parquet(_path: object) -> pl.DataFrame:
+    def mock_read_parquet(
+        _path: object,
+        *_args: object,
+        **_kwargs: object,
+    ) -> pl.DataFrame:
         return mock_dataframe
 
     def mock_hydrate(_self: object, _dataframe: pl.DataFrame) -> None:
