@@ -10,7 +10,9 @@ import polars as pl
 import pytest
 
 from asian_asteroid_destroyers.evokit import (
+    HallOfFame,
     HistoryLogger,
+    Individual,
     Logbook,
     TrainingResult,
 )
@@ -67,18 +69,13 @@ def workspace_directory(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def sample_payload() -> CheckpointPayload:
-    training_state = TrainingResult(
-        final_population=[],
-        logbook=None,
-        history_logger=None,
-        hall_of_fame=None,
-    )
     rng_state = np.random.default_rng(seed=42).bit_generator.state
 
     return {
         "algorithm_path": _MOCK_FULL_PATH,
         "generation": 40,
-        "state": training_state,
+        "final_population": [Individual([0.0]), Individual([1.0])],
+        "hall_of_fame": HallOfFame(max_size=1),
         "rng_state": rng_state,
     }
 
@@ -103,7 +100,11 @@ def test_load_resumption_workspace_prefers_emergency_snapshot(
 
     assert workspace.last_generation == 42
     assert isinstance(workspace.rng, np.random.Generator)
-    assert workspace.saved_state.final_population == []
+    assert [
+        list(individual)
+        for individual in workspace.saved_state.final_population
+    ] == [[0.0], [1.0]]
+    assert isinstance(workspace.saved_state.hall_of_fame, HallOfFame)
 
     assert workspace.saved_state.logbook is None
     assert workspace.saved_state.history_logger is None

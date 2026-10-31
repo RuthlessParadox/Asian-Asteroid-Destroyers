@@ -74,7 +74,6 @@ def load_resumption_workspace(
 
     last_generation = payload["generation"]
 
-    saved_state = payload["state"]
     if target_checkpoint.name == EMERGENCY_RUNTIME_FILENAME:
         logbook_path = experiment_directory / EMERGENCY_LOGBOOK_FILENAME
         history_path = experiment_directory / EMERGENCY_HISTORY_FILENAME
@@ -94,10 +93,10 @@ def load_resumption_workspace(
         rebuilt_history = HistoryLogger()
         rebuilt_history.hydrate(pl.read_parquet(history_path))
     hydrated_state = TrainingResult(
-        final_population=saved_state.final_population,
+        final_population=payload["final_population"],
         logbook=rebuilt_logbook,
         history_logger=rebuilt_history,
-        hall_of_fame=saved_state.hall_of_fame,
+        hall_of_fame=payload["hall_of_fame"],
     )
 
     bit_generator = np.random.PCG64()

@@ -9,7 +9,9 @@ import pytest
 
 from asian_asteroid_destroyers.evokit import (
     EvolutionAlgorithm,
+    HallOfFame,
     HistoryLogger,
+    Individual,
     Logbook,
     TrainingResult,
 )
@@ -35,6 +37,11 @@ def sample_logbook() -> Logbook:
 @pytest.fixture
 def sample_history_logger() -> HistoryLogger:
     return HistoryLogger(flush_interval=10)
+
+
+@pytest.fixture
+def sample_hall_of_fame() -> HallOfFame:
+    return HallOfFame(max_size=1)
 
 
 @pytest.fixture
@@ -93,6 +100,7 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
     temp_output_dir: Path,
     sample_logbook: Logbook,
     sample_history_logger: HistoryLogger,
+    sample_hall_of_fame: HallOfFame,
     shared_rng: np.random.Generator,
     mock_algorithm: EvolutionAlgorithm[TrainingResult],
 ) -> None:
@@ -103,10 +111,10 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
     )
 
     state = TrainingResult(
-        final_population=[],
+        final_population=[Individual([1.0, 2.0]), Individual([3.0, 4.0])],
         logbook=sample_logbook,
         history_logger=sample_history_logger,
-        hall_of_fame=None,
+        hall_of_fame=sample_hall_of_fame,
     )
 
     emergency_saver.update_state(generation=42, state=state)
@@ -132,9 +140,10 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
             == "test_package.mock_module.mock_evolution_loop"
         )
         assert payload["rng_state"] == shared_rng.bit_generator.state
-
-        assert payload["state"].logbook is None
-        assert payload["state"].history_logger is None
+        assert [
+            list(individual) for individual in payload["final_population"]
+        ] == [[1.0, 2.0], [3.0, 4.0]]
+        assert isinstance(payload["hall_of_fame"], HallOfFame)
 
 
 def test_handle_interrupt_handles_missing_loggers_gracefully(

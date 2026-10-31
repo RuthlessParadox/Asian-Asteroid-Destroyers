@@ -8,7 +8,9 @@ import pytest
 
 from asian_asteroid_destroyers.evokit import (
     EvolutionAlgorithm,
+    HallOfFame,
     HistoryLogger,
+    Individual,
     Logbook,
     TrainingResult,
 )
@@ -40,6 +42,11 @@ def sample_logbook() -> Logbook:
 @pytest.fixture
 def sample_history() -> HistoryLogger:
     return HistoryLogger(flush_interval=1)
+
+
+@pytest.fixture
+def sample_hall_of_fame() -> HallOfFame:
+    return HallOfFame(max_size=1)
 
 
 @pytest.fixture
@@ -83,6 +90,7 @@ def test_saver_callback_saves_on_matching_interval(
     tmp_path: Path,
     sample_logbook: Logbook,
     sample_history: HistoryLogger,
+    sample_hall_of_fame: HallOfFame,
     shared_rng: np.random.Generator,
     mock_algorithm: EvolutionAlgorithm[TrainingResult],
 ) -> None:
@@ -95,10 +103,10 @@ def test_saver_callback_saves_on_matching_interval(
     )
 
     state = TrainingResult(
-        final_population=[],
+        final_population=[Individual([0.5, 0.5]), Individual([0.1, 0.9])],
         logbook=sample_logbook,
         history_logger=sample_history,
-        hall_of_fame=None,
+        hall_of_fame=sample_hall_of_fame,
     )
     checkpoint_saver(10, state)
 
@@ -118,8 +126,10 @@ def test_saver_callback_saves_on_matching_interval(
             == "test_package.mock_module.periodic_evolution_loop"
         )
         assert payload["rng_state"] == shared_rng.bit_generator.state
-        assert payload["state"].logbook is None
-        assert payload["state"].history_logger is None
+        assert [
+            list(individual) for individual in payload["final_population"]
+        ] == [[0.5, 0.5], [0.1, 0.9]]
+        assert isinstance(payload["hall_of_fame"], HallOfFame)
 
 
 def test_saver_callback_skips_on_non_matching_interval(
