@@ -76,14 +76,14 @@ def test_make_checkpoint_saver_creates_directory(
     shared_rng: np.random.Generator,
     mock_algorithm: EvolutionAlgorithm[TrainingResult],
 ) -> None:
-    output_dir = tmp_path / "checkpoints"
+    output_directory = tmp_path / "checkpoints"
     _ = make_checkpoint_saver(
-        output_directory=output_dir,
+        output_directory=output_directory,
         rng=shared_rng,
         algorithm=mock_algorithm,
     )
 
-    assert output_dir.is_dir()
+    assert output_directory.is_dir()
 
 
 def test_saver_callback_saves_on_matching_interval(
@@ -94,9 +94,9 @@ def test_saver_callback_saves_on_matching_interval(
     shared_rng: np.random.Generator,
     mock_algorithm: EvolutionAlgorithm[TrainingResult],
 ) -> None:
-    output_dir = tmp_path / "checkpoints"
+    output_directory = tmp_path / "checkpoints"
     checkpoint_saver = make_checkpoint_saver(
-        output_directory=output_dir,
+        output_directory=output_directory,
         rng=shared_rng,
         algorithm=mock_algorithm,
         save_interval=10,
@@ -110,9 +110,9 @@ def test_saver_callback_saves_on_matching_interval(
     )
     checkpoint_saver(10, state)
 
-    expected_logbook = output_dir / get_periodic_logbook_filename(10)
-    expected_history = output_dir / get_periodic_history_filename(10)
-    expected_runtime = output_dir / get_periodic_runtime_filename(10)
+    expected_logbook = output_directory / get_periodic_logbook_filename(10)
+    expected_history = output_directory / get_periodic_history_filename(10)
+    expected_runtime = output_directory / get_periodic_runtime_filename(10)
 
     assert expected_logbook.is_file()
     assert expected_history.is_file()
@@ -139,9 +139,9 @@ def test_saver_callback_skips_on_non_matching_interval(
     shared_rng: np.random.Generator,
     mock_algorithm: EvolutionAlgorithm[TrainingResult],
 ) -> None:
-    output_dir = tmp_path / "checkpoints"
+    output_directory = tmp_path / "checkpoints"
     checkpoint_saver = make_checkpoint_saver(
-        output_directory=output_dir,
+        output_directory=output_directory,
         rng=shared_rng,
         algorithm=mock_algorithm,
         save_interval=10,
@@ -155,7 +155,7 @@ def test_saver_callback_skips_on_non_matching_interval(
     )
     checkpoint_saver(5, state)
 
-    written_files = list(output_dir.iterdir())
+    written_files = list(output_directory.iterdir())
     assert len(written_files) == 0
 
 
@@ -164,9 +164,9 @@ def test_saver_callback_handles_none_components(
     shared_rng: np.random.Generator,
     mock_algorithm: EvolutionAlgorithm[TrainingResult],
 ) -> None:
-    output_dir = tmp_path / "checkpoints"
+    output_directory = tmp_path / "checkpoints"
     checkpoint_saver = make_checkpoint_saver(
-        output_directory=output_dir,
+        output_directory=output_directory,
         rng=shared_rng,
         algorithm=mock_algorithm,
         save_interval=1,
@@ -180,8 +180,95 @@ def test_saver_callback_handles_none_components(
     )
     checkpoint_saver(1, state)
 
-    expected_runtime = output_dir / get_periodic_runtime_filename(1)
+    expected_runtime = output_directory / get_periodic_runtime_filename(1)
     assert expected_runtime.is_file()
 
-    written_files = [file for file in output_dir.iterdir() if file.is_file()]
+    written_files = [
+        file for file in output_directory.iterdir() if file.is_file()
+    ]
     assert len(written_files) == 1
+
+
+def test_saver_callback_prunes_intermediate_generations(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
+    state = TrainingResult(
+        final_population=[],
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=None,
+    )
+
+    checkpoint_saver(10, state)
+    checkpoint_saver(20, state)
+
+    assert (output_directory / get_periodic_runtime_filename(10)).is_file()
+
+    checkpoint_saver(30, state)
+
+    assert not (output_directory / get_periodic_runtime_filename(10)).is_file()
+    assert (output_directory / get_periodic_runtime_filename(20)).is_file()
+    assert (output_directory / get_periodic_runtime_filename(30)).is_file()
+
+
+def test_saver_callback_retains_milestone_generations(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
+    state = TrainingResult(
+        final_population=[],
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=None,
+    )
+
+    checkpoint_saver(100, state)
+    checkpoint_saver(110, state)
+    checkpoint_saver(120, state)
+
+    assert (output_directory / get_periodic_runtime_filename(100)).is_file()
+
+
+def test_saver_callback_heals_previously_locked_or_missed_files(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
+    state = TrainingResult(
+        final_population=[],
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=None,
+    )
+
+    orphaned_file = output_directory / get_periodic_runtime_filename(10)
+    orphaned_file.touch()
+    assert orphaned_file.is_file()
+
+    checkpoint_saver(50, state)
+
+    assert not orphaned_file.is_file()
