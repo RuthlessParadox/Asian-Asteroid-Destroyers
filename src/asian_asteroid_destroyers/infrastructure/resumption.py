@@ -32,6 +32,18 @@ class ResumptionWorkspace(NamedTuple):
     rng: np.random.Generator
 
 
+def _extract_generation_number(path: Path) -> int:
+    try:
+        raw_generation = path.stem.split("_gen_")[1].split(".")[0]
+        return int(raw_generation)
+    except (IndexError, ValueError) as error:
+        raise ValueError(
+            "Malformed or corrupted checkpoint filename encountered: "
+            + f"'{path.name}'. Ensure file follows the "
+            + "'runtime_gen_<integer>.pkl.gz' convention."
+        ) from error
+
+
 def _load_algorithm(path_str: str) -> EvolutionAlgorithm[TrainingResult]:
     try:
         module_path, function_name = path_str.rsplit(".", 1)
@@ -60,7 +72,9 @@ def load_resumption_workspace(
         )
 
     target_checkpoint = (
-        emergency_file if emergency_file.exists() else max(pkl_files)
+        emergency_file
+        if emergency_file.exists()
+        else max(pkl_files, key=_extract_generation_number)
     )
 
     print(f"Reading simulation workspace metadata: {target_checkpoint.name}")

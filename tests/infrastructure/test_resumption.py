@@ -200,3 +200,38 @@ def test_load_resumption_workspace_hydrates_logs_when_files_exist(
 
     assert workspace.saved_state.logbook is not None
     assert workspace.saved_state.history_logger is not None
+
+
+def test_load_resumption_workspace_handles_numerical_sorting_correctly(
+    workspace_directory: Path,
+    sample_payload: CheckpointPayload,
+) -> None:
+    generations_to_create = [2, 10]
+
+    for generation in generations_to_create:
+        payload = sample_payload.copy()
+        payload["generation"] = generation
+        file_path = workspace_directory / get_periodic_runtime_filename(
+            generation
+        )
+        with gzip.open(file_path, "wb") as file:
+            pickle.dump(payload, file)
+
+    workspace = load_resumption_workspace(workspace_directory)
+
+    assert workspace.last_generation == 10
+
+
+def test_load_resumption_workspace_raises_value_error_on_malformed_filename(
+    workspace_directory: Path,
+    sample_payload: CheckpointPayload,
+) -> None:
+    malformed_path = workspace_directory / "runtime_gen_corrupted_state.pkl.gz"
+    with gzip.open(malformed_path, "wb") as file:
+        pickle.dump(sample_payload, file)
+
+    with pytest.raises(
+        ValueError,
+        match="Malformed or corrupted checkpoint filename encountered",
+    ):
+        _ = load_resumption_workspace(workspace_directory)
