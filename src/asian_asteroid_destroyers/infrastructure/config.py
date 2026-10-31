@@ -24,6 +24,7 @@ class RuntimeArgs:
     cx_pb: float
     mut_pb: float
     gene_size: int
+    resume: str | None = None
 
 
 def get_config() -> RuntimeArgs:
@@ -72,6 +73,12 @@ def _parse_args(baseline: _EvolutionConfig) -> RuntimeArgs:
         default=baseline.gene_size,
         help="Size of individual genetic configurations",
     )
+    _ = parser.add_argument(
+        "--resume",
+        type=str,
+        default=None,
+        help="Path to an experiment directory to resume training from",
+    )
 
     namespace = parser.parse_args()
 
@@ -81,6 +88,7 @@ def _parse_args(baseline: _EvolutionConfig) -> RuntimeArgs:
     cx_pb = cast(float, namespace.cx_pb)
     mut_pb = cast(float, namespace.mut_pb)
     gene_size = cast(int, namespace.gene_size)
+    resume = cast(str | None, namespace.resume)
 
     return RuntimeArgs(
         generations=generations,
@@ -89,6 +97,7 @@ def _parse_args(baseline: _EvolutionConfig) -> RuntimeArgs:
         cx_pb=cx_pb,
         mut_pb=mut_pb,
         gene_size=gene_size,
+        resume=resume,
     )
 
 

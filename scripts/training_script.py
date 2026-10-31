@@ -1,3 +1,4 @@
+import pathlib
 import signal
 
 import dill
@@ -17,6 +18,7 @@ from asian_asteroid_destroyers.infrastructure import (
     EmergencySaver,
     create_experiment_directory,
     get_config,
+    load_resumption_workspace,
     make_checkpoint_saver,
 )
 
@@ -32,17 +34,31 @@ def _dummy_evaluator(individual: Individual) -> tuple[float, ...]:
 
 def main() -> None:
     dill.settings["recurse"] = True
-
     args = get_config()
 
-    data_directory = create_experiment_directory()
-    rng = np.random.default_rng()
-    algorithm = run_simple_evolution
+    if args.resume is not None:
+        data_directory = pathlib.Path(args.resume)
+        print(f"Resuming evolution context from: {data_directory.name}")
 
-    logbook = Logbook()
-    history_logger = HistoryLogger()
+        workspace = load_resumption_workspace(data_directory)
+        algorithm = workspace.algorithm
+        start_generation = workspace.last_generation + 1
+        rng = workspace.rng
+
+        logbook = workspace.saved_state.logbook
+        history_logger = workspace.saved_state.history_logger
+        population = workspace.saved_state.final_population
+    else:
+        print("Commencing a fresh evolutionary workspace...")
+        data_directory = create_experiment_directory()
+        algorithm = run_simple_evolution
+        start_generation = 1
+        rng = np.random.default_rng()
+        logbook = Logbook()
+        history_logger = HistoryLogger()
+        population = None
+
     statistics = Statistics()
-
     toolbox = build_toolbox(
         evaluation_function=_dummy_evaluator,
         gene_size=args.gene_size,
@@ -68,7 +84,6 @@ def main() -> None:
         periodic_saver(generation, state)
 
     print("Commencing evolutionary loop...")
-
     with ProcessPool() as executor:
         toolbox.register("map", executor.map)
 
@@ -78,10 +93,13 @@ def main() -> None:
             mut_pb=args.mut_pb,
             generations=args.generations,
             population_size=args.population_size,
+            seed=rng,
             logbook=logbook,
             history_logger=history_logger,
             statistics=statistics,
             checkpoint_callback=combined_callback,
+            initial_population=population,
+            start_generation=start_generation,
         )
 
     print("\nEvolutionary horizon run successfully finished.")
