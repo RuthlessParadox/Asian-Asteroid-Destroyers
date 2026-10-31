@@ -16,6 +16,8 @@ from asian_asteroid_destroyers.evokit import (
     TrainingResult,
 )
 
+from .parsing import extract_generation_number
+
 EMERGENCY_RUNTIME_FILENAME = "emergency_runtime.pkl.gz"
 EMERGENCY_LOGBOOK_FILENAME = "emergency_logbook.parquet"
 EMERGENCY_HISTORY_FILENAME = "emergency_history.parquet"
@@ -121,6 +123,7 @@ def make_checkpoint_saver(
     path = Path(output_directory)
     path.mkdir(parents=True, exist_ok=True)
     algorithm_path = f"{algorithm.__module__}.{algorithm.__name__}"
+    milestone_interval = save_interval * 10
 
     def saver_callback(generation: int, current_state: TrainingResult) -> None:
         if generation % save_interval == 0:
@@ -149,7 +152,39 @@ def make_checkpoint_saver(
             with gzip.open(runtime_path, "wb") as file:
                 pickle.dump(payload_data, file)
 
+            current_runtime_files = list(path.glob(PERIODIC_RUNTIME_PATTERN))
+            for file_path in current_runtime_files:
+                try:
+                    past_generation = extract_generation_number(file_path)
+                except ValueError:
+                    continue
+
+                if past_generation % milestone_interval == 0:
+                    continue
+                if past_generation == generation:
+                    continue
+                if past_generation == generation - save_interval:
+                    continue
+
+                _safely_delete_generation_files(path, past_generation)
+
     return saver_callback
+
+
+def _safely_delete_generation_files(directory: Path, generation: int) -> None:
+    targets = [
+        directory / get_periodic_runtime_filename(generation),
+        directory / get_periodic_logbook_filename(generation),
+        directory / get_periodic_history_filename(generation),
+    ]
+    for target in targets:
+        try:
+            target.unlink(missing_ok=True)
+        except OSError as error:
+            print(
+                f"Warning: Could not prune intermediate asset {target.name}: "
+                + f"{error}"
+            )
 
 
 def create_experiment_directory(base_directory: str | Path = "./data") -> Path:

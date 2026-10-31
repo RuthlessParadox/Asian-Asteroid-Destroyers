@@ -12,6 +12,7 @@ from .checkpointing import (
     make_checkpoint_saver as make_checkpoint_saver,
 )
 from .config import RuntimeArgs as RuntimeArgs, get_config as get_config
+from .parsing import extract_generation_number as extract_generation_number
 from .resumption import (
     ResumptionWorkspace as ResumptionWorkspace,
     load_resumption_workspace as load_resumption_workspace,
