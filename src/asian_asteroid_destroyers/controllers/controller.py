@@ -12,14 +12,13 @@ state: Tuple[str, Any]
 from typing import TYPE_CHECKING
 
 import numpy as np
-import skfuzzy as skf
-import skfuzzy.control as ctrl
 from kesslergame import KesslerController
 
 if TYPE_CHECKING:
     from kesslergame.kessler_game import GameState, ShipState
 
 # from controllers.ai.sa.sa import SA
+from asian_asteroid_destroyers.controllers.fuzzy_tsk import tsk_zero_order
 from asian_asteroid_destroyers.controllers.sa.sa import SA
 from asian_asteroid_destroyers.controllers.sa.util.helpers import trim_angle
 
@@ -125,10 +124,10 @@ class MyFuzzyController(KesslerController):
             return ship_state["turn_rate_range"][0]
         return 0
 
-    def convert_rule_values(self, rule_values):
-        bins = np.array([1 / 3, 2 / 3])
-        indices = np.digitize(rule_values, bins)
-        return [int(min(max(index, 0), 2)) for index in indices]
+    # def convert_rule_values(self, rule_values):
+    #    bins = np.array([1 / 3, 2 / 3])
+    #    indices = np.digitize(rule_values, bins)
+    #    return [int(min(max(index, 0), 2)) for index in indices]
 
     def calculate_features(self, asteroid):
         relative_angle = trim_angle(asteroid.bearing - self.sa.ownship.heading)
@@ -136,139 +135,139 @@ class MyFuzzyController(KesslerController):
         normalized_distance = self.sa.norm_distance(asteroid.distance)
         return normalized_angle, normalized_distance
 
-    def create_rules_from_outputs(self, distance, angle, output, output_names):
-        distance_mfs = [distance["close"], distance["medium"], distance["far"]]
-        angle_mfs = [angle["negative"], angle["zero"], angle["positive"]]
-        output_mfs = {
-            "negative": output["negative"],
-            "zero": output["zero"],
-            "positive": output["positive"],
-        }
-        rules = []
-        count = 0
-        for angle_mf in angle_mfs:
-            for distance_mf in distance_mfs:
-                rules.append(
-                    ctrl.Rule(
-                        distance_mf & angle_mf, output_mfs[output_names[count]]
-                    )
-                )
-                count += 1
-        return rules
+    # def create_rules_from_outputs(self, distance, angle, output, output_names):
+    #    distance_mfs = [distance["close"], distance["medium"], distance["far"]]
+    #    angle_mfs = [angle["negative"], angle["zero"], angle["positive"]]
+    #    output_mfs = {
+    #        "negative": output["negative"],
+    #        "zero": output["zero"],
+    #        "positive": output["positive"],
+    #    }
+    #    rules = []
+    #    count = 0
+    #    for angle_mf in angle_mfs:
+    #        for distance_mf in distance_mfs:
+    #            rules.append(
+    #                ctrl.Rule(
+    #                    distance_mf & angle_mf, output_mfs[output_names[count]]
+    #                )
+    #            )
+    #            count += 1
+    #    return rules
 
     def run_fuzzy_systems(self, angle, distance):
-        aiming_output = self.tsk_output(
+        aiming_output = tsk_zero_order(
             angle,
             distance,
-            self.aiming_centers,
-            self.aiming_consequents,
-            self.aiming_scale,
+            angle_center=self.aiming_angle_center,
+            distance_center=self.aiming_distance_center,
+            consequents=self.aiming_consequents,
         )
 
-        thrust_output = self.tsk_output(
+        thrust_output = tsk_zero_order(
             angle,
             distance,
-            self.moving_centers,
-            self.moving_components,
-            self.moving_scale,
+            angle_center=self.moving_angle_center,
+            distance_center=self.moving_distance_center,
+            consequents=self.moving_consequents,
         )
 
-        return aiming_output, thrust_output
+        return float(aiming_output), float(thrust_output)
 
-    def setup_chromosome_memberships(
-        self,
-        distance,
-        angle,
-        output,
-        distance_index,
-        angle_index,
-        output_index,
-    ):
-        if self.chromosome is None:
-            raise ValueError("Chromosome must be initialized")
-        distance_value = float(
-            np.clip(self.chromosome[distance_index], 0.01, 0.99)
-        )
-        angle_value = float(
-            np.clip(self.chromosome[angle_index] * 2 - 1, -0.99, 0.99)
-        )
-        output_value = float(
-            np.clip(self.chromosome[output_index] * 2 - 1, -0.99, 0.99)
-        )
-        # output = self.chromosome[output_index]
+    # def setup_chromosome_memberships(
+    #    self,
+    #    distance,
+    #    angle,
+    #    output,
+    #    distance_index,
+    #    angle_index,
+    #    output_index,
+    # ):
+    #    if self.chromosome is None:
+    #        raise ValueError("Chromosome must be initialized")
+    #    distance_value = float(
+    #        np.clip(self.chromosome[distance_index], 0.01, 0.99)
+    #    )
+    #    angle_value = float(
+    #        np.clip(self.chromosome[angle_index] * 2 - 1, -0.99, 0.99)
+    #    )
+    #    output_value = float(
+    #        np.clip(self.chromosome[output_index] * 2 - 1, -0.99, 0.99)
+    #    )
+    #    # output = self.chromosome[output_index]
 
-        distance["close"] = skf.trimf(
-            distance.universe, [0.0, 0.0, distance_value]
-        )
-        distance["medium"] = skf.trimf(
-            distance.universe, [0.0, distance_value, 1.0]
-        )
-        distance["far"] = skf.trimf(
-            distance.universe, [distance_value, 1.0, 1.0]
-        )
+    #    distance["close"] = skf.trimf(
+    #        distance.universe, [0.0, 0.0, distance_value]
+    #    )
+    #    distance["medium"] = skf.trimf(
+    #        distance.universe, [0.0, distance_value, 1.0]
+    #    )
+    #    distance["far"] = skf.trimf(
+    #        distance.universe, [distance_value, 1.0, 1.0]
+    #    )
 
-        # self.create_triangular_memberships(distance, distance_value)
-        self.create_triangular_memberships(angle, angle_value)
-        self.create_triangular_memberships(output, output_value)
+    #    # self.create_triangular_memberships(distance, distance_value)
+    #    self.create_triangular_memberships(angle, angle_value)
+    #    self.create_triangular_memberships(output, output_value)
 
-    def create_chromosome_rules(self, distance, angle, output, rule_start=3):
-        if self.chromosome is None:
-            raise ValueError("Chromosome must be initialized")
-        distance_mfs = [distance["close"], distance["medium"], distance["far"]]
-        angle_mfs = [angle["negative"], angle["zero"], angle["positive"]]
-        output_mfs = [output["negative"], output["zero"], output["positive"]]
+    # def create_chromosome_rules(self, distance, angle, output, rule_start=3):
+    #    if self.chromosome is None:
+    #        raise ValueError("Chromosome must be initialized")
+    #    distance_mfs = [distance["close"], distance["medium"], distance["far"]]
+    #    angle_mfs = [angle["negative"], angle["zero"], angle["positive"]]
+    #    output_mfs = [output["negative"], output["zero"], output["positive"]]
 
-        rule_values = self.chromosome[rule_start : rule_start + 9]
-        indices = self.convert_rule_values(rule_values)
+    #    rule_values = self.chromosome[rule_start : rule_start + 9]
+    #    indices = self.convert_rule_values(rule_values)
 
-        rules = []
-        count = 0
-        for angle_mf in angle_mfs:
-            for distance_mf in distance_mfs:
-                rules.append(
-                    ctrl.Rule(
-                        distance_mf & angle_mf, output_mfs[indices[count]]
-                    )
-                )
-                count += 1
-        return rules
+    #    rules = []
+    #    count = 0
+    #    for angle_mf in angle_mfs:
+    #        for distance_mf in distance_mfs:
+    #            rules.append(
+    #                ctrl.Rule(
+    #                    distance_mf & angle_mf, output_mfs[indices[count]]
+    #                )
+    #            )
+    #            count += 1
+    #    return rules
 
-    def create_output_memberships(self, output):
-        output["negative"] = skf.trimf(output.universe, [-1.0, -1.0, 0.0])
-        output["zero"] = skf.trimf(output.universe, [-1.0, 0.0, 1.0])
-        output["positive"] = skf.trimf(output.universe, [0.0, 1.0, 1.0])
+    # def create_output_memberships(self, output):
+    #    output["negative"] = skf.trimf(output.universe, [-1.0, -1.0, 0.0])
+    #    output["zero"] = skf.trimf(output.universe, [-1.0, 0.0, 1.0])
+    #    output["positive"] = skf.trimf(output.universe, [0.0, 1.0, 1.0])
 
-    def create_triangular_memberships(self, variable, center: float):
-        variable["negative"] = skf.trimf(
-            variable.universe, [-1.0, -1.0, center]
-        )
-        variable["zero"] = skf.trimf(variable.universe, [-1.0, center, 1.0])
-        variable["positive"] = skf.trimf(variable.universe, [center, 1.0, 1.0])
+    # def create_triangular_memberships(self, variable, center: float):
+    #    variable["negative"] = skf.trimf(
+    #        variable.universe, [-1.0, -1.0, center]
+    #    )
+    #    variable["zero"] = skf.trimf(variable.universe, [-1.0, center, 1.0])
+    #    variable["positive"] = skf.trimf(variable.universe, [center, 1.0, 1.0])
 
-    def setup_default_memberships(self, distance, angle, output):
-        distance.automf(3, names=["close", "medium", "far"])
-        angle.automf(3, names=["negative", "zero", "positive"])
-        self.create_output_memberships(output)
+    # def setup_default_memberships(self, distance, angle, output):
+    #    distance.automf(3, names=["close", "medium", "far"])
+    #    angle.automf(3, names=["negative", "zero", "positive"])
+    #    self.create_output_memberships(output)
 
-    def create_default_rules(self, distance, angle, output):
-        output_names = [
-            "negative, negative",
-            "negative",
-            "zero, zero",
-            "zero",
-            "positive, positive",
-            "positive",
-        ]
+    # def create_default_rules(self, distance, angle, output):
+    #    output_names = [
+    #        "negative, negative",
+    #        "negative",
+    #        "zero, zero",
+    #        "zero",
+    #        "positive, positive",
+    #        "positive",
+    #    ]
 
-        return self.create_rules_from_outputs(
-            distance, angle, output, output_names
-        )
+    #    return self.create_rules_from_outputs(
+    #        distance, angle, output, output_names
+    #    )
 
-    def create_fuzzy_variables(self, output_name: str):
-        distance = ctrl.Antecedent(np.linspace(0.0, 1.0, 11), "distance")
-        angle = ctrl.Antecedent(np.linspace(-1.0, 1.0, 11), "angle")
-        output = ctrl.Consequent(np.linspace(-1.0, 1.0, 11), output_name)
-        return [distance, angle, output]
+    # def create_fuzzy_variables(self, output_name: str):
+    #    distance = ctrl.Antecedent(np.linspace(0.0, 1.0, 11), "distance")
+    #    angle = ctrl.Antecedent(np.linspace(-1.0, 1.0, 11), "angle")
+    #    output = ctrl.Consequent(np.linspace(-1.0, 1.0, 11), output_name)
+    #   return [distance, angle, output]
 
     def create_fuzzy_systems(self):
         self.create_aiming_fis()
@@ -276,29 +275,36 @@ class MyFuzzyController(KesslerController):
 
     def create_aiming_fis(self):
         if self.chromosome is None:
-            self.aiming_centers = (0.5, 0.0)
-            self.aiming_scale = 1.0
-            self.aiming_consequents = [
-                -1.0,
-                -0.5,
-                0.0,
-                -0.5,
-                0.0,
-                0.5,
-                0.0,
-                0.5,
-                1.0,
-            ]
-        else:
-            self.aiming_centers = (
-                float(np.clip(self.chromosome[0], 0.01, 0.09)),
-                float(np.clip(self.chromosome[1] * 2 - 1, 0.99, 0.99)),
+            self.aiming_distance_center = 0.5
+            self.aiming_angle_center = 0.0
+            self.aiming_consequents = np.array(
+                [
+                    -1.0,
+                    -0.5,
+                    0.0,
+                    -0.5,
+                    0.0,
+                    0.5,
+                    0.0,
+                    0.5,
+                    1.0,
+                ]
             )
-            self.aiming_scale = float(np.clip(self.chromosome[2], 0.01, 1.0))
-            self.aiming_consequents = [
-                float(np.clip(gene * 2 - 1, -1.0, 1.0))
-                for gene in self.aiming_consequents
-            ]
+        else:
+            self.aiming_distance_center = float(
+                np.clip(self.chromosome[0], 0.01, 0.99)
+            )
+            self.aiming_angle_center = float(
+                np.clip(self.chromosome[1] * 2.0 - 1.0, -0.99, 0.99)
+            )
+            # self.aiming_scale = np.clip(self.chromosome[2], 0.01, 1.0)
+            self.aiming_consequents = np.asarray(
+                [
+                    (np.clip(gene * 2.0 - 1.0, -1.0, 1.0))
+                    for gene in self.chromosome[3:12]
+                ],
+                dtype=np.float64,
+            )
 
     def update_situational_awareness(self, ship_state, game_state):
         self.sa.update(ship_state, game_state)
@@ -308,29 +314,35 @@ class MyFuzzyController(KesslerController):
 
     def create_moving_fis(self):
         if self.chromosome is None:
-            self.moving_centers = (0.5, 0.0)
-            self.moving_scale = 1.0
-            self.moving_consequents = [
-                -1.0,
-                -0.5,
-                0.0,
-                -0.5,
-                0.0,
-                0.5,
-                0.0,
-                0.5,
-                1.0,
-            ]
-        else:
-            self.moving_centers = (
-                float(np.clip(self.chromosome[12], 0.01, 0.99)),
-                float(np.clip(self.chromosome[13] * 2 - 1, -0.99, 0.99)),
+            self.moving_distance_center = 0.5
+            self.moving_angle_center = 0.0
+            self.moving_consequents = np.array(
+                [
+                    -1.0,
+                    -0.5,
+                    0.0,
+                    -0.5,
+                    0.0,
+                    0.5,
+                    0.0,
+                    0.5,
+                    1.0,
+                ]
             )
-            self.moving_scale = float(np.clip(self.chromosome[14], 0.01, 1.0))
-            self.moving_consequents = [
-                float(np.clip(gene * 2 - 1, -1.0, 1.0))
-                for gene in self.chromosome[15:24]
-            ]
+        else:
+            self.moving_distance_center = float(
+                np.clip(self.chromosome[12], 0.01, 0.99)
+            )
+            self.moving_angle_center = float(
+                np.clip(self.chromosome[13] * 2 - 1, -0.99, 0.99)
+            )
+            self.moving_consequents = np.asarray(
+                [
+                    np.clip(gene * 2.0 - 1.0, -1.0, 1.0)
+                    for gene in self.chromosome[15:24]
+                ],
+                dtype=np.float64,
+            )
 
     @property
     def name(self) -> str:
@@ -345,42 +357,42 @@ class MyFuzzyController(KesslerController):
     # @property
     # def custom_sprite_path(self) -> str:
     #     return "Neo.png"
-    def get_memberships(self, value, variable_type, center):
-        if variable_type == "distance":
-            triangles = [
-                [0.0, 0.0, center],
-                [0.0, center, 0.0],
-                [center, 0.0, 0.0],
-            ]
-        else:
-            triangles = [
-                [-1.0, -1.0, center],
-                [-1.0, center, 1.0],
-                [center, 1.0, 1.0],
-            ]
-        return [
-            float(skf.trimf(np.array([value]), triangle)[0])
-            for triangle in triangles
-        ]
+    # def get_memberships(self, value, variable_type, center):
+    #    if variable_type == "distance":
+    #        triangles = [
+    #            [0.0, 0.0, center],
+    #            [0.0, center, 0.0],
+    #            [center, 0.0, 0.0],
+    #        ]
+    #    else:
+    #        triangles = [
+    #            [-1.0, -1.0, center],
+    #            [-1.0, center, 1.0],
+    #            [center, 1.0, 1.0],
+    #        ]
+    #    return [
+    #        float(skf.trimf(np.array([value]), triangle)[0])
+    #        for triangle in triangles
+    #    ]
 
-    def tsk_output(self, angle, distance, output, centers, consequents, scale):
-        angle_memberships = self.get_memberships(angle, "angle", centers[1])
-        distance_memberships = self.get_memberships(
-            distance, "distance", centers[0]
-        )
-        weighted_sum = 0.0
-        activation_sum = 0.0
-        rule_index = 0
-        for angle_index in range(3):
-            for distance_index in range(3):
-                activation = (
-                    angle_memberships[angle_index]
-                    * distance_memberships[distance_index]
-                )
-                consequent = scale * consequents[rule_index]
-                weighted_sum += activation * consequent
-                activation_sum += activation
-                rule_index += 1
-        if activation_sum == 0:
-            return 0.0
-        return weighted_sum / activation_sum
+    # def tsk_output(self, angle, distance, output, centers, consequents, scale):
+    #    angle_memberships = self.get_memberships(angle, "angle", centers[1])
+    #    distance_memberships = self.get_memberships(
+    #        distance, "distance", centers[0]
+    #    )
+    #    weighted_sum = 0.0
+    #    activation_sum = 0.0
+    #    rule_index = 0
+    #    for angle_index in range(3):
+    #        for distance_index in range(3):
+    #            activation = (
+    #                angle_memberships[angle_index]
+    #                * distance_memberships[distance_index]
+    #            )
+    #            consequent = scale * consequents[rule_index]
+    #            weighted_sum += activation * consequent
+    #            activation_sum += activation
+    #            rule_index += 1
+    #    if activation_sum == 0:
+    #        return 0.0
+    #    return weighted_sum / activation_sum
