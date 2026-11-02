@@ -15,6 +15,29 @@ if TYPE_CHECKING:
 
 
 class SituationalAwareness:
+    __slots__: tuple[str, ...] = (
+        "time",
+        "agent_ship",
+        "metrics",
+        "size_ratio_threshold",
+        "red_ships",
+        "map_diagonal_length",
+        "_asteroid_count",
+        "_bullet_count",
+        "_mine_count",
+        "_map_size",
+        "_asteroid_positions",
+        "_asteroid_velocities",
+        "_asteroid_sizes",
+        "_asteroid_radii",
+        "_bullet_positions",
+        "_bullet_velocities",
+        "_bullet_headings",
+        "_mine_positions",
+        "_mine_fuse_times",
+        "_mine_remaining_times",
+    )
+
     time: float
     agent_ship: AgentShip
     metrics: SituationalAwarenessMetrics
@@ -238,6 +261,13 @@ class SituationalAwareness:
 
 
 class SituationalAwarenessMetrics:
+    __slots__: tuple[str, ...] = (
+        "average_asteroid_size",
+        "std_asteroid_size",
+        "average_asteroid_speed",
+        "std_asteroid_speed",
+    )
+
     average_asteroid_size: float
     std_asteroid_size: float
     average_asteroid_speed: float
@@ -455,6 +485,38 @@ class OpponentShipView(NamedTuple):
 
 
 class AgentShip:
+    __slots__: tuple[str, ...] = (
+        "_time",
+        "position",
+        "velocity",
+        "radius",
+        "lives",
+        "speed",
+        "heading",
+        "turn_rate",
+        "acceleration",
+        "bullets_remaining",
+        "bullet_asteroid_equivalent_ratio",
+        "asteroids",
+        "bullets",
+        "mines",
+        "_sa",
+        "_last_time",
+        "last_position",
+        "last_heading",
+        "last_speed",
+        "_cache_distance",
+        "_cache_bearing",
+        "_cache_position_wrap",
+        "_cache_distance_wrap",
+        "_cache_bearing_wrap",
+        "_cache_tti",
+        "_cache_bullet_distance",
+        "_cache_bullet_bearing",
+        "_cache_mine_distance",
+        "_cache_mine_bearing",
+    )
+
     _time: float
     position: tuple[float, float]
     velocity: tuple[float, float]
