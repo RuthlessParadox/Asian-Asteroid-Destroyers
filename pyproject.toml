@@ -44,7 +44,7 @@ line-length = 79
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "TC", "FA", "PLC", "PLE", "PYI"]
-ignore = ["E501"]
+ignore = ["E501", "TC006"]
 future-annotations = true
 
 [tool.ruff.lint.isort]
