@@ -1,11 +1,15 @@
+from __future__ import annotations
+
 from collections.abc import Mapping
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import polars as pl
 from typing_extensions import override
 
 from .types import GenerationStats
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 LogValue = int | float
 LogRow = dict[str, LogValue]

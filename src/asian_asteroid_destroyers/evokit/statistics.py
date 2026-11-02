@@ -1,9 +1,14 @@
-from collections.abc import Callable
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .individual import Individual
-from .types import GenerationStats, Population
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from .individual import Individual
+    from .types import GenerationStats, Population
 
 
 class Statistics:

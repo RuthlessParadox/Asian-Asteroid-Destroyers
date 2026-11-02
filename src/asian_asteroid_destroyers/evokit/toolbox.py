@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import copy
 import random
 from collections.abc import Callable
-from typing import NoReturn, cast
+from typing import TYPE_CHECKING, NoReturn, cast
 
 from deap import base, tools
 from typing_extensions import override
@@ -17,10 +19,12 @@ from .types import (
     IndividualGenerator,
     MapMethod,
     MutationOperator,
-    Population,
     PopulationGenerator,
     SelectionOperator,
 )
+
+if TYPE_CHECKING:
+    from .types import Population
 
 
 def _raise_unregistered(name: str) -> NoReturn:

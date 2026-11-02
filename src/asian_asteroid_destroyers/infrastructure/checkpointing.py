@@ -1,19 +1,10 @@
+from __future__ import annotations
+
 import gzip
 import pickle
 import sys
-from collections.abc import Mapping
 from pathlib import Path
-from types import FrameType
-from typing import Callable, TypedDict
-
-import numpy as np
-
-from asian_asteroid_destroyers.evokit import (
-    EvolutionAlgorithm,
-    HallOfFame,
-    Population,
-    TrainingResult,
-)
+from typing import TYPE_CHECKING, Callable, TypedDict
 
 from .parsing import extract_generation_number
 from .workspace import (
@@ -22,6 +13,19 @@ from .workspace import (
     get_periodic_runtime_filename,
     update_active_pointer,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from types import FrameType
+
+    import numpy as np
+
+    from asian_asteroid_destroyers.evokit import (
+        EvolutionAlgorithm,
+        HallOfFame,
+        Population,
+        TrainingResult,
+    )
 
 EMERGENCY_LOGBOOK_FILENAME = "emergency_logbook.parquet"
 EMERGENCY_HISTORY_FILENAME = "emergency_history.parquet"

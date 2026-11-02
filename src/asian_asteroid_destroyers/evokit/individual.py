@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import sys
-from collections.abc import Iterable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from .cache_teardown import clear_dynamic_namespace_cache
 from .fitness import Fitness, get_fitness_class, reconstruct_fitness_weights
 from .weight_naming import get_clean_weight_string
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 DYNAMIC_INDIVIDUAL_PREFIX = "DynamicIndividual_"
 Gene = float

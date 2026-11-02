@@ -1,12 +1,16 @@
-from collections.abc import Sequence
-from pathlib import Path
-from typing import TypedDict
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, TypedDict
 
 import polars as pl
 from typing_extensions import override
 
-from .hall_of_fame import HallOfFame
-from .types import Gene
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
+
+    from .hall_of_fame import HallOfFame
+    from .types import Gene
 
 
 class _IndividualSnapshot(TypedDict):

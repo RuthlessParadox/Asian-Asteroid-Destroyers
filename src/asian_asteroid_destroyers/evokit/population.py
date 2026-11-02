@@ -1,7 +1,12 @@
+from __future__ import annotations
+
 import copy
+from typing import TYPE_CHECKING
 
 from .fitness import get_fitness_class
-from .types import Population
+
+if TYPE_CHECKING:
+    from .types import Population
 
 
 def reweight_population(

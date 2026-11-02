@@ -1,11 +1,15 @@
-from collections.abc import Iterator
-from typing import Protocol, cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Protocol, cast
 
 from deap import tools
 from typing_extensions import override
 
-from .individual import Individual
-from .types import Population
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from .individual import Individual
+    from .types import Population
 
 
 class _DEAPHallOfFame(Protocol):

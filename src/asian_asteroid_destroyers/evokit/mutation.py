@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 from collections.abc import Sequence
-from typing import Callable, cast
+from typing import TYPE_CHECKING, Callable, cast
 
 from deap import tools
 
 from .individual import Individual
-from .types import MutationOperator
+
+if TYPE_CHECKING:
+    from .types import MutationOperator
 
 
 def mut_gaussian(

@@ -1,15 +1,19 @@
-from collections.abc import Callable, MutableSequence
-from typing import NamedTuple, Protocol, TypeVar
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, NamedTuple, Protocol, TypeVar
 
 import numpy as np
 
-from .hall_of_fame import HallOfFame
-from .history_logger import HistoryLogger
-from .individual import Individual
-from .logbook import Logbook
-from .statistics import Statistics
-from .toolbox import Toolbox
-from .types import Population
+if TYPE_CHECKING:
+    from collections.abc import Callable, MutableSequence
+
+    from .hall_of_fame import HallOfFame
+    from .history_logger import HistoryLogger
+    from .individual import Individual
+    from .logbook import Logbook
+    from .statistics import Statistics
+    from .toolbox import Toolbox
+    from .types import Population
 
 
 class TrainingResult(NamedTuple):

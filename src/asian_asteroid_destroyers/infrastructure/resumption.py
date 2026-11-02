@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import gzip
 import importlib
-from pathlib import Path
-from typing import NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 import numpy as np
 import polars as pl
@@ -27,6 +28,9 @@ from .workspace import (
     PERIODIC_RUNTIME_PATTERN,
     POINTER_FILENAME,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class ResumptionWorkspace(NamedTuple):

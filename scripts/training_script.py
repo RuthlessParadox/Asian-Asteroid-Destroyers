@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import pathlib
 import signal
+from typing import TYPE_CHECKING
 
 import dill
 import numpy as np
@@ -7,10 +10,8 @@ from pathos.multiprocessing import ProcessPool
 
 from asian_asteroid_destroyers.evokit import (
     HistoryLogger,
-    Individual,
     Logbook,
     Statistics,
-    TrainingResult,
     build_toolbox,
     run_simple_evolution,
 )
@@ -21,6 +22,9 @@ from asian_asteroid_destroyers.infrastructure import (
     load_resumption_workspace,
     make_checkpoint_saver,
 )
+
+if TYPE_CHECKING:
+    from asian_asteroid_destroyers.evokit import Individual, TrainingResult
 
 
 def _dummy_evaluator(individual: Individual) -> tuple[float, ...]:

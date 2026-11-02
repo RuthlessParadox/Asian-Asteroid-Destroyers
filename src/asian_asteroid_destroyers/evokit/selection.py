@@ -1,9 +1,14 @@
-from typing import Callable, cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable, cast
 
 import numpy as np
 from deap import tools
 
-from .types import FloatMatrix, Population, SelectionOperator
+from .types import FloatMatrix, Population
+
+if TYPE_CHECKING:
+    from .types import SelectionOperator
 
 
 def sel_tournament(
