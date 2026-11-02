@@ -1,6 +1,6 @@
-from collections.abc import Sequence
-from pathlib import Path
-from typing import TypedDict, cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import polars as pl
 import pytest
@@ -13,6 +13,10 @@ from asian_asteroid_destroyers.evokit import (
     get_fitness_class,
     get_individual_class,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from pathlib import Path
 
 
 @pytest.fixture

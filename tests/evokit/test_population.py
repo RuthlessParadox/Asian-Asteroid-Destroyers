@@ -1,16 +1,20 @@
+from __future__ import annotations
+
 import sys
+from typing import TYPE_CHECKING
 
 import pytest
 
 from asian_asteroid_destroyers.evokit import (
-    Fitness,
     Individual,
-    Population,
     clear_fitness_cache,
     get_clean_weight_string,
     get_fitness_class,
     reweight_population,
 )
+
+if TYPE_CHECKING:
+    from asian_asteroid_destroyers.evokit import Fitness, Population
 
 
 @pytest.fixture(autouse=True)

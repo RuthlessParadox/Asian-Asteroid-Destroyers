@@ -1,10 +1,17 @@
+from __future__ import annotations
+
 import os
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import polars as pl
 import pytest
 
-from asian_asteroid_destroyers.evokit import GenerationStats, Logbook
+from asian_asteroid_destroyers.evokit import Logbook
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from asian_asteroid_destroyers.evokit import GenerationStats
 
 
 @pytest.fixture

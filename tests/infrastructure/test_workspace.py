@@ -1,16 +1,21 @@
+from __future__ import annotations
+
 import datetime
 from pathlib import Path
 from types import ModuleType
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
-from pytest import MonkeyPatch
 
 from asian_asteroid_destroyers.infrastructure import (
     POINTER_FILENAME,
     create_experiment_directory,
     update_active_pointer,
 )
+
+if TYPE_CHECKING:
+    from pytest import MonkeyPatch
 
 
 @pytest.fixture

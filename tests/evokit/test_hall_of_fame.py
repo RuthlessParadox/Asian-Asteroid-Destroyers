@@ -1,11 +1,17 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
 from asian_asteroid_destroyers.evokit import (
     HallOfFame,
-    Individual,
     clear_individual_cache,
     get_individual_class,
 )
+
+if TYPE_CHECKING:
+    from asian_asteroid_destroyers.evokit import Individual
 
 
 @pytest.fixture(autouse=True)

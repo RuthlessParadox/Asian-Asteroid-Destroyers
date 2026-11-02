@@ -1,15 +1,16 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import numpy as np
 import pytest
 
 from asian_asteroid_destroyers.evokit import (
-    FitnessEvaluator,
     HallOfFame,
     HistoryLogger,
     Individual,
     Logbook,
-    Population,
     Statistics,
-    Toolbox,
     TrainingResult,
     build_toolbox,
     clear_fitness_cache,
@@ -17,6 +18,13 @@ from asian_asteroid_destroyers.evokit import (
     get_individual_class,
     run_simple_evolution,
 )
+
+if TYPE_CHECKING:
+    from asian_asteroid_destroyers.evokit import (
+        FitnessEvaluator,
+        Population,
+        Toolbox,
+    )
 
 
 @pytest.fixture(autouse=True)

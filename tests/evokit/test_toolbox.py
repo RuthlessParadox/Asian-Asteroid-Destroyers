@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import functools
-from collections.abc import Callable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,6 +12,9 @@ from asian_asteroid_destroyers.evokit import (
     Toolbox,
     build_toolbox,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @pytest.fixture

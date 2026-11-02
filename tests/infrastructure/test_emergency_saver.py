@@ -1,14 +1,14 @@
+from __future__ import annotations
+
 import gzip
 import inspect
 import pickle
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
 
 from asian_asteroid_destroyers.evokit import (
-    EvolutionAlgorithm,
     HallOfFame,
     HistoryLogger,
     Individual,
@@ -23,6 +23,11 @@ from asian_asteroid_destroyers.infrastructure import (
     CheckpointPayload,
     EmergencySaver,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from asian_asteroid_destroyers.evokit import EvolutionAlgorithm
 
 
 @pytest.fixture

@@ -1,9 +1,10 @@
+from __future__ import annotations
+
 import gzip
 import pickle
 import sys
-from collections.abc import Generator
-from pathlib import Path
 from types import ModuleType
+from typing import TYPE_CHECKING
 
 import numpy as np
 import polars as pl
@@ -21,10 +22,15 @@ from asian_asteroid_destroyers.infrastructure import (
     EMERGENCY_LOGBOOK_FILENAME,
     EMERGENCY_RUNTIME_FILENAME,
     POINTER_FILENAME,
-    CheckpointPayload,
     get_periodic_runtime_filename,
     load_resumption_workspace,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+    from pathlib import Path
+
+    from asian_asteroid_destroyers.infrastructure import CheckpointPayload
 
 _MOCK_MODULE_NAME = "mock_evolution"
 _MOCK_ALGORITHM_NAME = "run_mock_evolution"

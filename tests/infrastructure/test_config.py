@@ -1,16 +1,18 @@
-import pathlib
+from __future__ import annotations
+
 import sys
+from typing import TYPE_CHECKING
 
 import pytest
 
 from asian_asteroid_destroyers.infrastructure import RuntimeArgs, get_config
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
 
 @pytest.fixture(autouse=True)
-def mock_env(
-    tmp_path: pathlib.Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> pathlib.Path:
+def mock_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(sys, "argv", ["test_program"])
     return tmp_path
@@ -30,7 +32,7 @@ def valid_toml_content() -> str:
 
 
 def test_get_config_from_baseline_only(
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
     valid_toml_content: str,
 ) -> None:
     config_file = tmp_path / "pyproject.toml"
@@ -48,7 +50,7 @@ def test_get_config_from_baseline_only(
 
 
 def test_get_config_overridden_by_cli_args(
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
     valid_toml_content: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -71,7 +73,7 @@ def test_get_config_missing_file() -> None:
         _ = get_config()
 
 
-def test_get_config_missing_evolution_table(tmp_path: pathlib.Path) -> None:
+def test_get_config_missing_evolution_table(tmp_path: Path) -> None:
     config_file = tmp_path / "pyproject.toml"
     invalid_content = "[tool.other_tool]\nvalue = 42"
     _ = config_file.write_text(invalid_content, encoding="utf-8")
@@ -103,10 +105,7 @@ def test_get_config_missing_evolution_table(tmp_path: pathlib.Path) -> None:
         """,
     ],
 )
-def test_get_config_invalid_types(
-    tmp_path: pathlib.Path,
-    invalid_toml: str,
-) -> None:
+def test_get_config_invalid_types(tmp_path: Path, invalid_toml: str) -> None:
     config_file = tmp_path / "pyproject.toml"
     _ = config_file.write_text(invalid_toml, encoding="utf-8")
 
@@ -115,7 +114,7 @@ def test_get_config_invalid_types(
 
 
 def test_get_config_resume_blocks_forbidden_hyperparameters(
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
     valid_toml_content: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -139,7 +138,7 @@ def test_get_config_resume_blocks_forbidden_hyperparameters(
 
 
 def test_get_config_resume_allows_extending_generations_and_saves(
-    tmp_path: pathlib.Path,
+    tmp_path: Path,
     valid_toml_content: str,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

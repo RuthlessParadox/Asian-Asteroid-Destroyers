@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import gzip
 import pickle
 import sys
-from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pytest
@@ -18,6 +19,9 @@ from asian_asteroid_destroyers.infrastructure import (
     CheckpointPayload,
     MainHydratingUnpickler,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture(autouse=True)
