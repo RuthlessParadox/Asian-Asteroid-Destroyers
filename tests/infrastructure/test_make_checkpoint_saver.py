@@ -1,0 +1,281 @@
+import gzip
+import pickle
+from pathlib import Path
+from typing import cast
+
+import numpy as np
+import pytest
+
+from asian_asteroid_destroyers.evokit import (
+    EvolutionAlgorithm,
+    HallOfFame,
+    HistoryLogger,
+    Individual,
+    Logbook,
+    TrainingResult,
+)
+from asian_asteroid_destroyers.infrastructure import (
+    POINTER_FILENAME,
+    CheckpointPayload,
+    get_periodic_history_filename,
+    get_periodic_logbook_filename,
+    get_periodic_runtime_filename,
+    make_checkpoint_saver,
+)
+
+
+@pytest.fixture
+def sample_logbook() -> Logbook:
+    logbook = Logbook(flush_interval=1)
+    logbook.record(
+        generation=10,
+        stats={
+            "max_fitness": 1.0,
+            "min_fitness": 0.0,
+            "mean_fitness": 0.5,
+            "median_fitness": 0.5,
+            "std_fitness": 0.1,
+        },
+    )
+    return logbook
+
+
+@pytest.fixture
+def sample_history() -> HistoryLogger:
+    return HistoryLogger(flush_interval=1)
+
+
+@pytest.fixture
+def sample_hall_of_fame() -> HallOfFame:
+    return HallOfFame(max_size=1)
+
+
+@pytest.fixture
+def shared_rng() -> np.random.Generator:
+    return np.random.default_rng(12345)
+
+
+@pytest.fixture
+def mock_algorithm() -> EvolutionAlgorithm[TrainingResult]:
+    class MockAlgorithm:
+        __name__: str = "periodic_evolution_loop"
+        __module__: str = "test_package.mock_module"
+
+        def __call__(self, *args: object, **kwargs: object) -> TrainingResult:
+            return TrainingResult(
+                final_population=[],
+                logbook=None,
+                history_logger=None,
+                hall_of_fame=None,
+            )
+
+    return MockAlgorithm()
+
+
+def test_make_checkpoint_saver_creates_directory(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    _ = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+    )
+
+    assert output_directory.is_dir()
+
+
+def test_saver_callback_saves_on_matching_interval(
+    tmp_path: Path,
+    sample_logbook: Logbook,
+    sample_history: HistoryLogger,
+    sample_hall_of_fame: HallOfFame,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
+
+    state = TrainingResult(
+        final_population=[Individual([0.5, 0.5]), Individual([0.1, 0.9])],
+        logbook=sample_logbook,
+        history_logger=sample_history,
+        hall_of_fame=sample_hall_of_fame,
+    )
+    checkpoint_saver(10, state)
+
+    expected_logbook = output_directory / get_periodic_logbook_filename(10)
+    expected_history = output_directory / get_periodic_history_filename(10)
+    expected_runtime = output_directory / get_periodic_runtime_filename(10)
+    expected_pointer = output_directory / POINTER_FILENAME
+
+    assert expected_logbook.is_file()
+    assert expected_history.is_file()
+    assert expected_runtime.is_file()
+    assert expected_pointer.is_file()
+    assert expected_pointer.read_text(
+        encoding="utf-8"
+    ).strip() == get_periodic_runtime_filename(10)
+
+    with gzip.open(expected_runtime, "rb") as file:
+        payload = cast(CheckpointPayload, pickle.load(file))
+        assert payload["generation"] == 10
+        assert (
+            payload["algorithm_path"]
+            == "test_package.mock_module.periodic_evolution_loop"
+        )
+        assert payload["rng_state"] == shared_rng.bit_generator.state
+        assert [
+            list(individual) for individual in payload["final_population"]
+        ] == [[0.5, 0.5], [0.1, 0.9]]
+        assert isinstance(payload["hall_of_fame"], HallOfFame)
+
+
+def test_saver_callback_skips_on_non_matching_interval(
+    tmp_path: Path,
+    sample_logbook: Logbook,
+    sample_history: HistoryLogger,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
+
+    state = TrainingResult(
+        final_population=[],
+        logbook=sample_logbook,
+        history_logger=sample_history,
+        hall_of_fame=None,
+    )
+    checkpoint_saver(5, state)
+
+    written_files = list(output_directory.iterdir())
+    assert len(written_files) == 0
+
+
+def test_saver_callback_handles_none_components(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=1,
+    )
+
+    state = TrainingResult(
+        final_population=[],
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=None,
+    )
+    checkpoint_saver(1, state)
+
+    expected_runtime = output_directory / get_periodic_runtime_filename(1)
+    assert expected_runtime.is_file()
+
+    written_files = [
+        file for file in output_directory.iterdir() if file.is_file()
+    ]
+    assert len(written_files) == 2
+    assert (output_directory / POINTER_FILENAME).is_file()
+
+
+def test_saver_callback_prunes_intermediate_generations(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
+    state = TrainingResult(
+        final_population=[],
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=None,
+    )
+
+    checkpoint_saver(10, state)
+    checkpoint_saver(20, state)
+
+    assert (output_directory / get_periodic_runtime_filename(10)).is_file()
+
+    checkpoint_saver(30, state)
+
+    assert not (output_directory / get_periodic_runtime_filename(10)).is_file()
+    assert (output_directory / get_periodic_runtime_filename(20)).is_file()
+    assert (output_directory / get_periodic_runtime_filename(30)).is_file()
+
+
+def test_saver_callback_retains_milestone_generations(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
+    state = TrainingResult(
+        final_population=[],
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=None,
+    )
+
+    checkpoint_saver(100, state)
+    checkpoint_saver(110, state)
+    checkpoint_saver(120, state)
+
+    assert (output_directory / get_periodic_runtime_filename(100)).is_file()
+
+
+def test_saver_callback_heals_previously_locked_or_missed_files(
+    tmp_path: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    output_directory = tmp_path / "checkpoints"
+    checkpoint_saver = make_checkpoint_saver(
+        output_directory=output_directory,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+        save_interval=10,
+    )
+    state = TrainingResult(
+        final_population=[],
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=None,
+    )
+
+    orphaned_file = output_directory / get_periodic_runtime_filename(10)
+    orphaned_file.touch()
+    assert orphaned_file.is_file()
+
+    checkpoint_saver(50, state)
+
+    assert not orphaned_file.is_file()

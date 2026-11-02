@@ -4,16 +4,18 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "deap>=1.4.4",
+    "dill>=0.4.1",
     "joblib>=1.6.0",
     "kesslergame>=2.4.0",
-    "matplotlib==3.10.9",
+    "matplotlib>=3.10.9",
     "networkx>=3.4.2",
-    "numpy==2.2.6",
+    "numpy>=2.2.6",
     "openpyxl>=3.1.5",
-    "pandas>=2.3.3",
+    "pathos>=0.3.5",
     "polars>=2.0.0",
     "scikit-fuzzy>=0.5.0",
     "scipy>=1.15.3",
+    "tomli>=2.5.0",
     "typing-extensions>=4.16.0",
 ]
 
@@ -34,6 +36,9 @@ src-layout = true
 [tool.uv]
 package = true
 
+[tool.basedpyright]
+stubPath = "typings"
+
 [tool.ruff]
 line-length = 79
 
@@ -47,3 +52,11 @@ combine-as-imports = true
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[tool.evolution]
+generations = 100
+population_size = 100
+save_interval = 10
+cx_pb = 0.6
+mut_pb = 0.2
+gene_size = 50

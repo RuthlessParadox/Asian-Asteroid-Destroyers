@@ -1,0 +1,136 @@
+import gzip
+import importlib
+from pathlib import Path
+from typing import NamedTuple, cast
+
+import numpy as np
+import polars as pl
+
+from asian_asteroid_destroyers.evokit import (
+    EvolutionAlgorithm,
+    HistoryLogger,
+    Logbook,
+    TrainingResult,
+)
+
+from .checkpointing import (
+    EMERGENCY_HISTORY_FILENAME,
+    EMERGENCY_LOGBOOK_FILENAME,
+    CheckpointPayload,
+    get_periodic_history_filename,
+    get_periodic_logbook_filename,
+)
+from .parsing import extract_generation_number
+from .unpickling import MainHydratingUnpickler
+from .workspace import (
+    EMERGENCY_RUNTIME_FILENAME,
+    PERIODIC_RUNTIME_PATTERN,
+    POINTER_FILENAME,
+)
+
+
+class ResumptionWorkspace(NamedTuple):
+    algorithm: EvolutionAlgorithm[TrainingResult]
+    last_generation: int
+    saved_state: TrainingResult
+    rng: np.random.Generator
+
+
+def _load_algorithm(path_str: str) -> EvolutionAlgorithm[TrainingResult]:
+    try:
+        module_path, function_name = path_str.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        return cast(
+            EvolutionAlgorithm[TrainingResult],
+            getattr(module, function_name),
+        )
+    except (ValueError, AttributeError, ModuleNotFoundError) as error:
+        raise ImportError(
+            "Failed to dynamically import the target evolution module "
+            + f"from checkpoint: {path_str}"
+        ) from error
+
+
+def load_resumption_workspace(
+    experiment_directory: Path,
+) -> ResumptionWorkspace:
+    pointer_path = experiment_directory / POINTER_FILENAME
+
+    if pointer_path.exists():
+        checkpoint_name = pointer_path.read_text(encoding="utf-8").strip()
+        target_checkpoint = experiment_directory / checkpoint_name
+    else:
+        pkl_files = list(experiment_directory.glob(PERIODIC_RUNTIME_PATTERN))
+        emergency_file = experiment_directory / EMERGENCY_RUNTIME_FILENAME
+
+        if not pkl_files and not emergency_file.exists():
+            raise FileNotFoundError(
+                f"No valid state snapshots detected in {experiment_directory}"
+            )
+
+        target_checkpoint = (
+            emergency_file
+            if emergency_file.exists()
+            else max(pkl_files, key=extract_generation_number)
+        )
+
+    print(f"Reading simulation workspace metadata: {target_checkpoint.name}")
+    with gzip.open(target_checkpoint, "rb") as file:
+        payload = cast(
+            CheckpointPayload,
+            MainHydratingUnpickler(file).load(),
+        )
+
+    algorithm = _load_algorithm(payload["algorithm_path"])
+    last_generation = payload["generation"]
+
+    if target_checkpoint.name == EMERGENCY_RUNTIME_FILENAME:
+        logbook_path = experiment_directory / EMERGENCY_LOGBOOK_FILENAME
+        history_path = experiment_directory / EMERGENCY_HISTORY_FILENAME
+    else:
+        logbook_path = experiment_directory / get_periodic_logbook_filename(
+            last_generation,
+        )
+        history_path = experiment_directory / get_periodic_history_filename(
+            last_generation,
+        )
+
+    rebuilt_logbook = None
+    if logbook_path.exists():
+        rebuilt_logbook = Logbook()
+        rebuilt_logbook.hydrate(
+            pl.read_parquet(
+                logbook_path,
+                memory_map=True,
+                low_memory=True,
+            )
+        )
+
+    rebuilt_history = None
+    if history_path.exists():
+        rebuilt_history = HistoryLogger()
+        rebuilt_history.hydrate(
+            pl.read_parquet(
+                history_path,
+                memory_map=True,
+                low_memory=True,
+            )
+        )
+
+    hydrated_state = TrainingResult(
+        final_population=payload["final_population"],
+        logbook=rebuilt_logbook,
+        history_logger=rebuilt_history,
+        hall_of_fame=payload["hall_of_fame"],
+    )
+
+    bit_generator = np.random.PCG64()
+    setattr(bit_generator, "state", payload["rng_state"])
+    rng = np.random.Generator(bit_generator)
+
+    return ResumptionWorkspace(
+        algorithm=algorithm,
+        last_generation=last_generation,
+        saved_state=hydrated_state,
+        rng=rng,
+    )

@@ -1,0 +1,183 @@
+import gzip
+import inspect
+import pickle
+from pathlib import Path
+from typing import cast
+
+import numpy as np
+import pytest
+
+from asian_asteroid_destroyers.evokit import (
+    EvolutionAlgorithm,
+    HallOfFame,
+    HistoryLogger,
+    Individual,
+    Logbook,
+    TrainingResult,
+)
+from asian_asteroid_destroyers.infrastructure import (
+    EMERGENCY_HISTORY_FILENAME,
+    EMERGENCY_LOGBOOK_FILENAME,
+    EMERGENCY_RUNTIME_FILENAME,
+    POINTER_FILENAME,
+    CheckpointPayload,
+    EmergencySaver,
+)
+
+
+@pytest.fixture
+def temp_output_dir(tmp_path: Path) -> Path:
+    return tmp_path / "emergency_saves"
+
+
+@pytest.fixture
+def sample_logbook() -> Logbook:
+    return Logbook(flush_interval=10)
+
+
+@pytest.fixture
+def sample_history_logger() -> HistoryLogger:
+    return HistoryLogger(flush_interval=10)
+
+
+@pytest.fixture
+def sample_hall_of_fame() -> HallOfFame:
+    return HallOfFame(max_size=1)
+
+
+@pytest.fixture
+def shared_rng() -> np.random.Generator:
+    return np.random.default_rng(42)
+
+
+@pytest.fixture
+def mock_algorithm() -> EvolutionAlgorithm[TrainingResult]:
+    class MockAlgorithm:
+        __name__: str = "mock_evolution_loop"
+        __module__: str = "test_package.mock_module"
+
+        def __call__(self, *args: object, **kwargs: object) -> TrainingResult:
+            return TrainingResult(
+                final_population=[],
+                logbook=None,
+                history_logger=None,
+                hall_of_fame=None,
+            )
+
+    return MockAlgorithm()
+
+
+def test_emergency_saver_initialization(
+    temp_output_dir: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    emergency_saver = EmergencySaver(
+        output_directory=temp_output_dir,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+    )
+    assert emergency_saver.output_directory == temp_output_dir
+
+
+def test_handle_interrupt_exits_when_no_state_available(
+    temp_output_dir: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    emergency_saver = EmergencySaver(
+        output_directory=temp_output_dir,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+    )
+
+    with pytest.raises(SystemExit) as exception_info:
+        emergency_saver.handle_interrupt(2, inspect.currentframe())
+
+    assert exception_info.value.code == 1
+
+
+def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
+    temp_output_dir: Path,
+    sample_logbook: Logbook,
+    sample_history_logger: HistoryLogger,
+    sample_hall_of_fame: HallOfFame,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    emergency_saver = EmergencySaver(
+        output_directory=temp_output_dir,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+    )
+
+    state = TrainingResult(
+        final_population=[Individual([1.0, 2.0]), Individual([3.0, 4.0])],
+        logbook=sample_logbook,
+        history_logger=sample_history_logger,
+        hall_of_fame=sample_hall_of_fame,
+    )
+
+    emergency_saver.update_state(generation=42, state=state)
+
+    with pytest.raises(SystemExit) as exception_info:
+        emergency_saver.handle_interrupt(2, inspect.currentframe())
+
+    assert exception_info.value.code == 0
+
+    expected_logbook_path = temp_output_dir / EMERGENCY_LOGBOOK_FILENAME
+    expected_history_path = temp_output_dir / EMERGENCY_HISTORY_FILENAME
+    expected_runtime_path = temp_output_dir / EMERGENCY_RUNTIME_FILENAME
+    expected_pointer_path = temp_output_dir / POINTER_FILENAME
+
+    assert expected_logbook_path.is_file()
+    assert expected_history_path.is_file()
+    assert expected_runtime_path.is_file()
+    assert expected_pointer_path.is_file()
+    assert (
+        expected_pointer_path.read_text(encoding="utf-8").strip()
+        == EMERGENCY_RUNTIME_FILENAME
+    )
+
+    with gzip.open(expected_runtime_path, "rb") as file:
+        payload = cast(CheckpointPayload, pickle.load(file))
+        assert payload["generation"] == 42
+        assert (
+            payload["algorithm_path"]
+            == "test_package.mock_module.mock_evolution_loop"
+        )
+        assert payload["rng_state"] == shared_rng.bit_generator.state
+        assert [
+            list(individual) for individual in payload["final_population"]
+        ] == [[1.0, 2.0], [3.0, 4.0]]
+        assert isinstance(payload["hall_of_fame"], HallOfFame)
+
+
+def test_handle_interrupt_handles_missing_loggers_gracefully(
+    temp_output_dir: Path,
+    shared_rng: np.random.Generator,
+    mock_algorithm: EvolutionAlgorithm[TrainingResult],
+) -> None:
+    emergency_saver = EmergencySaver(
+        output_directory=temp_output_dir,
+        rng=shared_rng,
+        algorithm=mock_algorithm,
+    )
+
+    state = TrainingResult(
+        final_population=[],
+        logbook=None,
+        history_logger=None,
+        hall_of_fame=None,
+    )
+
+    emergency_saver.update_state(generation=10, state=state)
+
+    with pytest.raises(SystemExit) as exception_info:
+        emergency_saver.handle_interrupt(15, inspect.currentframe())
+
+    assert exception_info.value.code == 0
+    assert temp_output_dir.exists()
+
+    expected_runtime_path = temp_output_dir / EMERGENCY_RUNTIME_FILENAME
+    assert expected_runtime_path.is_file()
