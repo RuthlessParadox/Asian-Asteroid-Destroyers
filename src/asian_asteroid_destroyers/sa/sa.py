@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Iterator
 from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
 
-if TYPE_CHECKING:
-    from kesslergame.state_models import GameState, ShipState, ShipView
-
 from asian_asteroid_destroyers.geometry import trim_angle
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from kesslergame.state_models import GameState, ShipState, ShipView
 
 
 class SituationalAwareness:

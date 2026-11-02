@@ -43,11 +43,15 @@ stubPath = "typings"
 line-length = 79
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "PLC", "PLE", "PYI"]
+select = ["E", "F", "I", "TC", "FA", "PLC", "PLE", "PYI"]
 ignore = ["E501"]
+future-annotations = true
 
 [tool.ruff.lint.isort]
 combine-as-imports = true
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
