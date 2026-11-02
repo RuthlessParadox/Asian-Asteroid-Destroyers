@@ -3,14 +3,18 @@
 # NOTICE: This file is subject to the license agreement defined in file 'LICENSE', which is part of
 # this source code package.
 
-from kesslergame import KesslerController
 from typing import Dict, Tuple
+
+import numpy as np  #
+import skfuzzy as skf
+import skfuzzy.control as ctrl
+from kesslergame import KesslerController
+
 # from controllers.ai.sa.sa import SA
 from .sa.sa import SA
 from .sa.util.helpers import trim_angle
-import skfuzzy.control as ctrl
-import skfuzzy as skf
-import numpy as np
+
+# TODO Fix import statement
 
 
 class MyFuzzyController(KesslerController):
@@ -19,7 +23,7 @@ class MyFuzzyController(KesslerController):
         Any variables or initialization desired for the controller can be set up here
         """
         ...
-        self.chromosome = chromosome # this leaves chromosome object as None - will trigger default behavior
+        self.chromosome = chromosome  # this leaves chromosome object as None - will trigger default behavior
         # or you can define your chromosome values (i.e. paste from your best found solution json) so your controller is
         # the same as the one found through your training.
         # self.chromosome = [
@@ -98,29 +102,67 @@ class MyFuzzyController(KesslerController):
             angle = ctrl.Antecedent(np.linspace(-1.0, 1.0, 11), "angle")
 
             # output - desired relative angle to match to aim ship at asteroid
-            aiming_angle = ctrl.Consequent(np.linspace(-1.0, 1.0, 11), "aiming_angle")
+            aiming_angle = ctrl.Consequent(
+                np.linspace(-1.0, 1.0, 11), "aiming_angle"
+            )
 
             # creating 3 equally spaced membership functions for the inputs
             distance.automf(3, names=["close", "medium", "far"])
             angle.automf(3, names=["negative", "zero", "positive"])
 
             # creating 3 triangular membership functions for the output
-            aiming_angle["negative"] = skf.trimf(aiming_angle.universe, [-1.0, -1.0, 0.0])
-            aiming_angle["zero"] = skf.trimf(aiming_angle.universe, [-1.0, 0.0, 1.0])
-            aiming_angle["positive"] = skf.trimf(aiming_angle.universe, [0.0, 1.0, 1.0])
+            aiming_angle["negative"] = skf.trimf(
+                aiming_angle.universe, [-1.0, -1.0, 0.0]
+            )
+            aiming_angle["zero"] = skf.trimf(
+                aiming_angle.universe, [-1.0, 0.0, 1.0]
+            )
+            aiming_angle["positive"] = skf.trimf(
+                aiming_angle.universe, [0.0, 1.0, 1.0]
+            )
 
             # creating the rule base for the fuzzy system
-            rule1 = ctrl.Rule(distance["close"] & angle["negative"], aiming_angle["negative"])
-            rule2 = ctrl.Rule(distance["medium"] & angle["negative"], aiming_angle["negative"])
-            rule3 = ctrl.Rule(distance["far"] & angle["negative"], aiming_angle["negative"])
-            rule4 = ctrl.Rule(distance["close"] & angle["zero"], aiming_angle["negative"])
-            rule5 = ctrl.Rule(distance["medium"] & angle["zero"], aiming_angle["positive"])
-            rule6 = ctrl.Rule(distance["far"] & angle["zero"], aiming_angle["positive"])
-            rule7 = ctrl.Rule(distance["close"] & angle["positive"], aiming_angle["positive"])
-            rule8 = ctrl.Rule(distance["medium"] & angle["positive"], aiming_angle["positive"])
-            rule9 = ctrl.Rule(distance["far"] & angle["positive"], aiming_angle["positive"])
+            rule1 = ctrl.Rule(
+                distance["close"] & angle["negative"], aiming_angle["negative"]
+            )
+            rule2 = ctrl.Rule(
+                distance["medium"] & angle["negative"],
+                aiming_angle["negative"],
+            )
+            rule3 = ctrl.Rule(
+                distance["far"] & angle["negative"], aiming_angle["negative"]
+            )
+            rule4 = ctrl.Rule(
+                distance["close"] & angle["zero"], aiming_angle["negative"]
+            )
+            rule5 = ctrl.Rule(
+                distance["medium"] & angle["zero"], aiming_angle["positive"]
+            )
+            rule6 = ctrl.Rule(
+                distance["far"] & angle["zero"], aiming_angle["positive"]
+            )
+            rule7 = ctrl.Rule(
+                distance["close"] & angle["positive"], aiming_angle["positive"]
+            )
+            rule8 = ctrl.Rule(
+                distance["medium"] & angle["positive"],
+                aiming_angle["positive"],
+            )
+            rule9 = ctrl.Rule(
+                distance["far"] & angle["positive"], aiming_angle["positive"]
+            )
 
-            rules = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9]
+            rules = [
+                rule1,
+                rule2,
+                rule3,
+                rule4,
+                rule5,
+                rule6,
+                rule7,
+                rule8,
+                rule9,
+            ]
             # creating a FIS controller from the rules + membership functions
             self.aiming_fis = ctrl.ControlSystem(rules)
             # creating a controller sim to evaluate the FIS
@@ -133,29 +175,57 @@ class MyFuzzyController(KesslerController):
             angle = ctrl.Antecedent(np.linspace(-1.0, 1.0, 11), "angle")
 
             # output - desired relative angle to match to aim ship at asteroid
-            aiming_angle = ctrl.Consequent(np.linspace(-1.0, 1.0, 11), "aiming_angle")
+            aiming_angle = ctrl.Consequent(
+                np.linspace(-1.0, 1.0, 11), "aiming_angle"
+            )
 
             # Create membership functions from chromosome - Note that we're constraining the triangular membership
             # functions to have Ruspini partitioning
             # create distance membership functions from chromosome
-            distance["close"] = skf.trimf(distance.universe, [-1.0, -1.0, self.chromosome[0]])
-            distance["medium"] = skf.trimf(distance.universe, [-1.0, self.chromosome[0], 1.0])
-            distance["far"] = skf.trimf(distance.universe, [self.chromosome[0], 1.0, 1.0])
+            distance["close"] = skf.trimf(
+                distance.universe, [-1.0, -1.0, self.chromosome[0]]
+            )
+            distance["medium"] = skf.trimf(
+                distance.universe, [-1.0, self.chromosome[0], 1.0]
+            )
+            distance["far"] = skf.trimf(
+                distance.universe, [self.chromosome[0], 1.0, 1.0]
+            )
             # create angle membership functions from chromosome
-            angle["negative"] = skf.trimf(angle.universe, [-1.0, -1.0, self.chromosome[1]*2-1])
-            angle["zero"] = skf.trimf(angle.universe, [-1.0, self.chromosome[1]*2-1, 1.0])
-            angle["positive"] = skf.trimf(angle.universe, [self.chromosome[1]*2-1, 1.0, 1.0])
+            angle["negative"] = skf.trimf(
+                angle.universe, [-1.0, -1.0, self.chromosome[1] * 2 - 1]
+            )
+            angle["zero"] = skf.trimf(
+                angle.universe, [-1.0, self.chromosome[1] * 2 - 1, 1.0]
+            )
+            angle["positive"] = skf.trimf(
+                angle.universe, [self.chromosome[1] * 2 - 1, 1.0, 1.0]
+            )
 
             # creating 3 triangular membership functions for the output
-            aiming_angle["negative"] = skf.trimf(aiming_angle.universe, [-1.0, -1.0, self.chromosome[2]*2-1])
-            aiming_angle["zero"] = skf.trimf(aiming_angle.universe, [-1.0, self.chromosome[2]*2-1, 1.0])
-            aiming_angle["positive"] = skf.trimf(aiming_angle.universe, [self.chromosome[2]*2-1, 1.0, 1.0])
+            aiming_angle["negative"] = skf.trimf(
+                aiming_angle.universe, [-1.0, -1.0, self.chromosome[2] * 2 - 1]
+            )
+            aiming_angle["zero"] = skf.trimf(
+                aiming_angle.universe, [-1.0, self.chromosome[2] * 2 - 1, 1.0]
+            )
+            aiming_angle["positive"] = skf.trimf(
+                aiming_angle.universe, [self.chromosome[2] * 2 - 1, 1.0, 1.0]
+            )
 
-            input1_mfs = [distance["close"], distance["medium"], distance["far"]]
+            input1_mfs = [
+                distance["close"],
+                distance["medium"],
+                distance["far"],
+            ]
             input2_mfs = [angle["negative"], angle["zero"], angle["positive"]]
 
             # create list of output membership functions to index into to create rule antecedents
-            output_mfs = [aiming_angle["negative"], aiming_angle["zero"], aiming_angle["positive"]]
+            output_mfs = [
+                aiming_angle["negative"],
+                aiming_angle["zero"],
+                aiming_angle["positive"],
+            ]
 
             # bin the values associated with rules - this is done so we can use the floats in the chromosome DNA
             # associated with the output membership functions in order to index into our predefined output membership
@@ -163,14 +233,13 @@ class MyFuzzyController(KesslerController):
             bins = np.array([0.0, 0.33333, 0.66666, 1.0])
             num_mfs1 = len(input1_mfs)
             num_mfs2 = len(input2_mfs)
-            num_rules = num_mfs1*num_mfs2
+            num_rules = num_mfs1 * num_mfs2
             # grabbing the corresponding DNA values that determine the output mfs from the chromosome
-            rules_raw = self.chromosome[3:3+num_rules]
+            rules_raw = self.chromosome[3 : 3 + num_rules]
             # binning the values to convert the floats to integer values to be used as indices - a somewhat hacky way
             # using direct integer encodings would be nicer and probably perform better - opportunity for improvement
-            ind = np.digitize(rules_raw, bins, right=True)-1
+            ind = np.digitize(rules_raw, bins, right=True) - 1
             ind = [int(min(max(idx, 0), 2)) for idx in ind]
-
 
             count = 0
             # mapping the DNA indices to output_mfs
@@ -185,7 +254,12 @@ class MyFuzzyController(KesslerController):
 
             for jj in range(num_mfs2):
                 for ii in range(num_mfs1):
-                    rules.append(ctrl.Rule(input1_mfs[ii] & input2_mfs[jj], rule_consequents_linear[count]))
+                    rules.append(
+                        ctrl.Rule(
+                            input1_mfs[ii] & input2_mfs[jj],
+                            rule_consequents_linear[count],
+                        )
+                    )
 
             # creating a FIS controller from the rules + membership functions
             self.aiming_fis = ctrl.ControlSystem(rules)
@@ -213,17 +287,45 @@ class MyFuzzyController(KesslerController):
             thrust["positive"] = skf.trimf(thrust.universe, [0.0, 1.0, 1.0])
 
             # creating the rule base for the fuzzy system
-            rule1 = ctrl.Rule(distance["close"] & angle["negative"], thrust["negative"])
-            rule2 = ctrl.Rule(distance["medium"] & angle["negative"], thrust["negative"])
-            rule3 = ctrl.Rule(distance["far"] & angle["negative"], thrust["negative"])
-            rule4 = ctrl.Rule(distance["close"] & angle["zero"], thrust["negative"])
-            rule5 = ctrl.Rule(distance["medium"] & angle["zero"], thrust["positive"])
-            rule6 = ctrl.Rule(distance["far"] & angle["zero"], thrust["positive"])
-            rule7 = ctrl.Rule(distance["close"] & angle["positive"], thrust["positive"])
-            rule8 = ctrl.Rule(distance["medium"] & angle["positive"], thrust["positive"])
-            rule9 = ctrl.Rule(distance["far"] & angle["positive"], thrust["positive"])
+            rule1 = ctrl.Rule(
+                distance["close"] & angle["negative"], thrust["negative"]
+            )
+            rule2 = ctrl.Rule(
+                distance["medium"] & angle["negative"], thrust["negative"]
+            )
+            rule3 = ctrl.Rule(
+                distance["far"] & angle["negative"], thrust["negative"]
+            )
+            rule4 = ctrl.Rule(
+                distance["close"] & angle["zero"], thrust["negative"]
+            )
+            rule5 = ctrl.Rule(
+                distance["medium"] & angle["zero"], thrust["positive"]
+            )
+            rule6 = ctrl.Rule(
+                distance["far"] & angle["zero"], thrust["positive"]
+            )
+            rule7 = ctrl.Rule(
+                distance["close"] & angle["positive"], thrust["positive"]
+            )
+            rule8 = ctrl.Rule(
+                distance["medium"] & angle["positive"], thrust["positive"]
+            )
+            rule9 = ctrl.Rule(
+                distance["far"] & angle["positive"], thrust["positive"]
+            )
 
-            rules = [rule1, rule2, rule3, rule4, rule5, rule6, rule7, rule8, rule9]
+            rules = [
+                rule1,
+                rule2,
+                rule3,
+                rule4,
+                rule5,
+                rule6,
+                rule7,
+                rule8,
+                rule9,
+            ]
             # creating a FIS controller from the rules + membership functions
             self.moving_fis = ctrl.ControlSystem(rules)
             # creating a controller sim to evaluate the FIS
@@ -241,24 +343,50 @@ class MyFuzzyController(KesslerController):
             # Create membership functions from chromosome - Note that we're constraining the triangular membership
             # functions to have Ruspini partitioning
             # create distance membership functions from chromosome
-            distance["close"] = skf.trimf(distance.universe, [-1.0, -1.0, self.chromosome[12]])
-            distance["medium"] = skf.trimf(distance.universe, [-1.0, self.chromosome[12], 1.0])
-            distance["far"] = skf.trimf(distance.universe, [self.chromosome[12], 1.0, 1.0])
+            distance["close"] = skf.trimf(
+                distance.universe, [-1.0, -1.0, self.chromosome[12]]
+            )
+            distance["medium"] = skf.trimf(
+                distance.universe, [-1.0, self.chromosome[12], 1.0]
+            )
+            distance["far"] = skf.trimf(
+                distance.universe, [self.chromosome[12], 1.0, 1.0]
+            )
             # create angle membership functions from chromosome
-            angle["negative"] = skf.trimf(angle.universe, [-1.0, -1.0, self.chromosome[13] * 2 - 1])
-            angle["zero"] = skf.trimf(angle.universe, [-1.0, self.chromosome[13] * 2 - 1, 1.0])
-            angle["positive"] = skf.trimf(angle.universe, [self.chromosome[13] * 2 - 1, 1.0, 1.0])
+            angle["negative"] = skf.trimf(
+                angle.universe, [-1.0, -1.0, self.chromosome[13] * 2 - 1]
+            )
+            angle["zero"] = skf.trimf(
+                angle.universe, [-1.0, self.chromosome[13] * 2 - 1, 1.0]
+            )
+            angle["positive"] = skf.trimf(
+                angle.universe, [self.chromosome[13] * 2 - 1, 1.0, 1.0]
+            )
 
             # creating 3 triangular membership functions for the output
-            thrust["negative"] = skf.trimf(thrust.universe, [-1.0, -1.0, self.chromosome[14] * 2 - 1])
-            thrust["zero"] = skf.trimf(thrust.universe, [-1.0, self.chromosome[14] * 2 - 1, 1.0])
-            thrust["positive"] = skf.trimf(thrust.universe, [self.chromosome[14] * 2 - 1, 1.0, 1.0])
+            thrust["negative"] = skf.trimf(
+                thrust.universe, [-1.0, -1.0, self.chromosome[14] * 2 - 1]
+            )
+            thrust["zero"] = skf.trimf(
+                thrust.universe, [-1.0, self.chromosome[14] * 2 - 1, 1.0]
+            )
+            thrust["positive"] = skf.trimf(
+                thrust.universe, [self.chromosome[14] * 2 - 1, 1.0, 1.0]
+            )
 
-            input1_mfs = [distance["close"], distance["medium"], distance["far"]]
+            input1_mfs = [
+                distance["close"],
+                distance["medium"],
+                distance["far"],
+            ]
             input2_mfs = [angle["negative"], angle["zero"], angle["positive"]]
 
             # create list of output membership functions to index into to create rule antecedents
-            output_mfs = [thrust["negative"], thrust["zero"], thrust["positive"]]
+            output_mfs = [
+                thrust["negative"],
+                thrust["zero"],
+                thrust["positive"],
+            ]
 
             # bin the values associated with rules - this is done so we can use the floats in the chromosome DNA
             # associated with the output membership functions in order to index into our predefined output membership
@@ -268,7 +396,7 @@ class MyFuzzyController(KesslerController):
             num_mfs2 = len(input2_mfs)
             num_rules = num_mfs1 * num_mfs2
             # grabbing the corresponding DNA values that determine the output mfs from the chromosome
-            rules_raw = self.chromosome[15:15 + num_rules]
+            rules_raw = self.chromosome[15 : 15 + num_rules]
             # binning the values to convert the floats to integer values to be used as indices - a somewhat hacky way
             # using direct integer encodings would be nicer and probably perform better - opportunity for improvement
             ind = np.digitize(rules_raw, bins, right=True) - 1
@@ -287,16 +415,21 @@ class MyFuzzyController(KesslerController):
 
             for jj in range(num_mfs2):
                 for ii in range(num_mfs1):
-                    rules.append(ctrl.Rule(input1_mfs[ii] & input2_mfs[jj], rule_consequents_linear[count]))
+                    rules.append(
+                        ctrl.Rule(
+                            input1_mfs[ii] & input2_mfs[jj],
+                            rule_consequents_linear[count],
+                        )
+                    )
 
             # creating a FIS controller from the rules + membership functions
             self.moving_fis = ctrl.ControlSystem(rules)
             # creating a controller sim to evaluate the FIS
             self.moving_fis_sim = ctrl.ControlSystemSimulation(self.moving_fis)
 
-
-
-    def actions(self, ship_state: Dict, game_state: Dict) -> Tuple[float, float, bool, bool]:
+    def actions(
+        self, ship_state: Dict, game_state: Dict
+    ) -> Tuple[float, float, bool, bool]:
         """
         Method processed each time step by this controller to determine what control actions to take
 
@@ -310,7 +443,7 @@ class MyFuzzyController(KesslerController):
             bool: fire control value. Shoots if true
             bool: mine deployment control value. Lays mine if true
         """
-        
+
         # update the situational awareness with current information
         self.sa.update(ship_state, game_state)
 
@@ -318,7 +451,9 @@ class MyFuzzyController(KesslerController):
         nearest_asteroid = self.sa.ownship.nearest_n(1)[0]
 
         # grab the bearing to the asteroid
-        relative_angle = trim_angle(nearest_asteroid.bearing - self.sa.ownship.heading)
+        relative_angle = trim_angle(
+            nearest_asteroid.bearing - self.sa.ownship.heading
+        )
         norm_relative_angle = self.sa.norm_angle(relative_angle)
 
         distance = nearest_asteroid.distance
@@ -333,7 +468,7 @@ class MyFuzzyController(KesslerController):
         self.aiming_fis_sim.compute()
         self.moving_fis_sim.compute()
         # map normalized output to angle range [-180, 180], note that the output of the fis is determined by the membership functions and they go from -1 to 1
-        desired_aim_angle = self.aiming_fis_sim.output["aiming_angle"]*180.0
+        desired_aim_angle = self.aiming_fis_sim.output["aiming_angle"] * 180.0
         aim_angle_difference = trim_angle(desired_aim_angle - relative_angle)
 
         # this converts the desired aiming angle to a control action to be fed to the ship in terms of turn rate

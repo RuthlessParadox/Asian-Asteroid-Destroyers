@@ -2,6 +2,7 @@
 # Copyright © 2022 Thales. All Rights Reserved.
 # NOTICE: This file is subject to the license agreement defined in file 'LICENSE', which is part of
 # this source code package.
+
 import random
 import sys
 import time
@@ -25,16 +26,18 @@ DEFAULT_WEIGHTS = {
     "deaths": -0.2,
 }
 
+
 def calculate_fitness(team, weights):
     score = 0.0
     score += (
         weights.get("fraction_total_asteroids_hit", 0.0)
-        + team.fraction_total_asteroids_hit
+        * team.fraction_total_asteroids_hit
     )
     score += weights.get("accuracy", 0.0) * team.accuracy
     score += weights.get("deaths", 0.0) * team.deaths
 
     return score
+
 
 def example_fitness(individual, weights=None, settings=None):
     if weights is None:
@@ -74,12 +77,18 @@ def example_fitness(individual, weights=None, settings=None):
 
     return (total_score,)
 
-def create_fitness_function(weights = None):
-    seleted_weights = dict(
-        DEFAULT_WEIGHTS if weights is None else weights
-    )
+
+def create_fitness_function(weights=None):
+    seleted_weights = dict(DEFAULT_WEIGHTS if weights is None else weights)
+
     def fitness(individual):
-        return example_fitness(individual, weights=seleted_weights)
+        return example_fitness(
+            individual,
+            weights=seleted_weights,
+        )
+
+    return fitness
+
 
 if __name__ == "__main__":
     test_individual = [random.random() for _ in range(24)]
@@ -97,7 +106,9 @@ if __name__ == "__main__":
     # print(test_controller)
 
     fitness = create_fitness_function(
-        {"fraction_total_asteroids_hit": 2.0,
-        "accuracy": 1.0,
-        "deaths": -0.5,}
+        {
+            "fraction_total_asteroids_hit": 2.0,
+            "accuracy": 1.0,
+            "deaths": -0.5,
+        }
     )
