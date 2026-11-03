@@ -33,6 +33,7 @@ class EvolutionMetrics:
         processed_query = (
             query.explode("hall_of_fame")
             .select(
+                pl.col("generation"),
                 pl.col("hall_of_fame").struct.field("rank").alias("rank"),
                 pl.col("hall_of_fame").struct.field("genome").alias("genome"),
             )
@@ -82,30 +83,32 @@ class EvolutionMetrics:
         ).to_list()
 
         exploded = sorted_history.explode("hall_of_fame").select(
-            "generation",
-            pl.col("hall_of_fame").struct.field("genome").cast(pl.String),
+            pl.col("generation"),
+            pl.col("hall_of_fame").struct.field("genome").alias("genome"),
         )
 
         turnover_records: list[dict[str, int | float]] = []
-        previous_set: set[str] = set()
+        previous_set: set[tuple[float, ...]] = set()
 
-        for index, generation in enumerate(generations):
-            current_genomes = set(
-                exploded.filter(pl.col("generation") == generation)
+        for index, gen in enumerate(generations):
+            current_raw: list[list[float]] = (
+                exploded.filter(pl.col("generation") == gen)
                 .get_column("genome")
                 .to_list()
             )
+            current_genomes = {tuple(gene) for gene in current_raw}
 
             if index == 0:
                 turnover_rate = 0.0
             else:
                 new_entrants = current_genomes - previous_set
                 turnover_rate = len(new_entrants) / max(
-                    1, len(current_genomes)
+                    1,
+                    len(current_genomes),
                 )
 
             turnover_records.append(
-                {"generation": generation, "turnover_rate": turnover_rate},
+                {"generation": gen, "turnover_rate": turnover_rate},
             )
             previous_set = current_genomes
 
@@ -115,13 +118,14 @@ class EvolutionMetrics:
         )
 
     def collect_geometry_drift(self, gene_indices: list[int]) -> pl.DataFrame:
-        base_query = (
+        flattened_query = (
             self._history_lazyframe.explode("hall_of_fame")
-            .filter(pl.col("hall_of_fame").struct.field("rank") == 1)
             .select(
-                "generation",
+                pl.col("generation"),
+                pl.col("hall_of_fame").struct.field("rank").alias("rank"),
                 pl.col("hall_of_fame").struct.field("genome").alias("genome"),
             )
+            .filter(pl.col("rank") == 1)
         )
 
         projections = [pl.col("generation")]
@@ -130,13 +134,13 @@ class EvolutionMetrics:
                 pl.col("genome").list.get(index).alias(f"gene_{index}"),
             )
 
-        return base_query.select(projections).sort("generation").collect()
+        return flattened_query.select(projections).sort("generation").collect()
 
     def collect_param_volatility(self) -> pl.DataFrame:
         return (
             self._history_lazyframe.explode("hall_of_fame")
             .select(
-                "generation",
+                pl.col("generation"),
                 pl.col("hall_of_fame").struct.field("genome").alias("genome"),
             )
             .explode("genome")
