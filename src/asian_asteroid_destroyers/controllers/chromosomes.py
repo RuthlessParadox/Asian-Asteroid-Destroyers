@@ -32,31 +32,33 @@ class MFParamTrapezoidal(NamedTuple):
 
 
 class RuleGene(NamedTuple):
-    """Maps linguistic intent directly to TSK linear equations.
+    """Encapsulates a variable-arity TSK rule structure.
 
-    Example:
-        RuleGene(
-            antecedent_mf_indices=[0, 1],  # e.g., Close distance AND Fast speed
-            consequent_coefficients=[-0.5, 0.2],
-            consequent_offset=10.0
-        )
+    Attributes:
+        antecedents: List of tuples mapping (input_matrix_index, mf_index).
+            Example: [(0, 1), (2, 0)] -> (Input 0 is MF 1) AND (Input 2 is MF 0)
+        consequent_coefficients: Linear scale weights matching input dimensionality.
+        consequent_offset: Intercept/bias value for the TSK equation.
     """
 
-    antecedent_membership_function_indices: list[int]
+    antecedents: list[tuple[int, int]]
     consequent_coefficients: list[float]
     consequent_offset: float
 
 
-class ControllerChromosome(NamedTuple):
-    """The full evolutionary genome block for a specific action subsystem.
+class SubsystemChromosome(NamedTuple):
+    """Evolvable chromosome blueprint block for a singular output system."""
 
-    This structure is highly human-readable when logged, saved to disk,
-    or inspected in a debugger, yet acts as a static blueprint.
-    """
-
-    distance_membership_functions: list[MFParamTriangular | MFParamTrapezoidal]
-    bearing_membership_functions: list[MFParamTriangular | MFParamTrapezoidal]
+    membership_function_pool: list[MFParamTriangular | MFParamTrapezoidal]
     rules: list[RuleGene]
+
+
+class ControllerChromosome(NamedTuple):
+    """The master chromosome bundle injected directly into the controller."""
+
+    thrust_blueprint: SubsystemChromosome
+    turn_blueprint: SubsystemChromosome
+    fire_blueprint: SubsystemChromosome
 
 
 def _compile_membership_function(
@@ -73,57 +75,30 @@ def _compile_membership_function(
     )
 
 
-def compile_chromosome_to_engine(
-    chromosome: ControllerChromosome,
-) -> TSKInferenceEngine:
-    """Transforms a human-readable chromosome into a fast TSKInferenceEngine.
-
-    This function unpacks the linguistic rules and parameters into an explicit
-    index-mapped execution graph. Run this once inside your controller's
-    __init__ method during dependency injection.
-    """
-    compiled_distance_membership_functions: Final[list[MembershipFunction]] = [
+def compile_subsystem(blueprint: SubsystemChromosome) -> TSKInferenceEngine:
+    """Compiles a subsystem genome into a fast operational engine."""
+    # Pre-compile the shared pool of membership function shapes
+    compiled_pool: Final[list[MembershipFunction]] = [
         _compile_membership_function(param)
-        for param in chromosome.distance_membership_functions
-    ]
-    compiled_bearing_membership_functions: Final[list[MembershipFunction]] = [
-        _compile_membership_function(param)
-        for param in chromosome.bearing_membership_functions
+        for param in blueprint.membership_function_pool
     ]
 
-    compiled_rules: Final[list[TSKRule]] = []
+    compiled_rules: list[TSKRule] = []
 
-    for rule_gene in chromosome.rules:
-        antecedents: list[FuzzyClause] = []
+    for rule_gene in blueprint.rules:
+        clauses: list[FuzzyClause] = []
 
-        distance_membership_function_index = (
-            rule_gene.antecedent_membership_function_indices[0]
-        )
-        bearing_membership_function_index = (
-            rule_gene.antecedent_membership_function_indices[1]
-        )
-
-        antecedents.append(
-            FuzzyClause(
-                0,
-                compiled_distance_membership_functions[
-                    distance_membership_function_index
-                ],
+        for input_index, membership_function_index in rule_gene.antecedents:
+            clauses.append(
+                FuzzyClause(
+                    input_index,
+                    compiled_pool[membership_function_index],
+                ),
             )
-        )
-
-        antecedents.append(
-            FuzzyClause(
-                1,
-                compiled_bearing_membership_functions[
-                    bearing_membership_function_index
-                ],
-            )
-        )
 
         compiled_rules.append(
             TSKRule(
-                antecedents=antecedents,
+                antecedents=clauses,
                 consequent_coefficients=rule_gene.consequent_coefficients,
                 consequent_offset=rule_gene.consequent_offset,
             )
