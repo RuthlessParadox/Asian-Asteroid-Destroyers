@@ -11,9 +11,9 @@ from asian_asteroid_destroyers.scenarios import create_training_portfolio
 
 if TYPE_CHECKING:
     from asian_asteroid_destroyers.chromosomes import ControllerChromosome
-    from asian_asteroid_destroyers.evokit import FitnessEvaluator, Individual
+    from asian_asteroid_destroyers.evokit import Individual
 
-__all__ = ["FuzzyFitnessEvaluator", "get_evaluator_callback"]
+__all__ = ["FuzzyFitnessEvaluator"]
 
 
 class FuzzyFitnessEvaluator:
@@ -70,11 +70,3 @@ class FuzzyFitnessEvaluator:
             total_hits / scenario_count,
             -(total_volatility / scenario_count),
         )
-
-
-def get_evaluator_callback(
-    template: ControllerChromosome,
-    seed: int,
-) -> FitnessEvaluator:
-    evaluator = FuzzyFitnessEvaluator(template=template, evaluation_seed=seed)
-    return evaluator.evaluate_individual
