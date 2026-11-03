@@ -3,12 +3,109 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable, cast
 
+import numpy as np
 from deap import tools
+
+from asian_asteroid_destroyers.chromosomes import (
+    flatten_chromosome,
+    hydrate_chromosome_blueprint,
+    repair_geometry_invariants,
+)
 
 from .individual import Individual
 
 if TYPE_CHECKING:
+    from asian_asteroid_destroyers.chromosomes import ControllerChromosome
+
     from .types import CrossoverOperator
+
+
+def cx_fuzzy_blend(
+    template: ControllerChromosome,
+    rng: np.random.Generator,
+    alpha: float = 0.3,
+) -> CrossoverOperator:
+    """Closure factory providing a dependency-injected blend crossover.
+
+    Args:
+        template: The structural chromosome design used as a hydration map.
+        rng: The explicit random number generator instance injected from the
+            outer evolutionary training environment.
+        alpha: Blend exploration factor. Controls how far outside the parent
+            bounds the offspring genes can blend.
+    """
+
+    def cx_fuzzy_blend_wrapper(
+        individual_1: Individual,
+        individual_2: Individual,
+    ) -> tuple[Individual, Individual]:
+        """Applies aligned segment swaps and numeric BLX blending via rng."""
+
+        parent_1 = hydrate_chromosome_blueprint(individual_1[:], template)
+        parent_2 = hydrate_chromosome_blueprint(individual_2[:], template)
+
+        subsystems = [
+            (parent_1.thrust_blueprint, parent_2.thrust_blueprint),
+            (parent_1.turn_blueprint, parent_2.turn_blueprint),
+            (parent_1.fire_blueprint, parent_2.fire_blueprint),
+        ]
+
+        for subsystem_1, subsystem_2 in subsystems:
+            # Segment-wise crossover: Membership Function pools
+            pool_1 = subsystem_1.membership_function_pool
+            pool_2 = subsystem_2.membership_function_pool
+
+            for index in range(len(pool_1)):
+                membership_function_1 = pool_1[index]
+                membership_function_2 = pool_2[index]
+
+                if rng.random() < 0.7:
+                    parent_1_array = np.array(
+                        membership_function_1,
+                        dtype=np.float64,
+                    )
+                    parent_2_array = np.array(
+                        membership_function_2,
+                        dtype=np.float64,
+                    )
+
+                    min_values = np.minimum(parent_1_array, parent_2_array)
+                    max_values = np.maximum(parent_1_array, parent_2_array)
+                    differences = max_values - min_values
+
+                    low_bounds = min_values - alpha * differences
+                    high_bounds = max_values + alpha * differences
+
+                    offspring_1 = rng.uniform(low_bounds, high_bounds)
+                    offspring_2 = rng.uniform(low_bounds, high_bounds)
+
+                    pool_1[index] = type(membership_function_1)(*offspring_1)
+                    pool_2[index] = type(membership_function_2)(*offspring_2)
+                else:
+                    pool_1[index], pool_2[index] = pool_2[index], pool_1[index]
+
+            # Segment-wise crossover: Rule Consequents
+            rules_1 = subsystem_1.rules
+            rules_2 = subsystem_2.rules
+            for index in range(len(rules_1)):
+                if rng.random() < 0.5:
+                    rules_1[index], rules_2[index] = (
+                        rules_2[index],
+                        rules_1[index],
+                    )
+
+        individual_1[:] = repair_geometry_invariants(
+            flatten_chromosome(parent_1),
+            template,
+        )
+        individual_2[:] = repair_geometry_invariants(
+            flatten_chromosome(parent_2),
+            template,
+        )
+
+        return individual_1, individual_2
+
+    return cx_fuzzy_blend_wrapper
 
 
 def cx_one_point() -> CrossoverOperator:
