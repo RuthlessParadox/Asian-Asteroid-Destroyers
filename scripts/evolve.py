@@ -19,6 +19,7 @@ from asian_asteroid_destroyers.chromosomes import (
 )
 from asian_asteroid_destroyers.evaluation import FuzzyFitnessEvaluator
 from asian_asteroid_destroyers.evokit import (
+    HallOfFame,
     HistoryLogger,
     Logbook,
     Statistics,
@@ -172,6 +173,7 @@ def main() -> None:
         logbook = workspace.saved_state.logbook
         history_logger = workspace.saved_state.history_logger
         population = workspace.saved_state.final_population
+        hall_of_fame = workspace.saved_state.hall_of_fame
     else:
         print("Commencing a fresh evolutionary workspace...")
         data_directory = create_experiment_directory()
@@ -180,6 +182,7 @@ def main() -> None:
         rng = np.random.default_rng()
         logbook = Logbook()
         history_logger = HistoryLogger()
+        hall_of_fame = HallOfFame(max_size=1)
         population = None
 
     initial_seed = int(rng.integers(1, 1000000))
@@ -249,6 +252,7 @@ def main() -> None:
             generations=args.generations,
             population_size=args.population_size,
             seed=rng,
+            hall_of_fame=hall_of_fame,
             logbook=logbook,
             history_logger=history_logger,
             statistics=statistics,
