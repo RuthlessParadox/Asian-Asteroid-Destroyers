@@ -23,7 +23,7 @@ class FuzzyFitnessEvaluator:
         "_environment",
     )
     _template: Final[ControllerChromosome]
-    _evaluation_seed: Final[int]
+    _evaluation_seed: int
     _environment: Final[TrainerEnvironment]
 
     def __init__(
@@ -34,6 +34,14 @@ class FuzzyFitnessEvaluator:
         self._template = template
         self._evaluation_seed = evaluation_seed
         self._environment = TrainerEnvironment()
+
+    @property
+    def evaluation_seed(self) -> int:
+        return self._evaluation_seed
+
+    @evaluation_seed.setter
+    def evaluation_seed(self, seed: int) -> None:
+        self._evaluation_seed = seed
 
     def evaluate_individual(self, individual: Individual) -> tuple[float, ...]:
         chromosome = hydrate_chromosome_blueprint(
