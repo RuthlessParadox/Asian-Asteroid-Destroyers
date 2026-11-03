@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from asian_asteroid_destroyers.chromosomes import ControllerChromosome
     from asian_asteroid_destroyers.evokit import Individual
 
+__all__ = ["FuzzyFitnessEvaluator"]
+
 
 class FuzzyFitnessEvaluator:
     __slots__: tuple[str, ...] = ("_template", "_scenarios", "_environment")
