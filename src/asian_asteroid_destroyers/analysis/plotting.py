@@ -26,11 +26,13 @@ def _enable_strict_grid(ax: Axes) -> None:
         line.set_visible(True)
 
 
-def plot_fitness_tracks(summary_df: pl.DataFrame) -> tuple[Figure, Axes]:
-    generations = summary_df.get_column("generation").to_numpy()
-    max_fitnesses = summary_df.get_column("max_fitness").to_numpy()
-    mean_fitnesses = summary_df.get_column("mean_fitness").to_numpy()
-    min_fitnesses = summary_df.get_column("min_fitness").to_numpy()
+def plot_fitness_tracks(
+    summary_dataframe: pl.DataFrame,
+) -> tuple[Figure, Axes]:
+    generations = summary_dataframe.get_column("generation").to_numpy()
+    max_fitnesses = summary_dataframe.get_column("max_fitness").to_numpy()
+    mean_fitnesses = summary_dataframe.get_column("mean_fitness").to_numpy()
+    min_fitnesses = summary_dataframe.get_column("min_fitness").to_numpy()
 
     fig, ax = _create_canvas()
 
@@ -88,11 +90,13 @@ def plot_fitness_tracks(summary_df: pl.DataFrame) -> tuple[Figure, Axes]:
     return fig, ax
 
 
-def plot_param_volatility(volatility_df: pl.DataFrame) -> tuple[Figure, Axes]:
+def plot_param_volatility(
+    volatility_dataframe: pl.DataFrame,
+) -> tuple[Figure, Axes]:
     fig, ax = _create_canvas()
 
-    generations = volatility_df.get_column("generation").to_numpy()
-    param_stds = volatility_df.get_column("param_std").to_numpy()
+    generations = volatility_dataframe.get_column("generation").to_numpy()
+    param_stds = volatility_dataframe.get_column("param_std").to_numpy()
 
     vol_line = Line2D(
         generations,
@@ -116,6 +120,86 @@ def plot_param_volatility(volatility_df: pl.DataFrame) -> tuple[Figure, Axes]:
 
     x_label = Text(text="Generation")
     y_label = Text(text="Standard Deviation Spread")
+    ax.xaxis.set_label(x_label)
+    ax.yaxis.set_label(y_label)
+
+    _enable_strict_grid(ax)
+
+    return fig, ax
+
+
+def plot_hall_of_fame_turnover(
+    turnover_dataframe: pl.DataFrame,
+) -> tuple[Figure, Axes]:
+    fig, ax = _create_canvas()
+
+    generations = turnover_dataframe.get_column("generation").to_numpy()
+    rates = turnover_dataframe.get_column("turnover_rate").to_numpy()
+
+    turnover_line = Line2D(
+        generations,
+        rates,
+        color="#f59e0b",  # Amber
+        label="HoF Strategy Replacement Turnover Rate",
+    )
+
+    _ = ax.add_line(turnover_line)
+    ax.relim()
+    ax.autoscale_view()
+
+    title_text = Text(
+        x=0.5,
+        y=0.95,
+        text="Hall of Fame Strategy Turnover Tracking",
+    )
+    title_text.set_horizontalalignment("center")
+    _ = fig.add_artist(title_text)
+
+    x_label = Text(text="Generation")
+    y_label = Text(text="Turnover Ratio (New / Capacity)")
+    ax.xaxis.set_label(x_label)
+    ax.yaxis.set_label(y_label)
+
+    _enable_strict_grid(ax)
+
+    return fig, ax
+
+
+def plot_geometry_drift(
+    drift_dataframe: pl.DataFrame,
+    gene_indices: list[int],
+) -> tuple[Figure, Axes]:
+    fig, ax = _create_canvas()
+
+    generations = drift_dataframe.get_column("generation").to_numpy()
+
+    palette = ["#ec4899", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"]
+
+    for index, gene_index in enumerate(gene_indices):
+        column_name = f"gene_{gene_index}"
+        coordinates = drift_dataframe.get_column(column_name).to_numpy()
+
+        line = Line2D(
+            generations,
+            coordinates,
+            color=palette[index % len(palette)],
+            label=f"Gene Position Offset: {gene_index}",
+        )
+        _ = ax.add_line(line)
+
+    ax.relim()
+    ax.autoscale_view()
+
+    title_text = Text(
+        x=0.5,
+        y=0.95,
+        text="Linguistic Term Geometry Drift Trajectory",
+    )
+    title_text.set_horizontalalignment("center")
+    _ = fig.add_artist(title_text)
+
+    x_label = Text(text="Generation")
+    y_label = Text(text="Chromosome Coordinate Value")
     ax.xaxis.set_label(x_label)
     ax.yaxis.set_label(y_label)
 
