@@ -80,10 +80,8 @@ def plot_fitness_tracks(
     title_text.set_horizontalalignment("center")
     _ = fig.add_artist(title_text)
 
-    x_label = Text(text="Generation")
-    y_label = Text(text="Fitness Value")
-    ax.xaxis.set_label(x_label)
-    ax.yaxis.set_label(y_label)
+    ax.xaxis.label.set_text("Generation")
+    ax.yaxis.label.set_text("Fitness Value")
 
     _enable_strict_grid(ax)
 
@@ -118,10 +116,8 @@ def plot_param_volatility(
     title_text.set_horizontalalignment("center")
     _ = fig.add_artist(title_text)
 
-    x_label = Text(text="Generation")
-    y_label = Text(text="Standard Deviation Spread")
-    ax.xaxis.set_label(x_label)
-    ax.yaxis.set_label(y_label)
+    ax.xaxis.label.set_text("Generation")
+    ax.yaxis.label.set_text("Standard Deviation Spread")
 
     _enable_strict_grid(ax)
 
@@ -155,10 +151,8 @@ def plot_hall_of_fame_turnover(
     title_text.set_horizontalalignment("center")
     _ = fig.add_artist(title_text)
 
-    x_label = Text(text="Generation")
-    y_label = Text(text="Turnover Ratio (New / Capacity)")
-    ax.xaxis.set_label(x_label)
-    ax.yaxis.set_label(y_label)
+    ax.xaxis.label.set_text("Generation")
+    ax.yaxis.label.set_text("Turnover Ratio (New / Capacity)")
 
     _enable_strict_grid(ax)
 
@@ -198,10 +192,8 @@ def plot_geometry_drift(
     title_text.set_horizontalalignment("center")
     _ = fig.add_artist(title_text)
 
-    x_label = Text(text="Generation")
-    y_label = Text(text="Chromosome Coordinate Value")
-    ax.xaxis.set_label(x_label)
-    ax.yaxis.set_label(y_label)
+    ax.xaxis.label.set_text("Generation")
+    ax.yaxis.label.set_text("Chromosome Coordinate Value")
 
     _enable_strict_grid(ax)
 
