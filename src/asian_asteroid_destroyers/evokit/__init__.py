@@ -10,6 +10,7 @@ from .crossover import (
     cx_blend as cx_blend,
     cx_evolution_strategy_blend as cx_evolution_strategy_blend,
     cx_evolution_strategy_two_point as cx_evolution_strategy_two_point,
+    cx_fuzzy_blend as cx_fuzzy_blend,
     cx_messy_one_point as cx_messy_one_point,
     cx_one_point as cx_one_point,
     cx_ordered as cx_ordered,
