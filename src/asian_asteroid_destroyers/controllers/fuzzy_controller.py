@@ -96,6 +96,10 @@ class FuzzyController(KesslerController):
         "_turn_engine",
         "_fire_engine",
         "_emergency_tti_threshold",
+        "_last_thrust",
+        "_last_turn",
+        "_total_accumulated_volatility",
+        "_processed_steps",
     )
 
     _sa: Final[SituationalAwareness]
@@ -106,6 +110,11 @@ class FuzzyController(KesslerController):
     _fire_engine: Final[TSKInferenceEngine]
 
     _emergency_tti_threshold: Final[float]
+
+    _last_thrust: float | None
+    _last_turn: float | None
+    _total_accumulated_volatility: float
+    _processed_steps: int
 
     def __init__(self, chromosome: ControllerChromosome) -> None:
         super().__init__()
@@ -118,6 +127,11 @@ class FuzzyController(KesslerController):
         self._fire_engine = compile_subsystem(chromosome.fire_blueprint)
 
         self._emergency_tti_threshold = 0.45
+
+        self._last_thrust = None
+        self._last_turn = None
+        self._total_accumulated_volatility = 0.0
+        self._processed_steps = 0
 
     @override
     def actions(
@@ -149,9 +163,24 @@ class FuzzyController(KesslerController):
                     # Panic override: point-blank blast threat mitigation
                     fire = True
 
+        if self._last_thrust is not None and self._last_turn is not None:
+            delta_thrust = abs(thrust - self._last_thrust)
+            delta_turn = abs(turn_rate - self._last_turn)
+            self._total_accumulated_volatility += delta_thrust + delta_turn
+            self._processed_steps += 1
+
+        self._last_thrust = thrust
+        self._last_turn = turn_rate
+
         return thrust, turn_rate, fire, drop_mine
 
     @property
     @override
     def name(self) -> str:
         return "AsianAsteroidDestroyersFuzzyController"
+
+    @property
+    def mean_volatility(self) -> float:
+        if self._processed_steps == 0:
+            return 0.0
+        return self._total_accumulated_volatility / self._processed_steps
