@@ -1,398 +1,159 @@
-# -*- coding: utf-8 -*-
-# Copyright © 2022 Thales. All Rights Reserved.
-# NOTICE: This file is subject to the license agreement defined in file 'LICENSE', which is part of
-# this source code package.
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple
+from typing import TYPE_CHECKING, Final
 
-state: Dict[str, Any]
-state: Tuple[str, Any]
-
-from typing import TYPE_CHECKING
-
-import numpy as np
 from kesslergame import KesslerController
+from typing_extensions import override
+
+from asian_asteroid_destroyers.sa import SituationalAwareness
+
+from .chromosomes import compile_subsystem
 
 if TYPE_CHECKING:
-    from kesslergame.kessler_game import GameState, ShipState
+    from kesslergame.state_models import GameState, ShipState
 
-# from controllers.ai.sa.sa import SA
-from asian_asteroid_destroyers.controllers.fuzzy_tsk import tsk_zero_order
-from asian_asteroid_destroyers.controllers.sa.sa import SA
-from asian_asteroid_destroyers.controllers.sa.util.helpers import trim_angle
+    from asian_asteroid_destroyers.fuzzy import TSKInferenceEngine
+
+    from .chromosomes import ControllerChromosome
 
 
-class MyFuzzyController(KesslerController):
-    def __init__(self, chromosome=None):
+class _TacticalFeatureExtractor:
+    __slots__: tuple[str, ...] = ("_sa",)
+    _sa: Final[SituationalAwareness]
+
+    def __init__(self, sa: SituationalAwareness) -> None:
+        self._sa = sa
+
+    def get_thrust_inputs(self) -> list[float]:
+        """Constructs input vector for the thrust inference engine.
+
+        Matrix Layout:: Soonest impact asteroid distance (wrapped): Soonest impact asteroid time-to-impact (TTI): Current ship linear speed
         """
-        Any variables or initialization desired for the controller can be set up here
+        soonest = self._sa.agent_ship.soonest_impact_n_asteroids(1)
+
+        if not soonest:
+            return [
+                self._sa.map_diagonal_length,
+                10.0,
+                self._sa.agent_ship.speed,
+            ]
+
+        target_asteroid = soonest[0]
+        tti = target_asteroid.tti
+        resolved_tti = tti if tti is not None else 10.0
+
+        return [
+            target_asteroid.distance_wrap,
+            resolved_tti,
+            self._sa.agent_ship.speed,
+        ]
+
+    def get_turn_inputs(self) -> list[float]:
+        """Constructs input vector for the turn rate inference engine.
+
+        Matrix Layout:: Bearing angle to target threat (degrees wrapped): Soonest impact asteroid time-to-impact (TTI): Current ship angular turn rate
         """
-        ...
-        self.chromosome = chromosome  # this leaves chromosome object as None - will trigger default behavior
-        # or you can define your chromosome values (i.e. paste from your best found solution json) so your controller is
-        # the same as the one found through your training.
-        # self.chromosome = [
-        #     0.2631645225918112,
-        #     0.9352976507138837,
-        #     0.9194881615834452,
-        #     0.865825520047121,
-        #     0.9537717256003297,
-        #     0.3332987471941833,
-        #     0.15500677821329611,
-        #     0.6103279406781605,
-        #     0.700110463994626,
-        #     0.28645661550432655,
-        #     0.7817669414563869,
-        #     0.3242896160611243,
-        #     0.2193792619771311,
-        #     0.9187346087146049,
-        #     0.7565990950849348,
-        #     0.378982875637626,
-        #     0.20469566850073984,
-        #     0.4221919062502967,
-        #     0.09472152646554266,
-        #     0.22444174766372227,
-        #     0.43972091554025095,
-        #     0.3024938255921993,
-        #     0.03951149080348482,
-        #     0.07014695710862251,
-        #     0.5085111197870378,
-        #     0.7217226903052553,
-        #     0.8478160198517868,
-        #     0.9622056814666377,
-        #     0.9292672901679256,
-        #     0.8763434435737334,
-        #     0.8715824359186305,
-        #     0.622211987772582,
-        #     0.09103610636756931,
-        #     0.42932650446832776,
-        #     0.11151119794790532,
-        #     0.6449315965771553,
-        #     0.39484371578702315,
-        #     0.5792033115832056,
-        #     0.31492571381606194,
-        #     0.6833570548284794,
-        #     0.8625524374751714,
-        #     0.8127256586152101,
-        #     0.2550469991459845,
-        #     0.19763655967886684,
-        #     0.8740087388142191,
-        #     0.9902384288505531,
-        #     0.8321982213704795,
-        #     0.6787979639950257,
-        #     0.3945538617015545,
-        #     0.8955970115205919
-        #   ]
-        self.aiming_fis = None
-        self.aiming_fis_sim = None
-        self.moving_fis = None
-        self.moving_fis_sim = None
-        self.normalization_dist = None
-        self.sa = SA()
+        soonest = self._sa.agent_ship.soonest_impact_n_asteroids(1)
 
-        # I put this in a separate function for cleanliness in the init procedure, but this just calls the functions
-        # that create your FIS functions
-        self.create_fuzzy_systems()
+        if not soonest:
+            nearest = self._sa.agent_ship.nearest_n_asteroids_wrapped(1)
+            if not nearest:
+                return [0.0, 10.0, self._sa.agent_ship.turn_rate]
+            target_asteroid = nearest[0]
+            resolved_tti = 10.0
+        else:
+            target_asteroid = soonest[0]
+            tti = target_asteroid.tti
+            resolved_tti = tti if tti is not None else 10.0
 
+        return [
+            target_asteroid.bearing_wrap,
+            resolved_tti,
+            self._sa.agent_ship.turn_rate,
+        ]
+
+    def get_fire_inputs(self) -> list[float]:
+        """Constructs input vector for the firing command inference engine.
+
+        Matrix Layout:: Bearing angle to targeting threat (degrees wrapped): Distance to targeted threat: Tactical ammunition surplus ratio
+        """
+        nearest = self._sa.agent_ship.nearest_n_asteroids_wrapped(1)
+
+        if not nearest:
+            return [0.0, self._sa.map_diagonal_length, 0.0]
+
+        target_asteroid = nearest[0]
+        return [
+            target_asteroid.bearing_wrap,
+            target_asteroid.distance_wrap,
+            self._sa.agent_ship.bullet_asteroid_equivalent_ratio,
+        ]
+
+
+class FuzzyController(KesslerController):
+    __slots__: tuple[str, ...] = (
+        "_sa",
+        "_extractor",
+        "_thrust_engine",
+        "_turn_engine",
+        "_fire_engine",
+        "_emergency_tti_threshold",
+    )
+
+    _sa: Final[SituationalAwareness]
+    _extractor: Final[_TacticalFeatureExtractor]
+
+    _thrust_engine: Final[TSKInferenceEngine]
+    _turn_engine: Final[TSKInferenceEngine]
+    _fire_engine: Final[TSKInferenceEngine]
+
+    _emergency_tti_threshold: Final[float]
+
+    def __init__(self, chromosome: ControllerChromosome) -> None:
+        super().__init__()
+
+        self._sa = SituationalAwareness()
+        self._extractor = _TacticalFeatureExtractor(self._sa)
+
+        self._thrust_engine = compile_subsystem(chromosome.thrust_blueprint)
+        self._turn_engine = compile_subsystem(chromosome.turn_blueprint)
+        self._fire_engine = compile_subsystem(chromosome.fire_blueprint)
+
+        self._emergency_tti_threshold = 0.45
+
+    @override
     def actions(
         self,
         ship_state: ShipState,
         game_state: GameState,
     ) -> tuple[float, float, bool, bool]:
-        self.update_situational_awareness(ship_state, game_state)
-        asteroid = self.get_nearest_asteroid()
-        angle, distance = self.calculate_features(asteroid)
+        self._sa.update(ship_state, game_state)
 
-        aim_output, thrust_output = self.run_fuzzy_systems(angle, distance)
+        thrust_inputs = self._extractor.get_thrust_inputs()
+        turn_inputs = self._extractor.get_turn_inputs()
+        fire_inputs = self._extractor.get_fire_inputs()
 
-        turn_rate = self.calculate_turn_rate(
-            ship_state,
-            trim_angle(asteroid.bearing - self.sa.ownship.heading),
-            aim_output,
-        )
+        thrust = self._thrust_engine.infer(thrust_inputs)
+        turn_rate = self._turn_engine.infer(turn_inputs)
+        fire_output = self._fire_engine.infer(fire_inputs)
 
-        thrust = thrust_output * 480.0
-        return (thrust, turn_rate, True, False)
+        fire = fire_output > 0.0
+        drop_mine = False
 
-    def calculate_turn_rate(self, ship_state, relative_angle, aim_output):
-        desired_angle = aim_output * 190
-        difference = trim_angle(desired_angle - relative_angle)
-        if difference < -0.5:
-            return ship_state["turn_rate_range"][1]
-        if difference > 0.5:
-            return ship_state["turn_rate_range"][0]
-        return 0
+        # --- Emergency Fire-Override Fallback Layer ---
+        # Force a fire directive if an asteroid is on an imminent crash course,
+        # shielding the ship during early un-optimized genetic epochs.
+        soonest_asteroids = self._sa.agent_ship.soonest_impact_n_asteroids(1)
+        if soonest_asteroids:
+            imminent_threat = soonest_asteroids[0]
+            if imminent_threat.tti is not None:
+                if imminent_threat.tti <= self._emergency_tti_threshold:
+                    # Panic override: point-blank blast threat mitigation
+                    fire = True
 
-    # def convert_rule_values(self, rule_values):
-    #    bins = np.array([1 / 3, 2 / 3])
-    #    indices = np.digitize(rule_values, bins)
-    #    return [int(min(max(index, 0), 2)) for index in indices]
-
-    def calculate_features(self, asteroid):
-        relative_angle = trim_angle(asteroid.bearing - self.sa.ownship.heading)
-        normalized_angle = self.sa.norm_angle(relative_angle)
-        normalized_distance = self.sa.norm_distance(asteroid.distance)
-        return normalized_angle, normalized_distance
-
-    # def create_rules_from_outputs(self, distance, angle, output, output_names):
-    #    distance_mfs = [distance["close"], distance["medium"], distance["far"]]
-    #    angle_mfs = [angle["negative"], angle["zero"], angle["positive"]]
-    #    output_mfs = {
-    #        "negative": output["negative"],
-    #        "zero": output["zero"],
-    #        "positive": output["positive"],
-    #    }
-    #    rules = []
-    #    count = 0
-    #    for angle_mf in angle_mfs:
-    #        for distance_mf in distance_mfs:
-    #            rules.append(
-    #                ctrl.Rule(
-    #                    distance_mf & angle_mf, output_mfs[output_names[count]]
-    #                )
-    #            )
-    #            count += 1
-    #    return rules
-
-    def run_fuzzy_systems(self, angle, distance):
-        aiming_output = tsk_zero_order(
-            angle,
-            distance,
-            angle_center=self.aiming_angle_center,
-            distance_center=self.aiming_distance_center,
-            consequents=self.aiming_consequents,
-        )
-
-        thrust_output = tsk_zero_order(
-            angle,
-            distance,
-            angle_center=self.moving_angle_center,
-            distance_center=self.moving_distance_center,
-            consequents=self.moving_consequents,
-        )
-
-        return float(aiming_output), float(thrust_output)
-
-    # def setup_chromosome_memberships(
-    #    self,
-    #    distance,
-    #    angle,
-    #    output,
-    #    distance_index,
-    #    angle_index,
-    #    output_index,
-    # ):
-    #    if self.chromosome is None:
-    #        raise ValueError("Chromosome must be initialized")
-    #    distance_value = float(
-    #        np.clip(self.chromosome[distance_index], 0.01, 0.99)
-    #    )
-    #    angle_value = float(
-    #        np.clip(self.chromosome[angle_index] * 2 - 1, -0.99, 0.99)
-    #    )
-    #    output_value = float(
-    #        np.clip(self.chromosome[output_index] * 2 - 1, -0.99, 0.99)
-    #    )
-    #    # output = self.chromosome[output_index]
-
-    #    distance["close"] = skf.trimf(
-    #        distance.universe, [0.0, 0.0, distance_value]
-    #    )
-    #    distance["medium"] = skf.trimf(
-    #        distance.universe, [0.0, distance_value, 1.0]
-    #    )
-    #    distance["far"] = skf.trimf(
-    #        distance.universe, [distance_value, 1.0, 1.0]
-    #    )
-
-    #    # self.create_triangular_memberships(distance, distance_value)
-    #    self.create_triangular_memberships(angle, angle_value)
-    #    self.create_triangular_memberships(output, output_value)
-
-    # def create_chromosome_rules(self, distance, angle, output, rule_start=3):
-    #    if self.chromosome is None:
-    #        raise ValueError("Chromosome must be initialized")
-    #    distance_mfs = [distance["close"], distance["medium"], distance["far"]]
-    #    angle_mfs = [angle["negative"], angle["zero"], angle["positive"]]
-    #    output_mfs = [output["negative"], output["zero"], output["positive"]]
-
-    #    rule_values = self.chromosome[rule_start : rule_start + 9]
-    #    indices = self.convert_rule_values(rule_values)
-
-    #    rules = []
-    #    count = 0
-    #    for angle_mf in angle_mfs:
-    #        for distance_mf in distance_mfs:
-    #            rules.append(
-    #                ctrl.Rule(
-    #                    distance_mf & angle_mf, output_mfs[indices[count]]
-    #                )
-    #            )
-    #            count += 1
-    #    return rules
-
-    # def create_output_memberships(self, output):
-    #    output["negative"] = skf.trimf(output.universe, [-1.0, -1.0, 0.0])
-    #    output["zero"] = skf.trimf(output.universe, [-1.0, 0.0, 1.0])
-    #    output["positive"] = skf.trimf(output.universe, [0.0, 1.0, 1.0])
-
-    # def create_triangular_memberships(self, variable, center: float):
-    #    variable["negative"] = skf.trimf(
-    #        variable.universe, [-1.0, -1.0, center]
-    #    )
-    #    variable["zero"] = skf.trimf(variable.universe, [-1.0, center, 1.0])
-    #    variable["positive"] = skf.trimf(variable.universe, [center, 1.0, 1.0])
-
-    # def setup_default_memberships(self, distance, angle, output):
-    #    distance.automf(3, names=["close", "medium", "far"])
-    #    angle.automf(3, names=["negative", "zero", "positive"])
-    #    self.create_output_memberships(output)
-
-    # def create_default_rules(self, distance, angle, output):
-    #    output_names = [
-    #        "negative, negative",
-    #        "negative",
-    #        "zero, zero",
-    #        "zero",
-    #        "positive, positive",
-    #        "positive",
-    #    ]
-
-    #    return self.create_rules_from_outputs(
-    #        distance, angle, output, output_names
-    #    )
-
-    # def create_fuzzy_variables(self, output_name: str):
-    #    distance = ctrl.Antecedent(np.linspace(0.0, 1.0, 11), "distance")
-    #    angle = ctrl.Antecedent(np.linspace(-1.0, 1.0, 11), "angle")
-    #    output = ctrl.Consequent(np.linspace(-1.0, 1.0, 11), output_name)
-    #   return [distance, angle, output]
-
-    def create_fuzzy_systems(self):
-        self.create_aiming_fis()
-        self.create_moving_fis()
-
-    def create_aiming_fis(self):
-        if self.chromosome is None:
-            self.aiming_distance_center = 0.5
-            self.aiming_angle_center = 0.0
-            self.aiming_consequents = np.array(
-                [
-                    -1.0,
-                    -0.5,
-                    0.0,
-                    -0.5,
-                    0.0,
-                    0.5,
-                    0.0,
-                    0.5,
-                    1.0,
-                ]
-            )
-        else:
-            self.aiming_distance_center = float(
-                np.clip(self.chromosome[0], 0.01, 0.99)
-            )
-            self.aiming_angle_center = float(
-                np.clip(self.chromosome[1] * 2.0 - 1.0, -0.99, 0.99)
-            )
-            # self.aiming_scale = np.clip(self.chromosome[2], 0.01, 1.0)
-            self.aiming_consequents = np.asarray(
-                [
-                    (np.clip(gene * 2.0 - 1.0, -1.0, 1.0))
-                    for gene in self.chromosome[3:12]
-                ],
-                dtype=np.float64,
-            )
-
-    def update_situational_awareness(self, ship_state, game_state):
-        self.sa.update(ship_state, game_state)
-
-    def get_nearest_asteroid(self):
-        return self.sa.ownship.nearest_n(1)[0]
-
-    def create_moving_fis(self):
-        if self.chromosome is None:
-            self.moving_distance_center = 0.5
-            self.moving_angle_center = 0.0
-            self.moving_consequents = np.array(
-                [
-                    -1.0,
-                    -0.5,
-                    0.0,
-                    -0.5,
-                    0.0,
-                    0.5,
-                    0.0,
-                    0.5,
-                    1.0,
-                ]
-            )
-        else:
-            self.moving_distance_center = float(
-                np.clip(self.chromosome[12], 0.01, 0.99)
-            )
-            self.moving_angle_center = float(
-                np.clip(self.chromosome[13] * 2 - 1, -0.99, 0.99)
-            )
-            self.moving_consequents = np.asarray(
-                [
-                    np.clip(gene * 2.0 - 1.0, -1.0, 1.0)
-                    for gene in self.chromosome[15:24]
-                ],
-                dtype=np.float64,
-            )
+        return thrust, turn_rate, fire, drop_mine
 
     @property
+    @override
     def name(self) -> str:
-        """
-        Simple property used for naming controllers such that it can be displayed in the graphics engine
-
-        Returns:
-            str: name of this controller
-        """
-        return "Fuzzy Test1"
-
-    # @property
-    # def custom_sprite_path(self) -> str:
-    #     return "Neo.png"
-    # def get_memberships(self, value, variable_type, center):
-    #    if variable_type == "distance":
-    #        triangles = [
-    #            [0.0, 0.0, center],
-    #            [0.0, center, 0.0],
-    #            [center, 0.0, 0.0],
-    #        ]
-    #    else:
-    #        triangles = [
-    #            [-1.0, -1.0, center],
-    #            [-1.0, center, 1.0],
-    #            [center, 1.0, 1.0],
-    #        ]
-    #    return [
-    #        float(skf.trimf(np.array([value]), triangle)[0])
-    #        for triangle in triangles
-    #    ]
-
-    # def tsk_output(self, angle, distance, output, centers, consequents, scale):
-    #    angle_memberships = self.get_memberships(angle, "angle", centers[1])
-    #    distance_memberships = self.get_memberships(
-    #        distance, "distance", centers[0]
-    #    )
-    #    weighted_sum = 0.0
-    #    activation_sum = 0.0
-    #    rule_index = 0
-    #    for angle_index in range(3):
-    #        for distance_index in range(3):
-    #            activation = (
-    #                angle_memberships[angle_index]
-    #                * distance_memberships[distance_index]
-    #            )
-    #            consequent = scale * consequents[rule_index]
-    #            weighted_sum += activation * consequent
-    #            activation_sum += activation
-    #            rule_index += 1
-    #    if activation_sum == 0:
-    #        return 0.0
-    #    return weighted_sum / activation_sum
+        return "AsianAsteroidDestroyersFuzzyController"
