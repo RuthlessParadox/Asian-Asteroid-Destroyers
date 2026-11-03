@@ -138,6 +138,10 @@ def _make_structural_template() -> ControllerChromosome:
     )
 
 
+def _suppress_worker_interrupts() -> None:
+    _ = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
 def main() -> None:
     dill.settings["recurse"] = True
     args = get_config()
@@ -235,7 +239,7 @@ def main() -> None:
         fitness_evaluator.evaluation_seed = next_generation_seed
 
     print("Commencing evolutionary loop...")
-    with ProcessPool() as executor:
+    with ProcessPool(initializer=_suppress_worker_interrupts) as executor:
         toolbox.register("map", executor.map)
 
         final_result = algorithm(
