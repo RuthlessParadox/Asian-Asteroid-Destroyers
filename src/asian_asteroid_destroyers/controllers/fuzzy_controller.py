@@ -145,11 +145,9 @@ class FuzzyController(KesslerController):
         turn_inputs = self._extractor.get_turn_inputs()
         fire_inputs = self._extractor.get_fire_inputs()
 
-        thrust = self._thrust_engine.infer(thrust_inputs)
-        turn_rate = self._turn_engine.infer(turn_inputs)
-        fire_output = self._fire_engine.infer(fire_inputs)
-
-        fire = fire_output > 0.0
+        thrust = float(self._thrust_engine.infer(thrust_inputs))
+        turn_rate = float(self._turn_engine.infer(turn_inputs))
+        fire = bool(self._fire_engine.infer(fire_inputs) > 0.0)
         drop_mine = False
 
         # --- Emergency Fire-Override Fallback Layer ---
