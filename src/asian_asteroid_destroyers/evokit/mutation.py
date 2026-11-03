@@ -3,12 +3,73 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Callable, cast
 
+import numpy as np
 from deap import tools
 
 from .individual import Individual
 
 if TYPE_CHECKING:
+    from asian_asteroid_destroyers.chromosomes import ControllerChromosome
+
     from .types import MutationOperator
+
+
+def mut_fuzzy_gaussian(
+    template: ControllerChromosome,
+    rng: np.random.Generator,
+    mu: float,
+    sigma: float,
+    independent_probability: float = 0.2,
+) -> MutationOperator:
+    """Closure factory providing a highly optimized vectorized mutation operator.
+
+    Args:
+        template: The structural chromosome configuration used to extract the
+            exact flat geometric indices.
+        rng: The explicit dependency-injected random number generator.
+        mu: Mean of the Gaussian noise distribution.
+        sigma: Standard deviation of the Gaussian step.
+        independent_probability: Independent probability for each specific gene to mutate.
+    """
+
+    membership_function_slices: list[tuple[int, int]] = []
+    current_index = 0
+
+    for blueprint in (
+        template.thrust_blueprint,
+        template.turn_blueprint,
+        template.fire_blueprint,
+    ):
+        for param in blueprint.membership_function_pool:
+            param_length = len(param)
+            membership_function_slices.append(
+                (current_index, current_index + param_length),
+            )
+            current_index += param_length
+
+        for rule in blueprint.rules:
+            current_index += len(rule.consequent_coefficients) + 1
+
+    def mut_fuzzy_gaussian_wrapper(
+        individual: Individual,
+    ) -> tuple[Individual]:
+        """Applies vectorized Gaussian noise and repairs bounds in place."""
+        genes = np.array(individual, dtype=np.float64)
+
+        mutation_mask = rng.random(size=genes.size) < independent_probability
+
+        if np.any(mutation_mask):
+            noise = rng.normal(mu, sigma, size=genes.size)
+            genes += noise * mutation_mask
+
+            for start, end in membership_function_slices:
+                genes[start:end].sort()
+
+            individual[:] = genes.tolist()
+
+        return (individual,)
+
+    return mut_fuzzy_gaussian_wrapper
 
 
 def mut_gaussian(

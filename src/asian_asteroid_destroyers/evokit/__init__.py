@@ -41,6 +41,7 @@ from .logbook import Logbook as Logbook, LogRow as LogRow, LogValue as LogValue
 from .mutation import (
     mut_evolution_strategy_log_normal as mut_evolution_strategy_log_normal,
     mut_flip_bit as mut_flip_bit,
+    mut_fuzzy_gaussian as mut_fuzzy_gaussian,
     mut_gaussian as mut_gaussian,
     mut_polynomial_bounded as mut_polynomial_bounded,
     mut_shuffle_indices as mut_shuffle_indices,
