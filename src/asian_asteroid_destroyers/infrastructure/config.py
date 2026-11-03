@@ -18,7 +18,7 @@ class _EvolutionConfig:
 
 
 @dataclass(frozen=True)
-class RuntimeArgs:
+class TrainerArgs:
     generations: int
     population_size: int
     save_interval: int
@@ -28,11 +28,50 @@ class RuntimeArgs:
     resume: str | None = None
 
 
-def get_config() -> RuntimeArgs:
-    return _parse_args(_load_baseline_config(pathlib.Path("pyproject.toml")))
+@dataclass(frozen=True)
+class AnalyzerArgs:
+    run_dir: str
+    track_genes: list[int]
 
 
-def _parse_args(baseline: _EvolutionConfig) -> RuntimeArgs:
+def get_trainer_config() -> TrainerArgs:
+    return _parse_trainer_args(
+        _load_baseline_config(pathlib.Path("pyproject.toml")),
+    )
+
+
+def get_analyzer_config() -> AnalyzerArgs:
+    parser = argparse.ArgumentParser(
+        description="Extract metrics and render analytics for a training run.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    _ = parser.add_argument(
+        "--run-dir",
+        type=str,
+        required=True,
+        help="Path to targeted experiment workspace directory",
+    )
+    _ = parser.add_argument(
+        "--track-genes",
+        type=int,
+        nargs="+",
+        default=[],
+        help="Space-separated list of flat gene indices to trace for drift",
+    )
+
+    namespace = parser.parse_args()
+
+    run_dir = cast(str, namespace.run_dir)
+    track_genes = cast(list[int], namespace.track_genes)
+
+    return AnalyzerArgs(
+        run_dir=run_dir,
+        track_genes=track_genes,
+    )
+
+
+def _parse_trainer_args(baseline: _EvolutionConfig) -> TrainerArgs:
     parser = argparse.ArgumentParser(
         description="Run evolutionary training with layered hyperparameters.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
@@ -108,7 +147,7 @@ def _parse_args(baseline: _EvolutionConfig) -> RuntimeArgs:
                 + "a fresh training run."
             )
 
-    return RuntimeArgs(
+    return TrainerArgs(
         generations=generations,
         population_size=population_size,
         save_interval=save_interval,

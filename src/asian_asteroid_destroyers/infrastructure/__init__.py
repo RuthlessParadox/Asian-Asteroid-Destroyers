@@ -7,7 +7,12 @@ from .checkpointing import (
     get_periodic_logbook_filename as get_periodic_logbook_filename,
     make_checkpoint_saver as make_checkpoint_saver,
 )
-from .config import RuntimeArgs as RuntimeArgs, get_config as get_config
+from .config import (
+    AnalyzerArgs as AnalyzerArgs,
+    TrainerArgs as TrainerArgs,
+    get_analyzer_config as get_analyzer_config,
+    get_trainer_config as get_trainer_config,
+)
 from .parsing import extract_generation_number as extract_generation_number
 from .resumption import (
     ResumptionWorkspace as ResumptionWorkspace,

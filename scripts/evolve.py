@@ -32,7 +32,7 @@ from asian_asteroid_destroyers.evokit import (
 from asian_asteroid_destroyers.infrastructure import (
     EmergencySaver,
     create_experiment_directory,
-    get_config,
+    get_trainer_config,
     load_resumption_workspace,
     make_checkpoint_saver,
 )
@@ -144,7 +144,7 @@ def _suppress_worker_interrupts() -> None:
 
 def main() -> None:
     dill.settings["recurse"] = True
-    args = get_config()
+    args = get_trainer_config()
 
     template = _make_structural_template()
     flat_genes_length = len(flatten_chromosome(template))
