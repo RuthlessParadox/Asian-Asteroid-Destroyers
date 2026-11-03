@@ -5,5 +5,7 @@ from .chromosomes import (
     RuleGene as RuleGene,
     SubsystemChromosome as SubsystemChromosome,
     compile_subsystem as compile_subsystem,
+    flatten_chromosome as flatten_chromosome,
+    hydrate_chromosome_blueprint as hydrate_chromosome_blueprint,
 )
 from .controller import FuzzyController as FuzzyController

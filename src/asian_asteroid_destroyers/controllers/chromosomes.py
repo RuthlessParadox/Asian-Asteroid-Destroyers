@@ -105,3 +105,136 @@ def compile_subsystem(blueprint: SubsystemChromosome) -> TSKInferenceEngine:
         )
 
     return TSKInferenceEngine(compiled_rules)
+
+
+def flatten_chromosome(chromosome: ControllerChromosome) -> list[float]:
+    flat_genes: list[float] = []
+
+    for blueprint in (
+        chromosome.thrust_blueprint,
+        chromosome.turn_blueprint,
+        chromosome.fire_blueprint,
+    ):
+        for param in blueprint.membership_function_pool:
+            if isinstance(param, MFParamTriangular):
+                flat_genes.extend([param.left, param.center, param.right])
+            else:
+                flat_genes.extend(
+                    [
+                        param.left_base,
+                        param.left_peak,
+                        param.right_peak,
+                        param.right_base,
+                    ],
+                )
+
+        for rule in blueprint.rules:
+            flat_genes.extend(rule.consequent_coefficients)
+            flat_genes.append(rule.consequent_offset)
+
+    return flat_genes
+
+
+def _hydrate_subsystem(
+    flat_genes: list[float],
+    start_index: int,
+    template: SubsystemChromosome,
+) -> tuple[SubsystemChromosome, int]:
+    """Decodes a single subsystem chunk from the sequential float array.
+
+    Marches an explicit index pointer through the array based on the
+    geometric types and rules present in the provided structural template.
+    """
+    index = start_index
+    hydrated_membership_functions: list[
+        MFParamTriangular | MFParamTrapezoidal
+    ] = []
+
+    for membership_function_template in template.membership_function_pool:
+        if isinstance(membership_function_template, MFParamTriangular):
+            hydrated_membership_functions.append(
+                MFParamTriangular(
+                    left=flat_genes[index],
+                    center=flat_genes[index + 1],
+                    right=flat_genes[index + 2],
+                )
+            )
+            index += 3
+        else:
+            hydrated_membership_functions.append(
+                MFParamTrapezoidal(
+                    left_base=flat_genes[index],
+                    left_peak=flat_genes[index + 1],
+                    right_peak=flat_genes[index + 2],
+                    right_base=flat_genes[index + 3],
+                )
+            )
+            index += 4
+
+    hydrated_rules: list[RuleGene] = []
+
+    for rule_template in template.rules:
+        coefficient_count = len(rule_template.consequent_coefficients)
+
+        coefficients: list[float] = []
+        for coefficient_i in range(coefficient_count):
+            coefficients.append(flat_genes[index + coefficient_i])
+        index += coefficient_count
+
+        offset = flat_genes[index]
+        index += 1
+
+        hydrated_rules.append(
+            RuleGene(
+                antecedents=rule_template.antecedents,
+                consequent_coefficients=coefficients,
+                consequent_offset=offset,
+            )
+        )
+
+    return (
+        SubsystemChromosome(
+            membership_function_pool=hydrated_membership_functions,
+            rules=hydrated_rules,
+        ),
+        index,
+    )
+
+
+def hydrate_chromosome_blueprint(
+    flat_genes: list[float],
+    template: ControllerChromosome,
+) -> ControllerChromosome:
+    """Hydrates a flat sequence of float genes into a structured chromosome object.
+
+    Uses a template structural architecture to reconstruct separate sub-system
+    inference models with full compile-time static type safety.
+    """
+    thrust_blueprint, next_index = _hydrate_subsystem(
+        flat_genes,
+        0,
+        template.thrust_blueprint,
+    )
+    turn_blueprint, next_index = _hydrate_subsystem(
+        flat_genes,
+        next_index,
+        template.turn_blueprint,
+    )
+    fire_blueprint, last_idx = _hydrate_subsystem(
+        flat_genes,
+        next_index,
+        template.fire_blueprint,
+    )
+
+    if last_idx != len(flat_genes):
+        raise ValueError(
+            "Chromosome gene count mismatch. Expected index pointer to finish "
+            + f"at array boundary {len(flat_genes)}, "
+            + f"but terminated at {last_idx}."
+        )
+
+    return ControllerChromosome(
+        thrust_blueprint=thrust_blueprint,
+        turn_blueprint=turn_blueprint,
+        fire_blueprint=fire_blueprint,
+    )
