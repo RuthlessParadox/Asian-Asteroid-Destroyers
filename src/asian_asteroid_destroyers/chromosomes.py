@@ -13,6 +13,18 @@ from asian_asteroid_destroyers.fuzzy import (
 if TYPE_CHECKING:
     from asian_asteroid_destroyers.fuzzy import MembershipFunction
 
+__all__ = [
+    "MFParamTriangular",
+    "MFParamTrapezoidal",
+    "RuleGene",
+    "SubsystemChromosome",
+    "ControllerChromosome",
+    "compile_subsystem",
+    "flatten_chromosome",
+    "hydrate_chromosome_blueprint",
+    "repair_geometry_invariants",
+]
+
 
 class MFParamTriangular(NamedTuple):
     """Human-readable parameter gene configuration for a Triangular MF."""
@@ -238,3 +250,36 @@ def hydrate_chromosome_blueprint(
         turn_blueprint=turn_blueprint,
         fire_blueprint=fire_blueprint,
     )
+
+
+def repair_geometry_invariants(
+    flat_genes: list[float],
+    template: ControllerChromosome,
+) -> list[float]:
+    """Ensures geometric invariants (left <= center <= right) are preserved.
+
+    Exposed for external variation modules (crossover/mutation) to fix
+    mutated chromosomes before they are compiled into the inference engine.
+    """
+    chromosome = hydrate_chromosome_blueprint(flat_genes, template)
+
+    for subsystem in (
+        chromosome.thrust_blueprint,
+        chromosome.turn_blueprint,
+        chromosome.fire_blueprint,
+    ):
+        for param in subsystem.membership_function_pool:
+            if len(param) == 3:
+                sorted_values = sorted(param)
+                index_patch = subsystem.membership_function_pool.index(param)
+                subsystem.membership_function_pool[index_patch] = type(param)(
+                    *sorted_values
+                )
+            elif len(param) == 4:
+                sorted_values = sorted(param)
+                index_patch = subsystem.membership_function_pool.index(param)
+                subsystem.membership_function_pool[index_patch] = type(param)(
+                    *sorted_values
+                )
+
+    return flatten_chromosome(chromosome)

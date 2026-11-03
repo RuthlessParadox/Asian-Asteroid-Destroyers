@@ -11,7 +11,7 @@ sys.path.append('')
 
 from kesslergame import KesslerGame, GraphicsType
 from asian_asteroid_destroyers.scenarios.example_scenarios import *
-from asian_asteroid_destroyers.controllers.controller import MyFuzzyController
+from asian_asteroid_destroyers.controllers.fuzzy_controller import MyFuzzyController
 
 single_near = Scenario(name = "Single Near Asteroid",
                        asteroid_states = [{"position": (650, 400), "angle": 100, "speed": 0}], time_limit = 60)

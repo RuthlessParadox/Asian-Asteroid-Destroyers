@@ -11,7 +11,7 @@ sys.path.append("")
 
 from kesslergame import GraphicsType, KesslerGame
 
-from asian_asteroid_destroyers.controllers.controller import MyFuzzyController
+from asian_asteroid_destroyers.controllers.fuzzy_controller import MyFuzzyController
 from asian_asteroid_destroyers.scenarios.example_scenarios import *
 
 # Define game scenario

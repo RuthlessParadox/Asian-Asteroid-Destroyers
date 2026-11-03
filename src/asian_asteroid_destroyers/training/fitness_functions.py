@@ -14,7 +14,7 @@ from typing import cast
 from kesslergame import GraphicsType, KesslerGame
 from kesslergame.kessler_game import SettingsDict
 
-from asian_asteroid_destroyers.controllers.controller import MyFuzzyController
+from asian_asteroid_destroyers.controllers.fuzzy_controller import MyFuzzyController
 from asian_asteroid_destroyers.scenarios.example_scenarios import training_set
 from asian_asteroid_destroyers.training import config
 

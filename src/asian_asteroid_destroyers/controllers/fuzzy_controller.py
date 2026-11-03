@@ -5,16 +5,14 @@ from typing import TYPE_CHECKING, Final
 from kesslergame import KesslerController
 from typing_extensions import override
 
+from asian_asteroid_destroyers.chromosomes import compile_subsystem
 from asian_asteroid_destroyers.sa import SituationalAwareness
-
-from .chromosomes import compile_subsystem
 
 if TYPE_CHECKING:
     from kesslergame.state_models import GameState, ShipState
 
+    from asian_asteroid_destroyers.chromosomes import ControllerChromosome
     from asian_asteroid_destroyers.fuzzy import TSKInferenceEngine
-
-    from .chromosomes import ControllerChromosome
 
 
 class _TacticalFeatureExtractor:
