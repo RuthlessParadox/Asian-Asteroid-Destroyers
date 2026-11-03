@@ -69,7 +69,7 @@ class EvolutionMetrics:
     def compute_hall_of_fame_turnover(self) -> pl.DataFrame:
         sorted_history = self._history_lazyframe.sort("generation").collect()
 
-        if len(sorted_history) < 2:
+        if sorted_history.is_empty():
             return pl.DataFrame(
                 schema={
                     "generation": pl.Int64(),
@@ -115,19 +115,22 @@ class EvolutionMetrics:
         )
 
     def collect_geometry_drift(self, gene_indices: list[int]) -> pl.DataFrame:
-        return (
-            self._history_lazyframe.sort("generation")
-            .explode("hall_of_fame")
+        base_query = (
+            self._history_lazyframe.explode("hall_of_fame")
             .filter(pl.col("hall_of_fame").struct.field("rank") == 1)
             .select(
                 "generation",
                 pl.col("hall_of_fame").struct.field("genome").alias("genome"),
             )
-            .explode("genome")
-            .with_row_index("gene_index")
-            .filter(pl.col("gene_index").is_in(gene_indices))
-            .collect()
         )
+
+        projections = [pl.col("generation")]
+        for index in gene_indices:
+            projections.append(
+                pl.col("genome").list.get(index).alias(f"gene_{index}"),
+            )
+
+        return base_query.select(projections).sort("generation").collect()
 
     def collect_param_volatility(self) -> pl.DataFrame:
         return (
