@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from asian_asteroid_destroyers.fuzzy import MembershipFunction
 
 __all__ = [
+    "FlatGenome",
     "MFParamTriangular",
     "MFParamTrapezoidal",
     "RuleGene",
@@ -24,6 +25,8 @@ __all__ = [
     "hydrate_chromosome_blueprint",
     "repair_geometry_invariants",
 ]
+
+FlatGenome = list[float]
 
 
 class MFParamTriangular(NamedTuple):
@@ -119,8 +122,8 @@ def compile_subsystem(blueprint: SubsystemChromosome) -> TSKInferenceEngine:
     return TSKInferenceEngine(compiled_rules)
 
 
-def flatten_chromosome(chromosome: ControllerChromosome) -> list[float]:
-    flat_genes: list[float] = []
+def flatten_chromosome(chromosome: ControllerChromosome) -> FlatGenome:
+    flat_genes: FlatGenome = []
 
     for blueprint in (
         chromosome.thrust_blueprint,
@@ -148,7 +151,7 @@ def flatten_chromosome(chromosome: ControllerChromosome) -> list[float]:
 
 
 def _hydrate_subsystem(
-    flat_genes: list[float],
+    flat_genes: FlatGenome,
     start_index: int,
     template: SubsystemChromosome,
 ) -> tuple[SubsystemChromosome, int]:
@@ -214,7 +217,7 @@ def _hydrate_subsystem(
 
 
 def hydrate_chromosome_blueprint(
-    flat_genes: list[float],
+    flat_genes: FlatGenome,
     template: ControllerChromosome,
 ) -> ControllerChromosome:
     """Hydrates a flat sequence of float genes into a structured chromosome object.
@@ -253,9 +256,9 @@ def hydrate_chromosome_blueprint(
 
 
 def repair_geometry_invariants(
-    flat_genes: list[float],
+    flat_genes: FlatGenome,
     template: ControllerChromosome,
-) -> list[float]:
+) -> FlatGenome:
     """Ensures geometric invariants (left <= center <= right) are preserved.
 
     Exposed for external variation modules (crossover/mutation) to fix
