@@ -9,8 +9,10 @@ from .checkpointing import (
 )
 from .config import (
     AnalyzerArgs as AnalyzerArgs,
+    EvaluationArgs as EvaluationArgs,
     TrainerArgs as TrainerArgs,
     get_analyzer_config as get_analyzer_config,
+    get_evaluation_config as get_evaluation_config,
     get_trainer_config as get_trainer_config,
 )
 from .parsing import extract_generation_number as extract_generation_number

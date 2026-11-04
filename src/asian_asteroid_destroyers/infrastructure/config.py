@@ -1,7 +1,7 @@
 import argparse
-import pathlib
 import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import cast
 
 import tomli
@@ -34,9 +34,15 @@ class AnalyzerArgs:
     track_genes: list[int]
 
 
+@dataclass(frozen=True)
+class EvaluationArgs:
+    history_path: Path
+    logbook_path: Path
+
+
 def get_trainer_config() -> TrainerArgs:
     return _parse_trainer_args(
-        _load_baseline_config(pathlib.Path("pyproject.toml")),
+        _load_baseline_config(Path("pyproject.toml")),
     )
 
 
@@ -68,6 +74,41 @@ def get_analyzer_config() -> AnalyzerArgs:
     return AnalyzerArgs(
         run_dir=run_dir,
         track_genes=track_genes,
+    )
+
+
+def get_evaluation_config() -> EvaluationArgs:
+    parser = argparse.ArgumentParser(
+        description="Evaluate the performance of the elite individual from training.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+
+    _ = parser.add_argument(
+        "--history-path",
+        type=str,
+        required=True,
+        help="Path to the final_history.parquet file",
+    )
+    _ = parser.add_argument(
+        "--logbook-path",
+        type=str,
+        required=True,
+        help="Path to the final_logbook.parquet file",
+    )
+
+    namespace = parser.parse_args()
+
+    history_path = Path(cast(str, namespace.history_path))
+    logbook_path = Path(cast(str, namespace.logbook_path))
+
+    if not history_path.is_file():
+        raise FileNotFoundError(f"History file not found at: {history_path}")
+    if not logbook_path.is_file():
+        raise FileNotFoundError(f"Logbook file not found at: {logbook_path}")
+
+    return EvaluationArgs(
+        history_path=history_path,
+        logbook_path=logbook_path,
     )
 
 
@@ -158,7 +199,7 @@ def _parse_trainer_args(baseline: _EvolutionConfig) -> TrainerArgs:
     )
 
 
-def _load_baseline_config(config_path: pathlib.Path) -> _EvolutionConfig:
+def _load_baseline_config(config_path: Path) -> _EvolutionConfig:
     if not config_path.is_file():
         raise FileNotFoundError(
             f"Required configuration file missing: {config_path}"
