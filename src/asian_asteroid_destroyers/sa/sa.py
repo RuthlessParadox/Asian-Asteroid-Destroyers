@@ -935,20 +935,19 @@ class AgentShip:
 
     def _update_bullet_ratio(self) -> float:
         assert self._sa is not None
-        if self._sa.asteroid_sizes.size == 0:
-            return 0.0
-
         sizes = self._sa.asteroid_sizes
+        if sizes.size == 0:
+            return 1.0
+
         shots_needed = (
             cast(int, np.sum(np.equal(sizes, 1))) * 1
             + cast(int, np.sum(np.equal(sizes, 2))) * 4
             + cast(int, np.sum(np.equal(sizes, 3))) * 13
             + cast(int, np.sum(np.equal(sizes, 4))) * 40
         )
+
         return (
-            (self.bullets_remaining - shots_needed) / shots_needed
-            if shots_needed > 0
-            else 0.0
+            self.bullets_remaining / shots_needed if shots_needed > 0 else 1.0
         )
 
 
