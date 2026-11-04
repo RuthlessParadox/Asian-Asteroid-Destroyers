@@ -66,7 +66,7 @@ def main() -> None:
 
     template = get_default_controller_template()
     flat_genes_length = len(flatten_chromosome(template))
-    weights = (1.0, 1.0, 1.0)
+    weights = (1.0, 1.0, 1.0, 1.0, 1.0)
 
     if args.resume is not None:
         data_directory = pathlib.Path(args.resume)

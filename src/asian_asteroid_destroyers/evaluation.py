@@ -74,8 +74,10 @@ class FuzzyFitnessEvaluator:
         )
         scenario_count = len(scenarios_pool)
 
-        total_survival_time = 0.0
-        total_hits = 0.0
+        total_asteroid_fraction = 0.0
+        total_accuracy = 0.0
+        total_survival_fraction = 0.0
+        total_deaths = 0.0
         total_volatility = 0.0
 
         run_simulation = self._environment.run
@@ -88,14 +90,21 @@ class FuzzyFitnessEvaluator:
                 controllers=[controller],
             )
 
-            total_survival_time += float(score_object.sim_time)
+            time_limit = (
+                scenario.time_limit if scenario.time_limit > 0.0 else 1.0
+            )
+            total_survival_fraction += score_object.sim_time / time_limit
             total_volatility += controller.mean_volatility
 
             for team in score_object.teams:
-                total_hits += float(team.asteroids_hit)
+                total_asteroid_fraction += team.fraction_total_asteroids_hit
+                total_accuracy += team.accuracy
+                total_deaths += team.deaths
 
         return (
-            total_survival_time / scenario_count,
-            total_hits / scenario_count,
+            total_asteroid_fraction / scenario_count,
+            total_accuracy / scenario_count,
+            total_survival_fraction / scenario_count,
+            -(total_deaths / scenario_count),
             -(total_volatility / scenario_count),
         )
