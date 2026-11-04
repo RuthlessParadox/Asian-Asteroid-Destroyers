@@ -14,4 +14,5 @@ from .normalization import (
     norm_speed_ship as norm_speed_ship,
     norm_tti as norm_tti,
     norm_turn_rate_ship as norm_turn_rate_ship,
+    norm_wrapped_distance as norm_wrapped_distance,
 )

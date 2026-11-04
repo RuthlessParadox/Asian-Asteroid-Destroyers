@@ -1,3 +1,6 @@
+import math
+
+
 def norm_angle(angle: float) -> float:
     """Scales a standard Cartesian angle from (-180, 180] to a (-1.0, 1.0] universe."""
     return angle / 180.0
@@ -5,6 +8,15 @@ def norm_angle(angle: float) -> float:
 
 def norm_distance(distance: float, map_diagonal_length: float) -> float:
     return distance / map_diagonal_length
+
+
+def norm_wrapped_distance(
+    distance: float,
+    map_width: float,
+    map_height: float,
+) -> float:
+    max_wrapped_distance = 0.5 * math.sqrt(map_width**2 + map_height**2)
+    return min(distance / max_wrapped_distance, 1.0)
 
 
 def norm_speed_asteroid(speed: float) -> float:

@@ -15,6 +15,7 @@ from asian_asteroid_destroyers.geometry import (
     norm_speed_ship,
     norm_tti,
     norm_turn_rate_ship,
+    norm_wrapped_distance,
 )
 from asian_asteroid_destroyers.sa import SituationalAwareness
 
@@ -47,9 +48,10 @@ class _TacticalFeatureExtractor:
         normalized_tti = norm_tti(tti) if tti is not None else 1.0
 
         return [
-            norm_distance(
+            norm_wrapped_distance(
                 target_asteroid.distance_wrap,
-                self._sa.map_diagonal_length,
+                self._sa.map_width,
+                self._sa.map_height,
             ),
             normalized_tti,
             norm_speed_ship(self._sa.agent_ship.speed),

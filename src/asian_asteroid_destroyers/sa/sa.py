@@ -220,6 +220,14 @@ class SituationalAwareness:
         return self._map_size
 
     @property
+    def map_width(self) -> float:
+        return float(self._map_size.item(0))
+
+    @property
+    def map_height(self) -> float:
+        return float(self._map_size.item(1))
+
+    @property
     def asteroid_positions(self) -> npt.NDArray[np.float64]:
         return self._asteroid_positions[: self._asteroid_count]
 
