@@ -97,7 +97,7 @@
       "name": "XFC_Drill_Boundary_Squeeze",
       "time_limit": 60.0,
       "stop_if_no_ammo": false,
-      "ammo_limit_multiplier": 0.0,
+      "ammo_limit_multiplier": 0.2,
       "asteroid_groups": [
         {
           "count": 8,
@@ -209,7 +209,7 @@
       "name": "XFC_Drill_Kinematic_Lead_Test",
       "time_limit": 40.0,
       "stop_if_no_ammo": false,
-      "ammo_limit_multiplier": 0.0,
+      "ammo_limit_multiplier": 0.3,
       "asteroid_groups": [
         {
           "count": 10,
@@ -241,6 +241,174 @@
               "y_range": [
                 550.0,
                 700.0
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XFC_Drill_Zero_Velocity_Ambush",
+      "time_limit": 35.0,
+      "stop_if_no_ammo": true,
+      "ammo_limit_multiplier": 1.0,
+      "asteroid_groups": [
+        {
+          "count": 14,
+          "size": 4,
+          "speed_range": [
+            0.0,
+            5.0
+          ],
+          "angle_range": [
+            0.0,
+            360.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                350.0,
+                650.0
+              ],
+              "y_range": [
+                250.0,
+                550.0
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XFC_Drill_Omnidirectional_Swarm",
+      "time_limit": 50.0,
+      "stop_if_no_ammo": false,
+      "ammo_limit_multiplier": 3.0,
+      "asteroid_groups": [
+        {
+          "count": 6,
+          "size": 3,
+          "speed_range": [
+            30.0,
+            60.0
+          ],
+          "angle_range": [
+            0.0,
+            90.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                50.0,
+                200.0
+              ],
+              "y_range": [
+                50.0,
+                200.0
+              ]
+            }
+          ]
+        },
+        {
+          "count": 6,
+          "size": 3,
+          "speed_range": [
+            30.0,
+            60.0
+          ],
+          "angle_range": [
+            90.0,
+            180.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                800.0,
+                950.0
+              ],
+              "y_range": [
+                50.0,
+                200.0
+              ]
+            }
+          ]
+        },
+        {
+          "count": 6,
+          "size": 3,
+          "speed_range": [
+            30.0,
+            60.0
+          ],
+          "angle_range": [
+            180.0,
+            270.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                800.0,
+                950.0
+              ],
+              "y_range": [
+                600.0,
+                750.0
+              ]
+            }
+          ]
+        },
+        {
+          "count": 6,
+          "size": 3,
+          "speed_range": [
+            270.0,
+            360.0
+          ],
+          "angle_range": [
+            0.0,
+            360.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                50.0,
+                200.0
+              ],
+              "y_range": [
+                600.0,
+                750.0
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XFC_Drill_Clustered_Debris_Shatter",
+      "time_limit": 45.0,
+      "stop_if_no_ammo": true,
+      "ammo_limit_multiplier": 1.5,
+      "asteroid_groups": [
+        {
+          "count": 4,
+          "size": 4,
+          "speed_range": [
+            20.0,
+            40.0
+          ],
+          "angle_range": [
+            45.0,
+            135.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                450.0,
+                550.0
+              ],
+              "y_range": [
+                100.0,
+                200.0
               ]
             }
           ]
