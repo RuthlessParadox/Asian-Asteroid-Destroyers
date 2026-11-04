@@ -26,18 +26,39 @@ def mut_fuzzy_gaussian(
     mu: float = 0.0,
     sigma: float = 0.05,
     independent_probability: float = 0.05,
+    gate_flip_probabilty: float = 0.1,
 ) -> MutationOperator:
     triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
+
+    gate_indices: list[int] = []
+    current_index = 0
+    for blueprint in (
+        template.thrust_blueprint,
+        template.turn_blueprint,
+        template.fire_blueprint,
+    ):
+        for param in blueprint.membership_function_pool:
+            current_index += len(param)
+        for rule in blueprint.rules:
+            current_index += len(rule.consequent_coefficients) + 1
+            gate_indices.append(current_index)
+            current_index += 1
 
     def mut_fuzzy_gaussian_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
         genes = np.array(individual, dtype=np.float64)
-        mutation_mask = rng.random(size=genes.size) < independent_probability
+        param_mask = rng.random(size=genes.size) < independent_probability
+        for gate_index in gate_indices:
+            param_mask[gate_index] = False
 
-        if np.any(mutation_mask):
+        if np.any(param_mask):
             noise = rng.normal(mu, sigma, size=genes.size)
-            genes[mutation_mask] += noise[mutation_mask]
+            genes[param_mask] += noise[param_mask]
+
+        for gate_index in gate_indices:
+            if rng.random() < gate_flip_probabilty:
+                genes[gate_index] = 1.0 - genes[gate_index]
 
         individual[:] = repair_geometry_invariants(
             cast(FlatGenome, genes.tolist()),

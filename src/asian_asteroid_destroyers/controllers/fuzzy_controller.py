@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Final, cast
 
+import numpy as np
+import numpy.typing as npt
 from kesslergame import KesslerController
 from typing_extensions import override
 
@@ -24,6 +26,7 @@ if TYPE_CHECKING:
 
     from asian_asteroid_destroyers.chromosomes import ControllerChromosome
     from asian_asteroid_destroyers.fuzzy import TSKInferenceEngine
+    from asian_asteroid_destroyers.sa import AsteroidView
 
 
 class _TacticalFeatureExtractor:
@@ -33,19 +36,66 @@ class _TacticalFeatureExtractor:
     def __init__(self, sa: SituationalAwareness) -> None:
         self._sa = sa
 
+    def get_predictive_bearing(self, asteroid: AsteroidView) -> float:
+        ship = self._sa.agent_ship
+        tti = asteroid.tti
+
+        if tti is None or np.isnan(tti):
+            return asteroid.bearing_wrap
+
+        ast_vel = np.array(asteroid.velocity, dtype=np.float64)
+        ship_vel = np.array(ship.velocity, dtype=np.float64)
+        rel_vel = ast_vel - ship_vel
+
+        ast_pos = np.array(asteroid.position_wrap, dtype=np.float64)
+        predictive_pos = ast_pos + (rel_vel * tti)
+
+        # Enforce map wrap boundaries on projected coordinates
+        map_size = self._sa.map_size
+        wrapped_proj = np.mod(predictive_pos, map_size)
+
+        delta = wrapped_proj - np.array(ship.position, dtype=np.float64)
+        return cast(
+            float,
+            np.degrees(
+                cast(
+                    np.float64,
+                    np.arctan2(
+                        cast(np.float64, delta[1]), cast(np.float64, delta[0])
+                    ),
+                )
+            ),
+        )
+
     def get_thrust_inputs(self) -> list[float]:
         soonest = self._sa.agent_ship.soonest_impact_n_asteroids(1)
+        ship = self._sa.agent_ship
 
         if not soonest:
             return [
                 1.0,
                 1.0,
-                norm_speed_ship(self._sa.agent_ship.speed),
+                norm_speed_ship(ship.speed),
             ]
 
         target_asteroid = soonest[0]
         tti = target_asteroid.tti
         normalized_tti = norm_tti(tti) if tti is not None else 1.0
+
+        ast_vel = np.array(target_asteroid.velocity, dtype=np.float64)
+        ship_vel = np.array(ship.velocity, dtype=np.float64)
+        rel_vel = ast_vel - ship_vel
+
+        delta_p = np.array(
+            target_asteroid.position_wrap, dtype=np.float64
+        ) - np.array(ship.position, dtype=np.float64)
+
+        dist = cast(
+            npt.NDArray[np.float64],
+            np.maximum(np.linalg.norm(delta_p), 1.0),
+        )
+        approach_rate = cast(float, np.dot(rel_vel, delta_p) / dist)
+        norm_approach = max(0.0, min(approach_rate / 800.0, 1.0))
 
         return [
             norm_wrapped_distance(
@@ -54,19 +104,20 @@ class _TacticalFeatureExtractor:
                 self._sa.map_height,
             ),
             normalized_tti,
-            norm_speed_ship(self._sa.agent_ship.speed),
+            norm_approach,
         ]
 
     def get_turn_inputs(self) -> list[float]:
         soonest = self._sa.agent_ship.soonest_impact_n_asteroids(1)
+        ship = self._sa.agent_ship
 
         if not soonest:
-            nearest = self._sa.agent_ship.nearest_n_asteroids_wrapped(1)
+            nearest = ship.nearest_n_asteroids_wrapped(1)
             if not nearest:
                 return [
                     0.0,
                     1.0,
-                    norm_turn_rate_ship(self._sa.agent_ship.turn_rate),
+                    norm_turn_rate_ship(ship.turn_rate),
                 ]
             target_asteroid = nearest[0]
             normalized_tti = 1.0
@@ -75,29 +126,35 @@ class _TacticalFeatureExtractor:
             tti = target_asteroid.tti
             normalized_tti = norm_tti(tti) if tti is not None else 1.0
 
+        pred_bearing = self.get_predictive_bearing(target_asteroid)
+        angular_error = pred_bearing - ship.heading
+
+        normalized_error = norm_angle((angular_error + 180.0) % 360.0 - 180.0)
+
         return [
-            norm_angle(target_asteroid.bearing_wrap),
+            normalized_error,
             normalized_tti,
             norm_turn_rate_ship(self._sa.agent_ship.turn_rate),
         ]
 
     def get_fire_inputs(self) -> list[float]:
         nearest = self._sa.agent_ship.nearest_n_asteroids_wrapped(1)
+        ship = self._sa.agent_ship
 
         if not nearest:
             return [0.0, 1.0, 1.0]
 
         target_asteroid = nearest[0]
+        pred_bearing = self.get_predictive_bearing(target_asteroid)
+        aim_error = abs((pred_bearing - ship.heading + 180.0) % 360.0 - 180.0)
 
         return [
-            norm_angle(target_asteroid.bearing_wrap),
+            norm_angle(aim_error),
             norm_distance(
                 target_asteroid.distance_wrap,
                 self._sa.map_diagonal_length,
             ),
-            norm_ammo_ratio(
-                self._sa.agent_ship.bullet_asteroid_equivalent_ratio,
-            ),
+            norm_ammo_ratio(ship.bullet_asteroid_equivalent_ratio),
         ]
 
 
@@ -109,6 +166,7 @@ class FuzzyController(KesslerController):
         "_turn_engine",
         "_fire_engine",
         "_emergency_tti_threshold",
+        "_damping_factor",
         "_last_thrust",
         "_last_turn",
         "_total_accumulated_volatility",
@@ -123,6 +181,7 @@ class FuzzyController(KesslerController):
     _fire_engine: Final[TSKInferenceEngine]
 
     _emergency_tti_threshold: Final[float]
+    _damping_factor: Final[float]
 
     _last_thrust: float | None
     _last_turn: float | None
@@ -140,6 +199,7 @@ class FuzzyController(KesslerController):
         self._fire_engine = compile_subsystem(chromosome.fire_blueprint)
 
         self._emergency_tti_threshold = 0.45
+        self._damping_factor = 0.15
 
         self._last_thrust = None
         self._last_turn = None
@@ -154,6 +214,9 @@ class FuzzyController(KesslerController):
     ) -> tuple[float, float, bool, bool]:
         self._sa.update(ship_state, game_state)
 
+        if self._sa.asteroid_sizes.size == 0:
+            return 0.0, 0.0, False, False
+
         thrust_inputs = self._extractor.get_thrust_inputs()
         turn_inputs = self._extractor.get_turn_inputs()
         fire_inputs = self._extractor.get_fire_inputs()
@@ -165,30 +228,19 @@ class FuzzyController(KesslerController):
         physical_thrust = denorm_thrust(float(raw_thrust))
         physical_turn_rate = denorm_turn_rate(float(raw_turn_rate))
 
+        physical_thrust, physical_turn_rate = self._apply_volatility_damping(
+            physical_thrust,
+            physical_turn_rate,
+        )
+
         thrust = max(-480.0, min(float(physical_thrust), 480.0))
         turn_rate = max(-180.0, min(float(physical_turn_rate), 180.0))
         fire = bool(raw_fire_output > 0.0)
         drop_mine = False
 
-        # --- Emergency Fire-Override Fallback Layer ---
-        # Force a fire directive if an asteroid is on an imminent crash course,
-        # shielding the ship during early un-optimized genetic epochs.
-        soonest_asteroids = self._sa.agent_ship.soonest_impact_n_asteroids(1)
-        if soonest_asteroids:
-            imminent_threat = soonest_asteroids[0]
-            if imminent_threat.tti is not None:
-                if imminent_threat.tti <= self._emergency_tti_threshold:
-                    # Panic override: point-blank blast threat mitigation
-                    fire = True
+        fire = self._enforce_tactical_overrides(fire)
 
-        if self._last_thrust is not None and self._last_turn is not None:
-            delta_thrust = abs(thrust - self._last_thrust)
-            delta_turn = abs(turn_rate - self._last_turn)
-            self._total_accumulated_volatility += delta_thrust + delta_turn
-            self._processed_steps += 1
-
-        self._last_thrust = thrust
-        self._last_turn = turn_rate
+        self._update_volatility_metrics(thrust, turn_rate)
 
         return thrust, turn_rate, fire, drop_mine
 
@@ -202,3 +254,56 @@ class FuzzyController(KesslerController):
         if self._processed_steps == 0:
             return 0.0
         return self._total_accumulated_volatility / self._processed_steps
+
+    def _apply_volatility_damping(
+        self,
+        target_thrust: float,
+        target_turn: float,
+    ) -> tuple[float, float]:
+        if self._last_thrust == 0 or self._last_turn == 0:
+            return target_thrust, target_turn
+
+        if self._last_thrust is None or self._last_turn is None:
+            return target_thrust, target_turn
+
+        d_thrust = target_thrust - self._last_thrust
+        d_turn = target_turn - self._last_turn
+
+        scale = max(0.1, 1.0 - (self.mean_volatility * self._damping_factor))
+
+        return (
+            self._last_thrust + (d_thrust * scale),
+            self._last_turn + (d_turn * scale),
+        )
+
+    def _enforce_tactical_overrides(self, current_fire: bool) -> bool:
+        soonest = self._sa.agent_ship.soonest_impact_n_asteroids(1)
+        if not soonest:
+            return current_fire
+
+        threat = soonest[0]
+        if threat.tti is None or threat.tti > self._emergency_tti_threshold:
+            return current_fire
+
+        ship = self._sa.agent_ship
+        p_bearing = self._extractor.get_predictive_bearing(threat)
+        aim_err = abs((p_bearing - ship.heading + 180.0) % 360.0 - 180.0)
+
+        if aim_err <= 25.0:
+            return True
+
+        return current_fire
+
+    def _update_volatility_metrics(
+        self,
+        thrust: float,
+        turn_rate: float,
+    ) -> None:
+        if self._last_thrust is not None and self._last_turn is not None:
+            delta_thrust = abs(thrust - self._last_thrust)
+            delta_turn = abs(turn_rate - self._last_turn)
+            self._total_accumulated_volatility += delta_thrust + delta_turn
+            self._processed_steps += 1
+
+        self._last_thrust = thrust
+        self._last_turn = turn_rate

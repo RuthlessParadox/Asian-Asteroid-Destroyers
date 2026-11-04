@@ -1,21 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple, cast
 
 import numpy as np
 
-from asian_asteroid_destroyers.fuzzy import (
-    FuzzyClause,
-    TrapezoidalMF,
-    TriangularMF,
-    TSKInferenceEngine,
-    TSKRule,
-)
+from asian_asteroid_destroyers.fuzzy import TSKInferenceEngine
 
 if TYPE_CHECKING:
     import numpy.typing as npt
-
-    from asian_asteroid_destroyers.fuzzy import MembershipFunction
 
 __all__ = [
     "FlatGenome",
@@ -53,18 +45,19 @@ class MFParamTrapezoidal(NamedTuple):
 
 
 class RuleGene(NamedTuple):
-    """Encapsulates a variable-arity TSK rule structure.
+    """Encapsulates a variable-arity TSK rule structure with an activation gate.
 
     Attributes:
         antecedents: List of tuples mapping (input_matrix_index, mf_index).
-            Example: [(0, 1), (2, 0)] -> (Input 0 is MF 1) AND (Input 2 is MF 0)
-        consequent_coefficients: Linear scale weights matching input dimensionality.
+        consequent_coefficients: Linear scale weights matching inputs.
         consequent_offset: Intercept/bias value for the TSK equation.
+        activation_gate: Continuous value ∈ [0.0, 1.0]. If <= 0.5, rule is dead.
     """
 
     antecedents: list[tuple[int, int]]
     consequent_coefficients: list[float]
     consequent_offset: float
+    activation_gate: float
 
 
 class SubsystemChromosome(NamedTuple):
@@ -82,50 +75,61 @@ class ControllerChromosome(NamedTuple):
     fire_blueprint: SubsystemChromosome
 
 
-def _compile_membership_function(
-    param: MFParamTriangular | MFParamTrapezoidal,
-) -> MembershipFunction:
-    """Factory that compiles human-readable parameters into an MF instance."""
-    if isinstance(param, MFParamTriangular):
-        return TriangularMF(param.left, param.center, param.right)
-    return TrapezoidalMF(
-        param.left_base,
-        param.left_peak,
-        param.right_peak,
-        param.right_base,
-    )
-
-
 def compile_subsystem(blueprint: SubsystemChromosome) -> TSKInferenceEngine:
-    """Compiles a subsystem genome into a fast operational engine."""
-    # Pre-compile the shared pool of membership function shapes
-    compiled_pool: Final[list[MembershipFunction]] = [
-        _compile_membership_function(param)
-        for param in blueprint.membership_function_pool
-    ]
+    pool = blueprint.membership_function_pool
+    pool_size = len(pool)
 
-    compiled_rules: list[TSKRule] = []
+    membership_function_types = np.zeros(pool_size, dtype=np.int8)
+    membership_function_params = np.zeros((pool_size, 4), dtype=np.float64)
 
-    for rule_gene in blueprint.rules:
-        clauses: list[FuzzyClause] = []
+    for index, param in enumerate(pool):
+        if isinstance(param, MFParamTriangular):
+            membership_function_types[index] = 0
+            membership_function_params[index, 0:3] = [
+                param.left,
+                param.center,
+                param.right,
+            ]
+        else:
+            membership_function_types[index] = 1
+            membership_function_params[index, :] = [
+                param.left_base,
+                param.left_peak,
+                param.right_peak,
+                param.right_base,
+            ]
 
-        for input_index, membership_function_index in rule_gene.antecedents:
-            clauses.append(
-                FuzzyClause(
-                    input_index,
-                    compiled_pool[membership_function_index],
-                ),
-            )
+    rules_count = len(blueprint.rules)
+    inputs_count = len(blueprint.rules[0].consequent_coefficients)
 
-        compiled_rules.append(
-            TSKRule(
-                antecedents=clauses,
-                consequent_coefficients=rule_gene.consequent_coefficients,
-                consequent_offset=rule_gene.consequent_offset,
-            )
+    antecedent_map = np.zeros((rules_count, inputs_count), dtype=np.intp)
+    coefficients = np.zeros((rules_count, inputs_count), dtype=np.float64)
+    offsets = np.zeros(rules_count, dtype=np.float64)
+    activation_masks = np.zeros(rules_count, dtype=np.float64)
+
+    for rule_index, rule in enumerate(blueprint.rules):
+        for input_index, membership_function_index in rule.antecedents:
+            antecedent_map[rule_index, input_index] = membership_function_index
+
+        for input_index, coefficient in enumerate(
+            rule.consequent_coefficients
+        ):
+            coefficients[rule_index, input_index] = coefficient
+        offsets[rule_index] = rule.consequent_offset
+        activation_masks[rule_index] = (
+            1.0 if rule.activation_gate > 0.5 else 0.0
         )
 
-    return TSKInferenceEngine(compiled_rules)
+    return TSKInferenceEngine(
+        rules_count=rules_count,
+        inputs_count=inputs_count,
+        antecedent_map=antecedent_map,
+        mf_types=membership_function_types,
+        mf_params=membership_function_params,
+        coefficients=coefficients,
+        offsets=offsets,
+        activation_masks=activation_masks,
+    )
 
 
 def flatten_chromosome(chromosome: ControllerChromosome) -> FlatGenome:
@@ -152,6 +156,7 @@ def flatten_chromosome(chromosome: ControllerChromosome) -> FlatGenome:
         for rule in blueprint.rules:
             flat_genes.extend(rule.consequent_coefficients)
             flat_genes.append(rule.consequent_offset)
+            flat_genes.append(rule.activation_gate)
 
     return flat_genes
 
@@ -205,11 +210,15 @@ def _hydrate_subsystem(
         offset = flat_genes[index]
         index += 1
 
+        gate = flat_genes[index]
+        index += 1
+
         hydrated_rules.append(
             RuleGene(
                 antecedents=rule_template.antecedents,
                 consequent_coefficients=coefficients,
                 consequent_offset=offset,
+                activation_gate=gate,
             )
         )
 
@@ -285,7 +294,7 @@ def create_geometry_repair_maps(
             current_index += param_len
 
         for rule in blueprint.rules:
-            current_index += len(rule.consequent_coefficients) + 1
+            current_index += len(rule.consequent_coefficients) + 2
 
     triangular_array = (
         np.array(triangular_indices, dtype=np.intp)
@@ -362,11 +371,13 @@ def get_default_controller_template() -> ControllerChromosome:
             antecedents=[(0, 0), (1, 3), (2, 8)],
             consequent_coefficients=[-0.1, 0.05, -0.2],
             consequent_offset=-0.4,
+            activation_gate=1.0,
         ),
         RuleGene(
             antecedents=[(0, 2), (1, 5), (2, 7)],
             consequent_coefficients=[0.05, 0.02, -0.1],
             consequent_offset=0.3,
+            activation_gate=1.0,
         ),
     ]
 
@@ -375,11 +386,13 @@ def get_default_controller_template() -> ControllerChromosome:
             antecedents=[(0, 2), (1, 4), (2, 7)],
             consequent_coefficients=[0.3, 0.0, -0.15],
             consequent_offset=0.25,
+            activation_gate=1.0,
         ),
         RuleGene(
             antecedents=[(0, 0), (1, 4), (2, 7)],
             consequent_coefficients=[0.3, 0.0, -0.15],
             consequent_offset=-0.25,
+            activation_gate=1.0,
         ),
     ]
 
@@ -388,11 +401,13 @@ def get_default_controller_template() -> ControllerChromosome:
             antecedents=[(0, 1), (1, 0), (2, 8)],
             consequent_coefficients=[-0.02, -0.05, 0.1],
             consequent_offset=0.1,
+            activation_gate=1.0,
         ),
         RuleGene(
             antecedents=[(0, 2), (1, 2), (2, 6)],
             consequent_coefficients=[0.0, 0.0, 0.0],
             consequent_offset=-0.1,
+            activation_gate=1.0,
         ),
     ]
 

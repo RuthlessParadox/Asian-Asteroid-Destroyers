@@ -52,7 +52,7 @@ def cx_fuzzy_blend(
 
         for rule in blueprint.rules:
             rule_start = current_index
-            current_index += len(rule.consequent_coefficients) + 1
+            current_index += len(rule.consequent_coefficients) + 2
             rule_blocks.append(
                 np.arange(rule_start, current_index, dtype=np.intp)
             )
