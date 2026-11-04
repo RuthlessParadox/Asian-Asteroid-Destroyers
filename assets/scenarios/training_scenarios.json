@@ -11,16 +11,16 @@
   "scenarios": [
     {
       "name": "XFC_Drill_Tracking_Accuracy",
-      "time_limit": 60.0,
+      "time_limit": 40.0,
       "stop_if_no_ammo": true,
-      "ammo_limit_multiplier": 2.0,
+      "ammo_limit_multiplier": 1.2,
       "asteroid_groups": [
         {
-          "count": 5,
+          "count": 8,
           "size": 4,
           "speed_range": [
-            10.0,
-            30.0
+            15.0,
+            45.0
           ],
           "angle_range": [
             0.0,
@@ -55,6 +55,7 @@
       "name": "XFC_Drill_High_Velocity_Evasion",
       "time_limit": 45.0,
       "stop_if_no_ammo": false,
+      "ammo_limit_multiplier": 2.5,
       "asteroid_groups": [
         {
           "count": 12,
@@ -86,6 +87,160 @@
               "y_range": [
                 550.0,
                 750.0
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XFC_Drill_Boundary_Squeeze",
+      "time_limit": 60.0,
+      "stop_if_no_ammo": false,
+      "ammo_limit_multiplier": 0.0,
+      "asteroid_groups": [
+        {
+          "count": 8,
+          "size": 4,
+          "speed_range": [
+            15.0,
+            40.0
+          ],
+          "angle_range": [
+            180.0,
+            360.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                100.0,
+                900.0
+              ],
+              "y_range": [
+                650.0,
+                750.0
+              ]
+            }
+          ]
+        },
+        {
+          "count": 8,
+          "size": 4,
+          "speed_range": [
+            15.0,
+            40.0
+          ],
+          "angle_range": [
+            0.0,
+            180.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                100.0,
+                900.0
+              ],
+              "y_range": [
+                50.0,
+                150.0
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XFC_Drill_Crossfire_Density",
+      "time_limit": 50.0,
+      "stop_if_no_ammo": true,
+      "ammo_limit_multiplier": 1.5,
+      "asteroid_groups": [
+        {
+          "count": 16,
+          "size": 3,
+          "speed_range": [
+            40.0,
+            75.0
+          ],
+          "angle_range": [
+            300.0,
+            330.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                50.0,
+                200.0
+              ],
+              "y_range": [
+                600.0,
+                750.0
+              ]
+            }
+          ]
+        },
+        {
+          "count": 16,
+          "size": 3,
+          "speed_range": [
+            40.0,
+            75.0
+          ],
+          "angle_range": [
+            120.0,
+            150.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                800.0,
+                950.0
+              ],
+              "y_range": [
+                50.0,
+                200.0
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "XFC_Drill_Kinematic_Lead_Test",
+      "time_limit": 40.0,
+      "stop_if_no_ammo": false,
+      "ammo_limit_multiplier": 0.0,
+      "asteroid_groups": [
+        {
+          "count": 10,
+          "size": 1,
+          "speed_range": [
+            160.0,
+            240.0
+          ],
+          "angle_range": [
+            0.0,
+            360.0
+          ],
+          "pos_zones": [
+            {
+              "x_range": [
+                400.0,
+                600.0
+              ],
+              "y_range": [
+                100.0,
+                250.0
+              ]
+            },
+            {
+              "x_range": [
+                400.0,
+                600.0
+              ],
+              "y_range": [
+                550.0,
+                700.0
               ]
             }
           ]
