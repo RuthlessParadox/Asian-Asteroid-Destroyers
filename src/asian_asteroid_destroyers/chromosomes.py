@@ -259,12 +259,8 @@ def hydrate_chromosome_blueprint(
 def repair_geometry_invariants(
     flat_genes: FlatGenome,
     template: ControllerChromosome,
+    min_width: float = 0.05,
 ) -> FlatGenome:
-    """Ensures geometric invariants (left <= center <= right) are preserved.
-
-    Exposed for external variation modules (crossover/mutation) to fix
-    mutated chromosomes before they are compiled into the inference engine.
-    """
     chromosome = hydrate_chromosome_blueprint(flat_genes, template)
 
     for subsystem in (
@@ -272,18 +268,25 @@ def repair_geometry_invariants(
         chromosome.turn_blueprint,
         chromosome.fire_blueprint,
     ):
-        for param in subsystem.membership_function_pool:
-            if len(param) == 3:
-                sorted_values = sorted(param)
-                index_patch = subsystem.membership_function_pool.index(param)
-                subsystem.membership_function_pool[index_patch] = type(param)(
-                    *sorted_values
-                )
-            elif len(param) == 4:
-                sorted_values = sorted(param)
-                index_patch = subsystem.membership_function_pool.index(param)
-                subsystem.membership_function_pool[index_patch] = type(param)(
-                    *sorted_values
+        pool = subsystem.membership_function_pool
+        for index, param in enumerate(pool):
+            if isinstance(param, MFParamTriangular):
+                left = param[0]
+                center = max(param[1], left + min_width)
+                right = max(param[2], center + min_width)
+
+                pool[index] = MFParamTriangular(left, center, right)
+            else:
+                left_base = param[0]
+                left_peak = max(param[1], left_base + min_width)
+                right_peak = max(param[2], left_peak + min_width)
+                right_base = max(param[3], right_peak + min_width)
+
+                pool[index] = MFParamTrapezoidal(
+                    left_base,
+                    left_peak,
+                    right_peak,
+                    right_base,
                 )
 
     return flatten_chromosome(chromosome)
@@ -292,62 +295,74 @@ def repair_geometry_invariants(
 def get_default_controller_template() -> ControllerChromosome:
     def make_isolated_pool() -> list[MFParamTriangular | MFParamTrapezoidal]:
         return [
-            MFParamTrapezoidal(-180.0, -180.0, -45.0, 0.0),
-            MFParamTriangular(-30.0, 0.0, 30.0),
-            MFParamTrapezoidal(0.0, 45.0, 180.0, 180.0),
-            MFParamTrapezoidal(0.0, 0.0, 1.5, 3.0),
-            MFParamTriangular(2.0, 4.0, 6.0),
-            MFParamTrapezoidal(5.0, 8.0, 20.0, 20.0),
-            MFParamTrapezoidal(-500.0, -500.0, -50.0, 0.0),
-            MFParamTriangular(-30.0, 0.0, 30.0),
-            MFParamTrapezoidal(0.0, 50.0, 500.0, 500.0),
+            # --- Inputs 0: Normalized Angular Bearings / Headings [-1.0, 1.0] ---
+            MFParamTrapezoidal(
+                -1.0, -1.0, -0.25, 0.0
+            ),  # MF 0: Negative / Left
+            MFParamTriangular(-0.15, 0.0, 0.15),  # MF 1: Aligned / Center
+            MFParamTrapezoidal(0.0, 0.25, 1.0, 1.0),  # MF 2: Positive / Right
+            # --- Inputs 1: Normalized Time-To-Impact / Distances [0.0, 1.0] ---
+            MFParamTrapezoidal(0.0, 0.0, 0.15, 0.3),  # MF 3: Critical / Close
+            MFParamTriangular(0.2, 0.4, 0.6),  # MF 4: Intermediate / Medium
+            MFParamTrapezoidal(0.5, 0.8, 1.0, 1.0),  # MF 5: Far / Clear
+            # --- Inputs 2: Normalized Engine Velocities [-1.0, 1.0] ---
+            MFParamTrapezoidal(
+                -1.0, -1.0, -0.1, 0.0
+            ),  # MF 6: High Negative Rate
+            MFParamTriangular(-0.06, 0.0, 0.06),  # MF 7: Stationary / Linear
+            MFParamTrapezoidal(0.0, 0.1, 1.0, 1.0),  # MF 8: High Positive Rate
         ]
 
     thrust_rules = [
         RuleGene(
             antecedents=[(0, 0), (1, 3), (2, 8)],
-            consequent_coefficients=[-0.5, 0.2, -1.2],
-            consequent_offset=-200.0,
+            consequent_coefficients=[-0.1, 0.05, -0.2],
+            consequent_offset=-0.4,
         ),
         RuleGene(
             antecedents=[(0, 2), (1, 5), (2, 7)],
-            consequent_coefficients=[0.2, 0.1, -0.4],
-            consequent_offset=150.0,
+            consequent_coefficients=[0.05, 0.02, -0.1],
+            consequent_offset=0.3,
         ),
     ]
+
     turn_rules = [
         RuleGene(
             antecedents=[(0, 2), (1, 4), (2, 7)],
-            consequent_coefficients=[1.5, 0.0, -0.8],
-            consequent_offset=45.0,
+            consequent_coefficients=[0.3, 0.0, -0.15],
+            consequent_offset=0.25,
         ),
         RuleGene(
             antecedents=[(0, 0), (1, 4), (2, 7)],
-            consequent_coefficients=[1.5, 0.0, -0.8],
-            consequent_offset=-45.0,
+            consequent_coefficients=[0.3, 0.0, -0.15],
+            consequent_offset=-0.25,
         ),
     ]
+
     fire_rules = [
         RuleGene(
             antecedents=[(0, 1), (1, 0), (2, 8)],
-            consequent_coefficients=[-0.1, -0.2, 0.5],
-            consequent_offset=50.0,
+            consequent_coefficients=[-0.02, -0.05, 0.1],
+            consequent_offset=0.1,
         ),
         RuleGene(
             antecedents=[(0, 2), (1, 2), (2, 6)],
             consequent_coefficients=[0.0, 0.0, 0.0],
-            consequent_offset=-50.0,
+            consequent_offset=-0.1,
         ),
     ]
 
     return ControllerChromosome(
         thrust_blueprint=SubsystemChromosome(
-            membership_function_pool=make_isolated_pool(), rules=thrust_rules
+            membership_function_pool=make_isolated_pool(),
+            rules=thrust_rules,
         ),
         turn_blueprint=SubsystemChromosome(
-            membership_function_pool=make_isolated_pool(), rules=turn_rules
+            membership_function_pool=make_isolated_pool(),
+            rules=turn_rules,
         ),
         fire_blueprint=SubsystemChromosome(
-            membership_function_pool=make_isolated_pool(), rules=fire_rules
+            membership_function_pool=make_isolated_pool(),
+            rules=fire_rules,
         ),
     )
