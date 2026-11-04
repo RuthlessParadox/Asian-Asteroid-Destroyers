@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from kesslergame.score import Score
 
 
-def report_metrics(
+def _report_metrics(
     scenario_name: str,
     score: Score,
     controller: FuzzyController,
@@ -59,12 +59,12 @@ def main() -> None:
         history_path=args.history_path,
     )
 
-    print("Resolving historical evolution structures...")
-    best_raw_genome = metrics_extractor.extract_best_genome()
+    print("Resolving balanced knee-point from Pareto frontier...")
+    selected_genome = metrics_extractor.extract_knee_point_genome()
 
     template_blueprint = get_default_controller_template()
     chromosome = hydrate_chromosome_blueprint(
-        flat_genes=best_raw_genome,
+        flat_genes=selected_genome,
         template=template_blueprint,
     )
 
@@ -93,7 +93,7 @@ def main() -> None:
             controllers=[controller],
         )
 
-        report_metrics(
+        _report_metrics(
             scenario_name=scenario.name or "Unnamed Scenario",
             score=score,
             controller=controller,

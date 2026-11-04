@@ -41,40 +41,52 @@ def main() -> int:
         )
         return 1
 
-    print(f"Commencing extraction sweep over workspace: {run_path.name}...")
+    print(
+        "Commencing extraction sweep over multi-objective workspace: "
+        + f"{run_path.name}..."
+    )
     metrics_engine = EvolutionMetrics(
         logbook_path=logbook_file,
         history_path=history_file,
     )
 
-    print(" -> Compiling historical convergence tracks...")
+    print(
+        " -> Compiling multi-objective convergence tracks & "
+        + "frontier capacity..."
+    )
     summary_df = metrics_engine.collect_training_summary()
     fit_fig, _ = plot_fitness_tracks(summary_df)
     fit_fig.savefig(str(run_path / "analytics_fitness_tracks.png"), dpi=200)
 
-    print(" -> Evaluating internal parameter spread indices...")
+    print(
+        " -> Evaluating non-dominated parameter spread volatility indices..."
+    )
     vol_df = metrics_engine.collect_param_volatility()
     vol_fig, _ = plot_param_volatility(vol_df)
     vol_fig.savefig(str(run_path / "analytics_param_volatility.png"), dpi=200)
 
-    print(" -> Computing elite structural replacement rates...")
+    print(
+        " -> Computing structural replacement rates across "
+        + "successive frontiers..."
+    )
     turnover_df = metrics_engine.compute_hall_of_fame_turnover()
     turnover_fig, _ = plot_hall_of_fame_turnover(turnover_df)
     turnover_fig.savefig(str(run_path / "analytics_hof_turnover.png"), dpi=200)
 
     if args.track_genes:
         print(
-            f" -> Mapping spatial drift paths for indices: {args.track_genes}..."
+            " -> Mapping front centroid spatial drift paths for indices: "
+            + f"{args.track_genes}..."
         )
         drift_df = metrics_engine.collect_geometry_drift(args.track_genes)
         drift_fig, _ = plot_geometry_drift(drift_df, args.track_genes)
         drift_fig.savefig(
-            str(run_path / "analytics_geometry_drift.png"),
-            dpi=200,
+            str(run_path / "analytics_geometry_drift.png"), dpi=200
         )
 
     print(
-        f"\nSuccess! Full dashboard assets secured to disk inside: {run_path}"
+        "\nSuccess! Full Pareto dashboard assets secured to disk inside: "
+        + f"{run_path}"
     )
     return 0
 
