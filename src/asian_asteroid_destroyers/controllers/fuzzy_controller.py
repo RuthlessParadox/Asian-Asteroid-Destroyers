@@ -6,6 +6,16 @@ from kesslergame import KesslerController
 from typing_extensions import override
 
 from asian_asteroid_destroyers.chromosomes import compile_subsystem
+from asian_asteroid_destroyers.geometry import (
+    denorm_thrust,
+    denorm_turn_rate,
+    norm_ammo_ratio,
+    norm_angle,
+    norm_distance,
+    norm_speed_ship,
+    norm_tti,
+    norm_turn_rate_ship,
+)
 from asian_asteroid_destroyers.sa import SituationalAwareness
 
 if TYPE_CHECKING:
@@ -23,68 +33,69 @@ class _TacticalFeatureExtractor:
         self._sa = sa
 
     def get_thrust_inputs(self) -> list[float]:
-        """Constructs input vector for the thrust inference engine.
-
-        Matrix Layout:: Soonest impact asteroid distance (wrapped): Soonest impact asteroid time-to-impact (TTI): Current ship linear speed
-        """
         soonest = self._sa.agent_ship.soonest_impact_n_asteroids(1)
 
         if not soonest:
             return [
-                self._sa.map_diagonal_length,
-                10.0,
-                self._sa.agent_ship.speed,
+                1.0,
+                1.0,
+                norm_speed_ship(self._sa.agent_ship.speed),
             ]
 
         target_asteroid = soonest[0]
         tti = target_asteroid.tti
-        resolved_tti = tti if tti is not None else 10.0
+        normalized_tti = norm_tti(tti) if tti is not None else 1.0
 
         return [
-            target_asteroid.distance_wrap,
-            resolved_tti,
-            self._sa.agent_ship.speed,
+            norm_distance(
+                target_asteroid.distance_wrap,
+                self._sa.map_diagonal_length,
+            ),
+            normalized_tti,
+            norm_speed_ship(self._sa.agent_ship.speed),
         ]
 
     def get_turn_inputs(self) -> list[float]:
-        """Constructs input vector for the turn rate inference engine.
-
-        Matrix Layout:: Bearing angle to target threat (degrees wrapped): Soonest impact asteroid time-to-impact (TTI): Current ship angular turn rate
-        """
         soonest = self._sa.agent_ship.soonest_impact_n_asteroids(1)
 
         if not soonest:
             nearest = self._sa.agent_ship.nearest_n_asteroids_wrapped(1)
             if not nearest:
-                return [0.0, 10.0, self._sa.agent_ship.turn_rate]
+                return [
+                    0.0,
+                    1.0,
+                    norm_turn_rate_ship(self._sa.agent_ship.turn_rate),
+                ]
             target_asteroid = nearest[0]
-            resolved_tti = 10.0
+            normalized_tti = 1.0
         else:
             target_asteroid = soonest[0]
             tti = target_asteroid.tti
-            resolved_tti = tti if tti is not None else 10.0
+            normalized_tti = norm_tti(tti) if tti is not None else 1.0
 
         return [
-            target_asteroid.bearing_wrap,
-            resolved_tti,
-            self._sa.agent_ship.turn_rate,
+            norm_angle(target_asteroid.bearing_wrap),
+            normalized_tti,
+            norm_turn_rate_ship(self._sa.agent_ship.turn_rate),
         ]
 
     def get_fire_inputs(self) -> list[float]:
-        """Constructs input vector for the firing command inference engine.
-
-        Matrix Layout:: Bearing angle to targeting threat (degrees wrapped): Distance to targeted threat: Tactical ammunition surplus ratio
-        """
         nearest = self._sa.agent_ship.nearest_n_asteroids_wrapped(1)
 
         if not nearest:
-            return [0.0, self._sa.map_diagonal_length, 0.0]
+            return [0.0, 1.0, 1.0]
 
         target_asteroid = nearest[0]
+
         return [
-            target_asteroid.bearing_wrap,
-            target_asteroid.distance_wrap,
-            self._sa.agent_ship.bullet_asteroid_equivalent_ratio,
+            norm_angle(target_asteroid.bearing_wrap),
+            norm_distance(
+                target_asteroid.distance_wrap,
+                self._sa.map_diagonal_length,
+            ),
+            norm_ammo_ratio(
+                self._sa.agent_ship.bullet_asteroid_equivalent_ratio,
+            ),
         ]
 
 
@@ -149,8 +160,11 @@ class FuzzyController(KesslerController):
         raw_turn_rate = self._turn_engine.infer(turn_inputs)
         raw_fire_output = self._fire_engine.infer(fire_inputs)
 
-        thrust = max(-480.0, min(float(raw_thrust), 480.0))
-        turn_rate = max(-180.0, min(float(raw_turn_rate), 180.0))
+        physical_thrust = denorm_thrust(float(raw_thrust))
+        physical_turn_rate = denorm_turn_rate(float(raw_turn_rate))
+
+        thrust = max(-480.0, min(float(physical_thrust), 480.0))
+        turn_rate = max(-180.0, min(float(physical_turn_rate), 180.0))
         fire = bool(raw_fire_output > 0.0)
         drop_mine = False
 

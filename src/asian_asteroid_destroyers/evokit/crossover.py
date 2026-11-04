@@ -7,6 +7,11 @@ import numpy as np
 from deap import tools
 
 from asian_asteroid_destroyers.chromosomes import (
+    ControllerChromosome,
+    MFParamTrapezoidal,
+    MFParamTriangular,
+    RuleGene,
+    SubsystemChromosome,
     flatten_chromosome,
     hydrate_chromosome_blueprint,
     repair_geometry_invariants,
@@ -15,8 +20,6 @@ from asian_asteroid_destroyers.chromosomes import (
 from .individual import Individual
 
 if TYPE_CHECKING:
-    from asian_asteroid_destroyers.chromosomes import ControllerChromosome
-
     from .types import CrossoverOperator
 
 
@@ -25,24 +28,15 @@ def cx_fuzzy_blend(
     rng: np.random.Generator,
     alpha: float = 0.3,
 ) -> CrossoverOperator:
-    """Closure factory providing a dependency-injected blend crossover.
-
-    Args:
-        template: The structural chromosome design used as a hydration map.
-        rng: The explicit random number generator instance injected from the
-            outer evolutionary training environment.
-        alpha: Blend exploration factor. Controls how far outside the parent
-            bounds the offspring genes can blend.
-    """
-
     def cx_fuzzy_blend_wrapper(
         individual_1: Individual,
         individual_2: Individual,
     ) -> tuple[Individual, Individual]:
-        """Applies aligned segment swaps and numeric BLX blending via rng."""
-
         parent_1 = hydrate_chromosome_blueprint(individual_1[:], template)
         parent_2 = hydrate_chromosome_blueprint(individual_2[:], template)
+
+        child_1_blueprints: list[SubsystemChromosome] = []
+        child_2_blueprints: list[SubsystemChromosome] = []
 
         subsystems = [
             (parent_1.thrust_blueprint, parent_2.thrust_blueprint),
@@ -51,26 +45,19 @@ def cx_fuzzy_blend(
         ]
 
         for subsystem_1, subsystem_2 in subsystems:
-            # Segment-wise crossover: Membership Function pools
-            pool_1 = subsystem_1.membership_function_pool
-            pool_2 = subsystem_2.membership_function_pool
+            child_1_pool: list[MFParamTriangular | MFParamTrapezoidal] = []
+            child_2_pool: list[MFParamTriangular | MFParamTrapezoidal] = []
 
-            for index in range(len(pool_1)):
-                membership_function_1 = pool_1[index]
-                membership_function_2 = pool_2[index]
-
+            for membership_function_1, membership_function_2 in zip(
+                subsystem_1.membership_function_pool,
+                subsystem_2.membership_function_pool,
+            ):
                 if rng.random() < 0.7:
-                    parent_1_array = np.array(
-                        membership_function_1,
-                        dtype=np.float64,
-                    )
-                    parent_2_array = np.array(
-                        membership_function_2,
-                        dtype=np.float64,
-                    )
+                    array_1 = np.array(membership_function_1, dtype=np.float64)
+                    array_2 = np.array(membership_function_2, dtype=np.float64)
 
-                    min_values = np.minimum(parent_1_array, parent_2_array)
-                    max_values = np.maximum(parent_1_array, parent_2_array)
+                    min_values = np.minimum(array_1, array_2)
+                    max_values = np.maximum(array_1, array_2)
                     differences = max_values - min_values
 
                     low_bounds = min_values - alpha * differences
@@ -79,27 +66,115 @@ def cx_fuzzy_blend(
                     offspring_1 = rng.uniform(low_bounds, high_bounds)
                     offspring_2 = rng.uniform(low_bounds, high_bounds)
 
-                    pool_1[index] = type(membership_function_1)(*offspring_1)
-                    pool_2[index] = type(membership_function_2)(*offspring_2)
+                    if len(membership_function_1) == 3:
+                        child_1_pool.append(
+                            MFParamTriangular(
+                                cast(float, offspring_1[0]),
+                                cast(float, offspring_1[1]),
+                                cast(float, offspring_1[2]),
+                            )
+                        )
+                        child_2_pool.append(
+                            MFParamTriangular(
+                                cast(float, offspring_2[0]),
+                                cast(float, offspring_2[1]),
+                                cast(float, offspring_2[2]),
+                            )
+                        )
+                    else:
+                        child_1_pool.append(
+                            MFParamTrapezoidal(
+                                cast(float, offspring_1[0]),
+                                cast(float, offspring_1[1]),
+                                cast(float, offspring_1[2]),
+                                cast(float, offspring_1[3]),
+                            )
+                        )
+                        child_2_pool.append(
+                            MFParamTrapezoidal(
+                                cast(float, offspring_2[0]),
+                                cast(float, offspring_2[1]),
+                                cast(float, offspring_2[2]),
+                                cast(float, offspring_2[3]),
+                            )
+                        )
                 else:
-                    pool_1[index], pool_2[index] = pool_2[index], pool_1[index]
+                    child_1_pool.append(membership_function_2)
+                    child_2_pool.append(membership_function_1)
 
-            # Segment-wise crossover: Rule Consequents
-            rules_1 = subsystem_1.rules
-            rules_2 = subsystem_2.rules
-            for index in range(len(rules_1)):
+            child_1_rules: list[RuleGene] = []
+            child_2_rules: list[RuleGene] = []
+
+            for rule_1, rule_2 in zip(subsystem_1.rules, subsystem_2.rules):
                 if rng.random() < 0.5:
-                    rules_1[index], rules_2[index] = (
-                        rules_2[index],
-                        rules_1[index],
+                    child_1_rules.append(
+                        RuleGene(
+                            antecedents=rule_2.antecedents,
+                            consequent_coefficients=(
+                                rule_2.consequent_coefficients
+                            ),
+                            consequent_offset=rule_2.consequent_offset,
+                        )
+                    )
+                    child_2_rules.append(
+                        RuleGene(
+                            antecedents=rule_1.antecedents,
+                            consequent_coefficients=(
+                                rule_1.consequent_coefficients
+                            ),
+                            consequent_offset=rule_1.consequent_offset,
+                        )
+                    )
+                else:
+                    child_1_rules.append(
+                        RuleGene(
+                            antecedents=rule_1.antecedents,
+                            consequent_coefficients=(
+                                rule_1.consequent_coefficients
+                            ),
+                            consequent_offset=rule_1.consequent_offset,
+                        )
+                    )
+                    child_2_rules.append(
+                        RuleGene(
+                            antecedents=rule_2.antecedents,
+                            consequent_coefficients=(
+                                rule_2.consequent_coefficients
+                            ),
+                            consequent_offset=rule_2.consequent_offset,
+                        )
                     )
 
+            child_1_blueprints.append(
+                SubsystemChromosome(
+                    membership_function_pool=child_1_pool,
+                    rules=child_1_rules,
+                )
+            )
+            child_2_blueprints.append(
+                SubsystemChromosome(
+                    membership_function_pool=child_2_pool,
+                    rules=child_2_rules,
+                )
+            )
+
+        final_controller_1 = ControllerChromosome(
+            thrust_blueprint=child_1_blueprints[0],
+            turn_blueprint=child_1_blueprints[1],
+            fire_blueprint=child_1_blueprints[2],
+        )
+        final_controller_2 = ControllerChromosome(
+            thrust_blueprint=child_2_blueprints[0],
+            turn_blueprint=child_2_blueprints[1],
+            fire_blueprint=child_2_blueprints[2],
+        )
+
         individual_1[:] = repair_geometry_invariants(
-            flatten_chromosome(parent_1),
+            flatten_chromosome(final_controller_1),
             template,
         )
         individual_2[:] = repair_geometry_invariants(
-            flatten_chromosome(parent_2),
+            flatten_chromosome(final_controller_2),
             template,
         )
 

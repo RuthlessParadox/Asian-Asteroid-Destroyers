@@ -4,8 +4,7 @@ def norm_angle(angle: float) -> float:
 
 
 def norm_distance(distance: float, map_diagonal_length: float) -> float:
-    """Normalizes a raw spatial distance vector against half the map's max diagonal."""
-    return distance / (map_diagonal_length / 2.0)
+    return distance / map_diagonal_length
 
 
 def norm_speed_asteroid(speed: float) -> float:
@@ -14,12 +13,14 @@ def norm_speed_asteroid(speed: float) -> float:
 
 
 def norm_speed_ship(speed: float) -> float:
-    """Normalizes typical ship velocities against a 240.0 baseline."""
     return speed / 240.0
 
 
+def norm_turn_rate_ship(turn_rate: float) -> float:
+    return turn_rate / 180.0
+
+
 def norm_tti(tti: float) -> float:
-    """Scales impact windows relative to a critical 10-second response threshold."""
     return tti / 10.0
 
 
@@ -31,3 +32,16 @@ def norm_size(size: float) -> float:
 def norm_asteroid_count(num: float) -> float:
     """Normalizes dense asteroid field cluster counts against a baseline maximum of 100."""
     return num / 100.0
+
+
+def norm_ammo_ratio(ratio: float) -> float:
+    capped_ratio = min(ratio, 2.0)
+    return capped_ratio / 2.0
+
+
+def denorm_thrust(normalized_thrust: float) -> float:
+    return normalized_thrust * 480.0
+
+
+def denorm_turn_rate(normalized_turn_rate: float) -> float:
+    return normalized_turn_rate * 180.0
