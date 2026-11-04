@@ -87,6 +87,7 @@ def main() -> None:
     initial_seed = int(rng.integers(1, 1000000))
     fitness_evaluator = FuzzyFitnessEvaluator(
         template=template,
+        profile_path=args.scenarios_path,
         evaluation_seed=initial_seed,
     )
 

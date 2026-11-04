@@ -15,6 +15,7 @@ class _EvolutionConfig:
     cx_pb: float
     mut_pb: float
     gene_size: int
+    scenarios_path: str
 
 
 @dataclass(frozen=True)
@@ -25,6 +26,7 @@ class TrainerArgs:
     cx_pb: float
     mut_pb: float
     gene_size: int
+    scenarios_path: Path
     resume: str | None = None
 
 
@@ -155,6 +157,12 @@ def _parse_trainer_args(baseline: _EvolutionConfig) -> TrainerArgs:
         help="Size of individual genetic configurations",
     )
     _ = parser.add_argument(
+        "--scenarios-path",
+        type=str,
+        default=baseline.scenarios_path,
+        help="Path to JSON containing training scenarios",
+    )
+    _ = parser.add_argument(
         "--resume",
         type=str,
         default=None,
@@ -169,6 +177,7 @@ def _parse_trainer_args(baseline: _EvolutionConfig) -> TrainerArgs:
     cx_pb = cast(float, namespace.cx_pb)
     mut_pb = cast(float, namespace.mut_pb)
     gene_size = cast(int, namespace.gene_size)
+    scenarios_path = cast(str, namespace.scenarios_path)
     resume = cast(str | None, namespace.resume)
 
     if resume is not None:
@@ -195,6 +204,7 @@ def _parse_trainer_args(baseline: _EvolutionConfig) -> TrainerArgs:
         cx_pb=cx_pb,
         mut_pb=mut_pb,
         gene_size=gene_size,
+        scenarios_path=Path(scenarios_path),
         resume=resume,
     )
 
@@ -239,6 +249,10 @@ def _load_baseline_config(config_path: Path) -> _EvolutionConfig:
     if not isinstance(gene_size, int):
         raise TypeError("gene_size in pyproject.toml must be an integer")
 
+    scenarios_path = evolution_table["scenarios_path"]
+    if not isinstance(scenarios_path, str):
+        raise TypeError("scenarios_path in pyproject.toml must be a string")
+
     return _EvolutionConfig(
         generations=generations,
         population_size=population_size,
@@ -246,4 +260,5 @@ def _load_baseline_config(config_path: Path) -> _EvolutionConfig:
         cx_pb=cx_pb,
         mut_pb=mut_pb,
         gene_size=gene_size,
+        scenarios_path=scenarios_path,
     )

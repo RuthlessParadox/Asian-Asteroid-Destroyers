@@ -1,137 +1,154 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+import json
+from typing import TYPE_CHECKING, TypedDict, cast
 
+import numpy as np
 from kesslergame import Scenario
 
 if TYPE_CHECKING:
-    import numpy as np
+    from pathlib import Path
 
-__all__ = ["create_training_portfolio"]
+__all__ = ["ScenarioConfig", "load_scenario_suite"]
 
 
-def create_training_portfolio(rng: np.random.Generator) -> list[Scenario]:
+class _ZoneDict(TypedDict):
+    x_range: list[float]
+    y_range: list[float]
+
+
+class _GroupDict(TypedDict):
+    count: int
+    size: int
+    speed_range: list[float]
+    angle_range: list[float]
+    pos_zones: list[_ZoneDict]
+
+
+class _ScenarioJsonDict(TypedDict):
+    name: str
+    time_limit: float
+    stop_if_no_ammo: bool
+    ammo_limit_multiplier: float | None
+    asteroid_groups: list[_GroupDict]
+
+
+class _RootJsonSchema(TypedDict):
+    map_size: list[int]
+    ship_spawn: list[float]
+    ship_heading: float
+    scenarios: list[_ScenarioJsonDict]
+
+
+class ScenarioConfig(TypedDict, total=False):
+    profile_path: Path
+    seed: int | None
+    is_deterministic: bool
+
+
+def load_scenario_suite(config: ScenarioConfig) -> list[Scenario]:
     scenarios: list[Scenario] = []
 
-    map_size: Final[tuple[int, int]] = (1000, 800)
-    ship_spawn: Final[tuple[float, float]] = (500.0, 400.0)
-    ship_heading: Final[float] = 90.0
-
-    # -------------------------------------------------------------------------
-    # Scenario 1: Accuracy & Target Tracking Drill
-    # -------------------------------------------------------------------------
-    scenario_1_asteroid_states: list[
-        dict[str, tuple[float, float] | int | float]
-    ] = []
-
-    for _ in range(5):
-        pos_x = (
-            rng.uniform(100.0, 300.0)
-            if rng.random() < 0.5
-            else rng.uniform(700.0, 900.0)
-        )
-        pos_y = (
-            rng.uniform(100.0, 200.0)
-            if rng.random() < 0.5
-            else rng.uniform(600.0, 700.0)
-        )
-        speed = rng.uniform(10.0, 30.0)
-        angle = rng.uniform(0.0, 360.0)
-
-        scenario_1_asteroid_states.append(
-            {
-                "position": (pos_x, pos_y),
-                "speed": speed,
-                "angle": angle,
-                "size": 4,
-            }
+    file_path = config.get("profile_path")
+    if not file_path or not file_path.is_file():
+        raise FileNotFoundError(
+            f"Scenario configuration sheet missing: {file_path}"
         )
 
-    scenarios.append(
-        Scenario(
-            name="XFC_Drill_Tracking_Accuracy",
-            asteroid_states=scenario_1_asteroid_states,
-            ship_states=[{"position": ship_spawn, "angle": ship_heading}],
-            map_size=map_size,
-            time_limit=60.0,
-            stop_if_no_ammo=True,
-            ammo_limit_multiplier=2.0,
+    with open(file_path, "r", encoding="utf-8") as f:
+        data = cast(_RootJsonSchema, json.load(f))
+
+    rng = np.random.default_rng(config.get("seed"))
+    is_deterministic = config.get("is_deterministic", False)
+
+    map_size = cast(tuple[int, int], tuple(data["map_size"]))
+    ship_spawn = tuple(data["ship_spawn"])
+    ship_heading = data["ship_heading"]
+
+    for scene_data in data["scenarios"]:
+        asteroid_states: list[
+            dict[str, tuple[float, float] | float | int]
+        ] = []
+
+        for group in scene_data["asteroid_groups"]:
+            count = group["count"]
+            size = group["size"]
+            speed_range = group["speed_range"]
+            angle_range = group["angle_range"]
+            zones = group["pos_zones"]
+
+            if is_deterministic:
+                speed = (speed_range[0] + speed_range[1]) / 2.0
+                angle = (angle_range[0] + angle_range[1]) / 2.0
+
+                for _ in range(count):
+                    zone = zones[0]
+                    pos_x = (zone["x_range"][0] + zone["x_range"][1]) / 2.0
+                    pos_y = (zone["y_range"][0] + zone["y_range"][1]) / 2.0
+
+                    asteroid_states.append(
+                        {
+                            "position": (pos_x, pos_y),
+                            "speed": speed,
+                            "angle": angle,
+                            "size": size,
+                        }
+                    )
+            else:
+                speeds = rng.uniform(
+                    speed_range[0],
+                    speed_range[1],
+                    size=count,
+                )
+                angles = rng.uniform(
+                    angle_range[0],
+                    angle_range[1],
+                    size=count,
+                )
+
+                zone_count = len(zones)
+                zone_indices = (
+                    rng.integers(0, zone_count, size=count)
+                    if zone_count > 1
+                    else np.zeros(count, dtype=np.int64)
+                )
+
+                for i in range(count):
+                    zone = zones[int(cast(int, zone_indices[i]))]
+                    x_range = zone["x_range"]
+                    y_range = zone["y_range"]
+
+                    pos_x = float(rng.uniform(x_range[0], x_range[1]))
+                    pos_y = float(rng.uniform(y_range[0], y_range[1]))
+
+                    asteroid_states.append(
+                        {
+                            "position": (pos_x, pos_y),
+                            "speed": float(cast(float, speeds[i])),
+                            "angle": float(cast(float, angles[i])),
+                            "size": size,
+                        }
+                    )
+
+        ammo_limit_multiplier = scene_data.get("ammo_limit_multiplier")
+        resolved_ammo = (
+            float(ammo_limit_multiplier)
+            if ammo_limit_multiplier is not None
+            else 0.0
         )
-    )
 
-    # -------------------------------------------------------------------------
-    # Scenario 2: High-Velocity Evasion Minefield
-    # -------------------------------------------------------------------------
-    scenario_2_asteroid_states: list[
-        dict[str, tuple[float, float] | int | float]
-    ] = []
-
-    for _ in range(12):
-        pos_x = rng.uniform(50.0, 950.0)
-        pos_y = (
-            rng.uniform(50.0, 250.0)
-            if rng.random() < 0.5
-            else rng.uniform(550.0, 750.0)
+        scenarios.append(
+            Scenario(
+                name=scene_data["name"],
+                asteroid_states=asteroid_states,
+                ship_states=[
+                    {"position": ship_spawn, "angle": ship_heading, "lives": 3}
+                ],
+                map_size=map_size,
+                time_limit=scene_data["time_limit"],
+                stop_if_no_ammo=scene_data["stop_if_no_ammo"],
+                ammo_limit_multiplier=resolved_ammo,
+            )
         )
-        speed = rng.uniform(80.0, 150.0)
-        angle = rng.uniform(0.0, 360.0)
-
-        scenario_2_asteroid_states.append(
-            {
-                "position": (pos_x, pos_y),
-                "speed": speed,
-                "angle": angle,
-                "size": 2,
-            }
-        )
-
-    scenarios.append(
-        Scenario(
-            name="XFC_Drill_High_Velocity_Evasion",
-            asteroid_states=scenario_2_asteroid_states,
-            ship_states=[{"position": ship_spawn, "angle": ship_heading}],
-            map_size=map_size,
-            time_limit=45.0,
-            stop_if_no_ammo=False,
-        )
-    )
-
-    # -------------------------------------------------------------------------
-    # Scenario 3: Wrap-Around Spatial Challenge
-    # -------------------------------------------------------------------------
-    scenario_3_asteroid_states: list[
-        dict[str, tuple[float, float] | int | float]
-    ] = []
-
-    for _ in range(8):
-        if rng.random() < 0.5:
-            pos_x = rng.uniform(10.0, 50.0)
-        else:
-            pos_x = rng.uniform(950.0, 990.0)
-        pos_y = rng.uniform(10.0, 790.0)
-
-        speed = rng.uniform(60.0, 100.0)
-        angle = rng.uniform(0.0, 360.0)
-
-        scenario_3_asteroid_states.append(
-            {
-                "position": (pos_x, pos_y),
-                "speed": speed,
-                "angle": angle,
-                "size": 3,
-            }
-        )
-
-    scenarios.append(
-        Scenario(
-            name="XFC_Drill_Wrapped_Spatial_Awareness",
-            asteroid_states=scenario_3_asteroid_states,
-            ship_states=[{"position": ship_spawn, "angle": ship_heading}],
-            map_size=map_size,
-            time_limit=60.0,
-            stop_if_no_ammo=True,
-            ammo_limit_multiplier=2.5,
-        )
-    )
 
     return scenarios

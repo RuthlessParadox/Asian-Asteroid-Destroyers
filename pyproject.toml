@@ -63,3 +63,4 @@ save_interval = 10
 cx_pb = 0.7
 mut_pb = 0.2
 gene_size = 123
+scenarios_path = "assets/scenarios/training_scenarios.json"
