@@ -8,6 +8,7 @@ from deap import tools
 
 from asian_asteroid_destroyers.chromosomes import (
     FlatGenome,
+    create_geometry_repair_maps,
     repair_geometry_invariants,
 )
 
@@ -26,17 +27,17 @@ def cx_fuzzy_blend(
     rng: np.random.Generator,
     alpha: float = 0.3,
 ) -> CrossoverOperator:
+    triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
+    membership_function_blocks: list[npt.NDArray[np.intp]] = []
+    rule_blocks: list[npt.NDArray[np.intp]] = []
+
     subsystems = (
         template.thrust_blueprint,
         template.turn_blueprint,
         template.fire_blueprint,
     )
 
-    membership_function_blocks: list[npt.NDArray[np.intp]] = []
-    rule_blocks: list[npt.NDArray[np.intp]] = []
-
     current_index = 0
-
     for blueprint in subsystems:
         membership_function_pool_start = current_index
         for param in blueprint.membership_function_pool:
@@ -125,11 +126,13 @@ def cx_fuzzy_blend(
 
         individual_1[:] = repair_geometry_invariants(
             cast(FlatGenome, output_1.tolist()),
-            template,
+            triangular_array,
+            trapezoidal_array,
         )
         individual_2[:] = repair_geometry_invariants(
             cast(FlatGenome, output_2.tolist()),
-            template,
+            triangular_array,
+            trapezoidal_array,
         )
 
         return individual_1, individual_2

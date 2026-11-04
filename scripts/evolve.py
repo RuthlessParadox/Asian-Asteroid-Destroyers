@@ -9,6 +9,7 @@ import numpy as np
 from pathos.multiprocessing import ProcessPool
 
 from asian_asteroid_destroyers.chromosomes import (
+    create_geometry_repair_maps,
     flatten_chromosome,
     get_default_controller_template,
     repair_geometry_invariants,
@@ -109,13 +110,18 @@ def main() -> None:
     )
     globals()["GLOBAL_EVALUATOR_INSTANCE"] = runtime_evaluator
 
+    triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
     individual_class = get_individual_class(weights)
 
     def fuzzy_individual_factory() -> Individual:
         raw_random_genes = [
-            float(rng.uniform(-180.0, 500.0)) for _ in range(flat_genes_length)
+            float(rng.uniform(-1.0, 1.0)) for _ in range(flat_genes_length)
         ]
-        valid_genes = repair_geometry_invariants(raw_random_genes, template)
+        valid_genes = repair_geometry_invariants(
+            raw_random_genes,
+            triangular_array,
+            trapezoidal_array,
+        )
         return individual_class(valid_genes)
 
     mate_operator = cx_fuzzy_blend(template=template, rng=rng, alpha=0.3)

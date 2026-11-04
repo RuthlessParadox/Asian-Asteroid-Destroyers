@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, NamedTuple
+from typing import TYPE_CHECKING, Final, NamedTuple, cast
+
+import numpy as np
 
 from asian_asteroid_destroyers.fuzzy import (
     FuzzyClause,
@@ -11,6 +13,8 @@ from asian_asteroid_destroyers.fuzzy import (
 )
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
+
     from asian_asteroid_destroyers.fuzzy import MembershipFunction
 
 __all__ = [
@@ -23,6 +27,7 @@ __all__ = [
     "compile_subsystem",
     "flatten_chromosome",
     "hydrate_chromosome_blueprint",
+    "create_geometry_repair_maps",
     "repair_geometry_invariants",
     "get_default_controller_template",
 ]
@@ -256,40 +261,79 @@ def hydrate_chromosome_blueprint(
     )
 
 
+def create_geometry_repair_maps(
+    template: ControllerChromosome,
+) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp]]:
+    subsystems = (
+        template.thrust_blueprint,
+        template.turn_blueprint,
+        template.fire_blueprint,
+    )
+
+    triangular_indices: list[list[int]] = []
+    trapezoidal_indices: list[list[int]] = []
+
+    current_index = 0
+    for blueprint in subsystems:
+        for param in blueprint.membership_function_pool:
+            param_len = len(param)
+            index_range = list(range(current_index, current_index + param_len))
+            if param_len == 3:
+                triangular_indices.append(index_range)
+            elif param_len == 4:
+                trapezoidal_indices.append(index_range)
+            current_index += param_len
+
+        for rule in blueprint.rules:
+            current_index += len(rule.consequent_coefficients) + 1
+
+    triangular_array = (
+        np.array(triangular_indices, dtype=np.intp)
+        if triangular_indices
+        else np.empty((0, 3), dtype=np.intp)
+    )
+    trapezoidal_array = (
+        np.array(trapezoidal_indices, dtype=np.intp)
+        if trapezoidal_indices
+        else np.empty((0, 4), dtype=np.intp)
+    )
+
+    return triangular_array, trapezoidal_array
+
+
 def repair_geometry_invariants(
     flat_genes: FlatGenome,
-    template: ControllerChromosome,
+    triangular_array: npt.NDArray[np.intp],
+    trapezoidal_array: npt.NDArray[np.intp],
     min_width: float = 0.05,
 ) -> FlatGenome:
-    chromosome = hydrate_chromosome_blueprint(flat_genes, template)
+    genes = np.array(flat_genes, dtype=np.float64)
 
-    for subsystem in (
-        chromosome.thrust_blueprint,
-        chromosome.turn_blueprint,
-        chromosome.fire_blueprint,
-    ):
-        pool = subsystem.membership_function_pool
-        for index, param in enumerate(pool):
-            if isinstance(param, MFParamTriangular):
-                left = param[0]
-                center = max(param[1], left + min_width)
-                right = max(param[2], center + min_width)
+    if triangular_array.size > 0:
+        genes[triangular_array[:, 1]] = np.maximum(
+            genes[triangular_array[:, 1]],
+            genes[triangular_array[:, 0]] + min_width,
+        )
+        genes[triangular_array[:, 2]] = np.maximum(
+            genes[triangular_array[:, 2]],
+            genes[triangular_array[:, 1]] + min_width,
+        )
 
-                pool[index] = MFParamTriangular(left, center, right)
-            else:
-                left_base = param[0]
-                left_peak = max(param[1], left_base + min_width)
-                right_peak = max(param[2], left_peak + min_width)
-                right_base = max(param[3], right_peak + min_width)
+    if trapezoidal_array.size > 0:
+        genes[trapezoidal_array[:, 1]] = np.maximum(
+            genes[trapezoidal_array[:, 1]],
+            genes[trapezoidal_array[:, 0]] + min_width,
+        )
+        genes[trapezoidal_array[:, 2]] = np.maximum(
+            genes[trapezoidal_array[:, 2]],
+            genes[trapezoidal_array[:, 1]] + min_width,
+        )
+        genes[trapezoidal_array[:, 3]] = np.maximum(
+            genes[trapezoidal_array[:, 3]],
+            genes[trapezoidal_array[:, 2]] + min_width,
+        )
 
-                pool[index] = MFParamTrapezoidal(
-                    left_base,
-                    left_peak,
-                    right_peak,
-                    right_base,
-                )
-
-    return flatten_chromosome(chromosome)
+    return cast(FlatGenome, genes.tolist())
 
 
 def get_default_controller_template() -> ControllerChromosome:

@@ -8,6 +8,7 @@ from deap import tools
 
 from asian_asteroid_destroyers.chromosomes import (
     FlatGenome,
+    create_geometry_repair_maps,
     repair_geometry_invariants,
 )
 
@@ -26,6 +27,8 @@ def mut_fuzzy_gaussian(
     sigma: float = 0.05,
     independent_probability: float = 0.2,
 ) -> MutationOperator:
+    triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
+
     def mut_fuzzy_gaussian_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
@@ -38,7 +41,8 @@ def mut_fuzzy_gaussian(
 
         individual[:] = repair_geometry_invariants(
             cast(FlatGenome, genes.tolist()),
-            template,
+            triangular_array,
+            trapezoidal_array,
         )
 
         return (individual,)
