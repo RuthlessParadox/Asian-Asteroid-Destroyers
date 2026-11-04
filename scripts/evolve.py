@@ -24,8 +24,8 @@ from asian_asteroid_destroyers.evokit import (
     cx_fuzzy_blend,
     get_individual_class,
     mut_fuzzy_gaussian,
-    run_simple_evolution,
-    sel_tournament,
+    run_nsga_evolution,
+    sel_nsga_3,
 )
 from asian_asteroid_destroyers.infrastructure import (
     EmergencySaver,
@@ -94,12 +94,12 @@ def main() -> None:
     else:
         print("Commencing a fresh evolutionary workspace...")
         data_directory = create_experiment_directory()
-        algorithm = run_simple_evolution
+        algorithm = run_nsga_evolution
         start_generation = 1
         rng = np.random.default_rng()
         logbook = Logbook()
         history_logger = HistoryLogger()
-        hall_of_fame = HallOfFame(max_size=1)
+        hall_of_fame = HallOfFame(max_size=5)
         population = None
 
     initial_seed = int(rng.integers(1, 1000000))
@@ -132,7 +132,8 @@ def main() -> None:
         sigma=0.04,
         independent_probability=0.08,
     )
-    select_operator = sel_tournament(tournament_size=3)
+
+    select_operator = sel_nsga_3(num_objectives=5, subdivisions=4)
 
     statistics = Statistics()
     toolbox = build_toolbox(
