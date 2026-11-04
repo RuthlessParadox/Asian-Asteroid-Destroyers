@@ -99,7 +99,7 @@ def main() -> None:
         rng = np.random.default_rng()
         logbook = Logbook()
         history_logger = HistoryLogger()
-        hall_of_fame = HallOfFame(max_size=5)
+        hall_of_fame = HallOfFame()
         population = None
 
     initial_seed = int(rng.integers(1, 1000000))

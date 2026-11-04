@@ -283,7 +283,7 @@ def test_seed_as_generator_instance(configured_toolbox: Toolbox) -> None:
 
 
 def test_optional_components_recording(configured_toolbox: Toolbox) -> None:
-    hall_of_fame = HallOfFame(max_size=2)
+    hall_of_fame = HallOfFame()
     stats = Statistics()
     logbook = Logbook()
     history_logger = HistoryLogger()
