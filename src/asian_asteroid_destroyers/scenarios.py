@@ -80,9 +80,10 @@ def load_scenario_suite(config: ScenarioConfig) -> list[Scenario]:
             if is_deterministic:
                 speed = (speed_range[0] + speed_range[1]) / 2.0
                 angle = (angle_range[0] + angle_range[1]) / 2.0
+                zone_count = len(zones)
 
-                for _ in range(count):
-                    zone = zones[0]
+                for index in range(count):
+                    zone = zones[index % zone_count]
                     pos_x = (zone["x_range"][0] + zone["x_range"][1]) / 2.0
                     pos_y = (zone["y_range"][0] + zone["y_range"][1]) / 2.0
 
@@ -110,11 +111,17 @@ def load_scenario_suite(config: ScenarioConfig) -> list[Scenario]:
                 zone_indices = (
                     rng.integers(0, zone_count, size=count)
                     if zone_count > 1
-                    else np.zeros(count, dtype=np.int64)
+                    else None
                 )
 
                 for i in range(count):
-                    zone = zones[int(cast(int, zone_indices[i]))]
+                    zone_index = (
+                        cast(int, zone_indices[i])
+                        if zone_indices is not None
+                        else 0
+                    )
+                    zone = zones[zone_index]
+
                     x_range = zone["x_range"]
                     y_range = zone["y_range"]
 
@@ -124,8 +131,8 @@ def load_scenario_suite(config: ScenarioConfig) -> list[Scenario]:
                     asteroid_states.append(
                         {
                             "position": (pos_x, pos_y),
-                            "speed": float(cast(float, speeds[i])),
-                            "angle": float(cast(float, angles[i])),
+                            "speed": cast(float, speeds[i]),
+                            "angle": cast(float, angles[i]),
                             "size": size,
                         }
                     )

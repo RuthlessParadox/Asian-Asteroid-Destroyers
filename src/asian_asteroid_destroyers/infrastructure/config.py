@@ -40,6 +40,7 @@ class AnalyzerArgs:
 class EvaluationArgs:
     history_path: Path
     logbook_path: Path
+    scenarios_path: Path
 
 
 def get_trainer_config() -> TrainerArgs:
@@ -89,28 +90,38 @@ def get_evaluation_config() -> EvaluationArgs:
         "--history-path",
         type=str,
         required=True,
-        help="Path to the final_history.parquet file",
+        help="Path to the history .parquet file",
     )
     _ = parser.add_argument(
         "--logbook-path",
         type=str,
         required=True,
-        help="Path to the final_logbook.parquet file",
+        help="Path to the logbook .parquet file",
+    )
+    _ = parser.add_argument(
+        "--scenarios-path",
+        type=str,
+        required=True,
+        help="Path to the scenarios .json file",
     )
 
     namespace = parser.parse_args()
 
     history_path = Path(cast(str, namespace.history_path))
     logbook_path = Path(cast(str, namespace.logbook_path))
+    scenarios_path = Path(cast(str, namespace.scenarios_path))
 
     if not history_path.is_file():
         raise FileNotFoundError(f"History file not found at: {history_path}")
     if not logbook_path.is_file():
         raise FileNotFoundError(f"Logbook file not found at: {logbook_path}")
+    if not scenarios_path.is_file():
+        raise FileNotFoundError(f"Logbook file not found at: {scenarios_path}")
 
     return EvaluationArgs(
         history_path=history_path,
         logbook_path=logbook_path,
+        scenarios_path=scenarios_path,
     )
 
 
