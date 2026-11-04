@@ -75,7 +75,7 @@ def main() -> None:
         {
             "json_data": data,
             "seed": 1337,
-            "is_deterministic": True,
+            "is_deterministic": False,
         }
     )
 
