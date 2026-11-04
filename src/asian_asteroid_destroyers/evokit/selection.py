@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Callable, cast
 
+import numpy as np
 from deap import tools
 
 from .types import Population
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from .types import SelectionOperator
 
 
@@ -73,10 +72,17 @@ def sel_nsga_3(
     num_objectives: int = 5,
     subdivisions: int = 4,
 ) -> SelectionOperator:
-    raw_points = _generate_reference_points(num_objectives, subdivisions)
+    raw_points = np.array(
+        _generate_reference_points(num_objectives, subdivisions),
+        dtype=np.float64,
+    )
     typed_sel_nsga3 = cast(
         Callable[
-            [Population, int, list[list[float]]],
+            [
+                Population,
+                int,
+                np.ndarray[tuple[int, ...], np.dtype[np.float64]],
+            ],
             Population,
         ],
         tools.selNSGA3,

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pathlib
 import signal
-from typing import TYPE_CHECKING, cast
+import sys
+from typing import TYPE_CHECKING
 
 import dill
 import numpy as np
-from pathos.multiprocessing import ProcessPool
 
 from asian_asteroid_destroyers.chromosomes import (
     create_geometry_repair_maps,
@@ -41,23 +41,15 @@ if TYPE_CHECKING:
 GLOBAL_EVALUATOR_INSTANCE: FuzzyFitnessEvaluator | None = None
 
 
-def _suppress_worker_interrupts() -> None:
-    _ = signal.signal(signal.SIGINT, signal.SIG_IGN)
+class _MultiprocessingEvaluationWorker:
+    __slots__: tuple[str, ...] = ("evaluator",)
+    evaluator: FuzzyFitnessEvaluator
 
+    def __init__(self, evaluator: FuzzyFitnessEvaluator) -> None:
+        self.evaluator = evaluator
 
-def _multiprocessing_evaluation_worker_proxy(
-    individual: Individual,
-) -> tuple[float, ...]:
-    evaluator = cast(
-        FuzzyFitnessEvaluator | None,
-        globals()["GLOBAL_EVALUATOR_INSTANCE"],
-    )
-    if evaluator is None:
-        raise RuntimeError(
-            "Worker Context Fault: The global evaluator instance was not "
-            + "initialized prior to process pool mapping execution."
-        )
-    return evaluator.evaluate_individual(individual)
+    def __call__(self, individual: Individual) -> tuple[float, ...]:
+        return self.evaluator.evaluate_individual(individual)
 
 
 def main() -> None:
@@ -108,7 +100,11 @@ def main() -> None:
         profile_path=args.scenarios_path,
         evaluation_seed=initial_seed,
     )
-    globals()["GLOBAL_EVALUATOR_INSTANCE"] = runtime_evaluator
+    setattr(
+        sys.modules["__main__"],
+        "GLOBAL_EVALUATOR_INSTANCE",
+        runtime_evaluator,
+    )
 
     triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
     individual_class = get_individual_class(weights)
@@ -136,8 +132,11 @@ def main() -> None:
     select_operator = sel_nsga_3(num_objectives=5, subdivisions=4)
 
     statistics = Statistics()
+
+    evaluation_worker = _MultiprocessingEvaluationWorker(runtime_evaluator)
+
     toolbox = build_toolbox(
-        evaluation_function=_multiprocessing_evaluation_worker_proxy,
+        evaluation_function=evaluation_worker,
         gene_size=flat_genes_length,
         weights=weights,
         individual_factory=fuzzy_individual_factory,
@@ -165,30 +164,24 @@ def main() -> None:
         periodic_saver(generation, state)
 
         next_generation_seed = int(rng.integers(1, 1000000))
-        cast(
-            FuzzyFitnessEvaluator,
-            globals()["GLOBAL_EVALUATOR_INSTANCE"],
-        ).evaluation_seed = next_generation_seed
+        runtime_evaluator.evaluation_seed = next_generation_seed
 
     print("Commencing evolutionary loop...")
-    with ProcessPool(initializer=_suppress_worker_interrupts) as executor:
-        toolbox.register("map", executor.map)
-
-        final_result = algorithm(
-            toolbox=toolbox,
-            cx_pb=args.cx_pb,
-            mut_pb=args.mut_pb,
-            generations=args.generations,
-            population_size=args.population_size,
-            seed=rng,
-            hall_of_fame=hall_of_fame,
-            logbook=logbook,
-            history_logger=history_logger,
-            statistics=statistics,
-            checkpoint_callback=combined_callback,
-            initial_population=population,
-            start_generation=start_generation,
-        )
+    final_result = algorithm(
+        toolbox=toolbox,
+        cx_pb=args.cx_pb,
+        mut_pb=args.mut_pb,
+        generations=args.generations,
+        population_size=args.population_size,
+        seed=rng,
+        hall_of_fame=hall_of_fame,
+        logbook=logbook,
+        history_logger=history_logger,
+        statistics=statistics,
+        checkpoint_callback=combined_callback,
+        initial_population=population,
+        start_generation=start_generation,
+    )
 
     print("\nEvolutionary horizon run successfully finished.")
 

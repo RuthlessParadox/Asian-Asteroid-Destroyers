@@ -22,6 +22,12 @@ class _DEAPHallOfFame(Protocol):
     def clear(self, /) -> None: ...
 
 
+class IndividualSimilarityChecker(Protocol):
+    def __call__(
+        self, individual1: Individual, individual2: Individual, /
+    ) -> bool: ...
+
+
 _UnannotatedParetoFront: type = tools.ParetoFront
 
 
@@ -29,10 +35,14 @@ class HallOfFame:
     __slots__: tuple[str, ...] = ("_deap_hall_of_fame",)
     _deap_hall_of_fame: _DEAPHallOfFame
 
-    def __init__(self, similar: object = None) -> None:
+    def __init__(
+        self,
+        similar: IndividualSimilarityChecker | None = None,
+    ) -> None:
+        kwargs = {"similar": similar} if similar is not None else {}
         self._deap_hall_of_fame = cast(
             _DEAPHallOfFame,
-            _UnannotatedParetoFront(similar),
+            _UnannotatedParetoFront(**kwargs),
         )
 
     @property
