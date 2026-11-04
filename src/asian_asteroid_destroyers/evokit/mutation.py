@@ -6,6 +6,11 @@ from typing import TYPE_CHECKING, Callable, cast
 import numpy as np
 from deap import tools
 
+from asian_asteroid_destroyers.chromosomes import (
+    FlatGenome,
+    repair_geometry_invariants,
+)
+
 from .individual import Individual
 
 if TYPE_CHECKING:
@@ -17,28 +22,10 @@ if TYPE_CHECKING:
 def mut_fuzzy_gaussian(
     template: ControllerChromosome,
     rng: np.random.Generator,
-    mu: float,
-    sigma: float,
+    mu: float = 0.0,
+    sigma: float = 0.05,
     independent_probability: float = 0.2,
 ) -> MutationOperator:
-    membership_function_slices: list[tuple[int, int]] = []
-    current_index = 0
-
-    for blueprint in (
-        template.thrust_blueprint,
-        template.turn_blueprint,
-        template.fire_blueprint,
-    ):
-        for param in blueprint.membership_function_pool:
-            param_length = len(param)
-            membership_function_slices.append(
-                (current_index, current_index + param_length),
-            )
-            current_index += param_length
-
-        for rule in blueprint.rules:
-            current_index += len(rule.consequent_coefficients) + 1
-
     def mut_fuzzy_gaussian_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
@@ -47,34 +34,12 @@ def mut_fuzzy_gaussian(
 
         if np.any(mutation_mask):
             noise = rng.normal(mu, sigma, size=genes.size)
-            genes += noise * mutation_mask
+            genes[mutation_mask] += noise[mutation_mask]
 
-            for start, end in membership_function_slices:
-                slice_len = end - start
-                if slice_len == 3:
-                    genes[start + 1] = max(
-                        cast(np.float64, genes[start]),
-                        cast(np.float64, genes[start + 1]),
-                    )
-                    genes[start + 2] = max(
-                        cast(np.float64, genes[start + 1]),
-                        cast(np.float64, genes[start + 2]),
-                    )
-                elif slice_len == 4:
-                    genes[start + 1] = max(
-                        cast(np.float64, genes[start]),
-                        cast(np.float64, genes[start + 1]),
-                    )
-                    genes[start + 2] = max(
-                        cast(np.float64, genes[start + 1]),
-                        cast(np.float64, genes[start + 2]),
-                    )
-                    genes[start + 3] = max(
-                        cast(np.float64, genes[start + 2]),
-                        cast(np.float64, genes[start + 3]),
-                    )
-
-            individual[:] = genes.tolist()
+        individual[:] = repair_geometry_invariants(
+            cast(FlatGenome, genes.tolist()),
+            template,
+        )
 
         return (individual,)
 
