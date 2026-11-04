@@ -24,6 +24,7 @@ __all__ = [
     "flatten_chromosome",
     "hydrate_chromosome_blueprint",
     "repair_geometry_invariants",
+    "get_default_controller_template"
 ]
 
 FlatGenome = list[float]
@@ -286,3 +287,100 @@ def repair_geometry_invariants(
                 )
 
     return flatten_chromosome(chromosome)
+
+
+def get_default_controller_template() -> ControllerChromosome:
+    """Creates a comprehensive 3-input structural template for the XFC.
+
+    Each input axis contains three linguistic terms (Low, Medium, High).
+    The rules map every dimension to form a legible, cohesive initial strategy.
+    """
+    # -------------------------------------------------------------------------
+    # Pool Definition: 3 Shapes per Subsystem Input
+    # Pool layout index dictionary:
+    #   Index [0, 1, 2] -> Input 1 Terms (Low, Med, High)
+    #   Index [3, 4, 5] -> Input 2 Terms (Low, Med, High)
+    #   Index [6, 7, 8] -> Input 3 Terms (Low, Med, High)
+    # -------------------------------------------------------------------------
+    shared_pool = [
+        # Input 1: (e.g., Distance or Bearing)
+        MFParamTrapezoidal(-180.0, -180.0, -45.0, 0.0),
+        MFParamTriangular(-30.0, 0.0, 30.0),
+        MFParamTrapezoidal(0.0, 45.0, 180.0, 180.0),
+        # Input 2: (e.g., TTI)
+        MFParamTrapezoidal(0.0, 0.0, 1.5, 3.0),
+        MFParamTriangular(2.0, 4.0, 6.0),
+        MFParamTrapezoidal(5.0, 8.0, 20.0, 20.0),
+        # Input 3: (e.g., Ship Speed / Turn Rate / Ammo)
+        MFParamTrapezoidal(-500.0, -500.0, -50.0, 0.0),
+        MFParamTriangular(-30.0, 0.0, 30.0),
+        MFParamTrapezoidal(0.0, 50.0, 500.0, 500.0),
+    ]
+
+    # -------------------------------------------------------------------------
+    # Rule Base Definition: Legible Linear Equations
+    # Layout format: RuleGene(antecedents=[(input_idx, pool_idx), ...])
+    # -------------------------------------------------------------------------
+
+    # Subsystem 1: Thrust (Inputs: Distance[0], TTI[1], Speed[2])
+    thrust_rules = [
+        # Rule 1: IF Threat is Critically Close, THEN brake hard
+        RuleGene(
+            antecedents=[(0, 0), (1, 3), (2, 8)],
+            consequent_coefficients=[-0.5, 0.2, -1.2],
+            consequent_offset=-200.0,
+        ),
+        # Rule 2: IF Threat is Distant/Safe, THEN accelerate ahead smoothly
+        RuleGene(
+            antecedents=[(0, 2), (1, 5), (2, 7)],
+            consequent_coefficients=[0.2, 0.1, -0.4],
+            consequent_offset=150.0,
+        ),
+    ]
+
+    # Subsystem 2: Turn Rate (Inputs: Bearing[0], TTI[1], TurnRate[2])
+    turn_rules = [
+        # Rule 1: IF Target is to the Right, THEN rotate positive right
+        RuleGene(
+            antecedents=[(0, 2), (1, 4), (2, 7)],
+            consequent_coefficients=[1.5, 0.0, -0.8],
+            consequent_offset=45.0,
+        ),
+        # Rule 2: IF Target is to the Left, THEN rotate negative left
+        RuleGene(
+            antecedents=[(0, 0), (1, 4), (2, 7)],
+            consequent_coefficients=[1.5, 0.0, -0.8],
+            consequent_offset=-45.0,
+        ),
+    ]
+
+    # Subsystem 3: Fire Trigger (Inputs: Bearing[0], Distance[1], AmmoRatio[2])
+    fire_rules = [
+        # Rule 1: IF Target is dead ahead AND Close AND Ammo plenty -> FIRE!
+        RuleGene(
+            antecedents=[(0, 1), (1, 0), (2, 8)],
+            consequent_coefficients=[-0.1, -0.2, 0.5],
+            consequent_offset=50.0,  # Positive value outputs > 0.0 -> True
+        ),
+        # Rule 2: IF Target is misaligned OR out of ammo -> HOLD FIRE
+        RuleGene(
+            antecedents=[(0, 2), (1, 2), (2, 6)],
+            consequent_coefficients=[0.0, 0.0, 0.0],
+            consequent_offset=-50.0,  # Negative value outputs <= 0.0 -> False
+        ),
+    ]
+
+    return ControllerChromosome(
+        thrust_blueprint=SubsystemChromosome(
+            membership_function_pool=shared_pool,
+            rules=thrust_rules,
+        ),
+        turn_blueprint=SubsystemChromosome(
+            membership_function_pool=shared_pool,
+            rules=turn_rules,
+        ),
+        fire_blueprint=SubsystemChromosome(
+            membership_function_pool=shared_pool,
+            rules=fire_rules,
+        ),
+    )
