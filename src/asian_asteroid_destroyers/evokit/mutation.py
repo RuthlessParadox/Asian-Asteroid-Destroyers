@@ -21,17 +21,6 @@ def mut_fuzzy_gaussian(
     sigma: float,
     independent_probability: float = 0.2,
 ) -> MutationOperator:
-    """Closure factory providing a highly optimized vectorized mutation operator.
-
-    Args:
-        template: The structural chromosome configuration used to extract the
-            exact flat geometric indices.
-        rng: The explicit dependency-injected random number generator.
-        mu: Mean of the Gaussian noise distribution.
-        sigma: Standard deviation of the Gaussian step.
-        independent_probability: Independent probability for each specific gene to mutate.
-    """
-
     membership_function_slices: list[tuple[int, int]] = []
     current_index = 0
 
@@ -53,9 +42,7 @@ def mut_fuzzy_gaussian(
     def mut_fuzzy_gaussian_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
-        """Applies vectorized Gaussian noise and repairs bounds in place."""
         genes = np.array(individual, dtype=np.float64)
-
         mutation_mask = rng.random(size=genes.size) < independent_probability
 
         if np.any(mutation_mask):
@@ -63,7 +50,29 @@ def mut_fuzzy_gaussian(
             genes += noise * mutation_mask
 
             for start, end in membership_function_slices:
-                genes[start:end].sort()
+                slice_len = end - start
+                if slice_len == 3:
+                    genes[start + 1] = max(
+                        cast(np.float64, genes[start]),
+                        cast(np.float64, genes[start + 1]),
+                    )
+                    genes[start + 2] = max(
+                        cast(np.float64, genes[start + 1]),
+                        cast(np.float64, genes[start + 2]),
+                    )
+                elif slice_len == 4:
+                    genes[start + 1] = max(
+                        cast(np.float64, genes[start]),
+                        cast(np.float64, genes[start + 1]),
+                    )
+                    genes[start + 2] = max(
+                        cast(np.float64, genes[start + 1]),
+                        cast(np.float64, genes[start + 2]),
+                    )
+                    genes[start + 3] = max(
+                        cast(np.float64, genes[start + 2]),
+                        cast(np.float64, genes[start + 3]),
+                    )
 
             individual[:] = genes.tolist()
 

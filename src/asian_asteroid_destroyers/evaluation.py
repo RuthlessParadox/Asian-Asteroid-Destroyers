@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final
+import json
+from typing import TYPE_CHECKING, Final, cast
 
 from kesslergame import TrainerEnvironment
 
 from asian_asteroid_destroyers.chromosomes import hydrate_chromosome_blueprint
 from asian_asteroid_destroyers.controllers import FuzzyController
-from asian_asteroid_destroyers.scenarios import load_scenario_suite
+from asian_asteroid_destroyers.scenarios import (
+    RootJsonSchema,
+    load_scenario_suite,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -20,12 +24,12 @@ __all__ = ["FuzzyFitnessEvaluator"]
 class FuzzyFitnessEvaluator:
     __slots__: tuple[str, ...] = (
         "_template",
-        "_profile_path",
+        "_cached_json_data",
         "_evaluation_seed",
         "_environment",
     )
     _template: Final[ControllerChromosome]
-    _profile_path: Final[Path]
+    _cached_json_data: Final[RootJsonSchema]
     _evaluation_seed: int
     _environment: Final[TrainerEnvironment]
 
@@ -36,9 +40,16 @@ class FuzzyFitnessEvaluator:
         evaluation_seed: int,
     ) -> None:
         self._template = template
-        self._profile_path = profile_path
         self._evaluation_seed = evaluation_seed
         self._environment = TrainerEnvironment()
+
+        if not profile_path.is_file():
+            raise FileNotFoundError(
+                f"Scenario profile sheet missing: {profile_path}"
+            )
+
+        with open(profile_path, "r", encoding="utf-8") as file:
+            self._cached_json_data = cast(RootJsonSchema, json.load(file))
 
     @property
     def evaluation_seed(self) -> int:
@@ -56,7 +67,7 @@ class FuzzyFitnessEvaluator:
 
         scenarios_pool = load_scenario_suite(
             {
-                "profile_path": self._profile_path,
+                "json_data": self._cached_json_data,
                 "seed": self._evaluation_seed,
                 "is_deterministic": False,
             }

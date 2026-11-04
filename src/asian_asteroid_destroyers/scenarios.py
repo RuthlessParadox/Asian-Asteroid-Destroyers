@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING, TypedDict, cast
 
 import numpy as np
 from kesslergame import Scenario
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from typing_extensions import Required
 
-__all__ = ["ScenarioConfig", "load_scenario_suite"]
+__all__ = ["RootJsonSchema", "ScenarioConfig", "load_scenario_suite"]
 
 
 class _ZoneDict(TypedDict):
@@ -33,7 +32,7 @@ class _ScenarioJsonDict(TypedDict):
     asteroid_groups: list[_GroupDict]
 
 
-class _RootJsonSchema(TypedDict):
+class RootJsonSchema(TypedDict):
     map_size: list[int]
     ship_spawn: list[float]
     ship_heading: float
@@ -41,7 +40,7 @@ class _RootJsonSchema(TypedDict):
 
 
 class ScenarioConfig(TypedDict, total=False):
-    profile_path: Path
+    json_data: Required[RootJsonSchema]
     seed: int | None
     is_deterministic: bool
 
@@ -49,14 +48,7 @@ class ScenarioConfig(TypedDict, total=False):
 def load_scenario_suite(config: ScenarioConfig) -> list[Scenario]:
     scenarios: list[Scenario] = []
 
-    file_path = config.get("profile_path")
-    if not file_path or not file_path.is_file():
-        raise FileNotFoundError(
-            f"Scenario configuration sheet missing: {file_path}"
-        )
-
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = cast(_RootJsonSchema, json.load(f))
+    data = config["json_data"]
 
     rng = np.random.default_rng(config.get("seed"))
     is_deterministic = config.get("is_deterministic", False)

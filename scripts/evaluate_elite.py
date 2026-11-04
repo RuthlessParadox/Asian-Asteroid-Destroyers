@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from kesslergame import KesslerGame
 
@@ -12,7 +13,10 @@ from asian_asteroid_destroyers.chromosomes import (
 )
 from asian_asteroid_destroyers.controllers import FuzzyController
 from asian_asteroid_destroyers.infrastructure import get_evaluation_config
-from asian_asteroid_destroyers.scenarios import load_scenario_suite
+from asian_asteroid_destroyers.scenarios import (
+    RootJsonSchema,
+    load_scenario_suite,
+)
 
 if TYPE_CHECKING:
     from kesslergame.score import Score
@@ -64,9 +68,12 @@ def main() -> None:
         template=template_blueprint,
     )
 
+    with open(args.scenarios_path, "r", encoding="utf-8") as file:
+        data = cast(RootJsonSchema, json.load(file))
+
     scenarios = load_scenario_suite(
         {
-            "profile_path": args.scenarios_path,
+            "json_data": data,
             "seed": 1337,
             "is_deterministic": True,
         }

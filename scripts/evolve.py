@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 import signal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import dill
 import numpy as np
@@ -37,9 +37,26 @@ from asian_asteroid_destroyers.infrastructure import (
 if TYPE_CHECKING:
     from asian_asteroid_destroyers.evokit import Individual, TrainingResult
 
+GLOBAL_EVALUATOR_INSTANCE: FuzzyFitnessEvaluator | None = None
+
 
 def _suppress_worker_interrupts() -> None:
     _ = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+def _multiprocessing_evaluation_worker_proxy(
+    individual: Individual,
+) -> tuple[float, ...]:
+    evaluator = cast(
+        FuzzyFitnessEvaluator | None,
+        globals()["GLOBAL_EVALUATOR_INSTANCE"],
+    )
+    if evaluator is None:
+        raise RuntimeError(
+            "Worker Context Fault: The global evaluator instance was not "
+            + "initialized prior to process pool mapping execution."
+        )
+    return evaluator.evaluate_individual(individual)
 
 
 def main() -> None:
@@ -85,11 +102,12 @@ def main() -> None:
         population = None
 
     initial_seed = int(rng.integers(1, 1000000))
-    fitness_evaluator = FuzzyFitnessEvaluator(
+    runtime_evaluator = FuzzyFitnessEvaluator(
         template=template,
         profile_path=args.scenarios_path,
         evaluation_seed=initial_seed,
     )
+    globals()["GLOBAL_EVALUATOR_INSTANCE"] = runtime_evaluator
 
     individual_class = get_individual_class(weights)
 
@@ -111,7 +129,7 @@ def main() -> None:
 
     statistics = Statistics()
     toolbox = build_toolbox(
-        evaluation_function=fitness_evaluator.evaluate_individual,
+        evaluation_function=_multiprocessing_evaluation_worker_proxy,
         gene_size=flat_genes_length,
         weights=weights,
         individual_factory=fuzzy_individual_factory,
@@ -139,7 +157,10 @@ def main() -> None:
         periodic_saver(generation, state)
 
         next_generation_seed = int(rng.integers(1, 1000000))
-        fitness_evaluator.evaluation_seed = next_generation_seed
+        cast(
+            FuzzyFitnessEvaluator,
+            globals()["GLOBAL_EVALUATOR_INSTANCE"],
+        ).evaluation_seed = next_generation_seed
 
     print("Commencing evolutionary loop...")
     with ProcessPool(initializer=_suppress_worker_interrupts) as executor:
