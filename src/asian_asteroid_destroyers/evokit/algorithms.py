@@ -123,6 +123,95 @@ def run_simple_evolution(
     )
 
 
+def run_nsga_evolution(
+    toolbox: Toolbox,
+    cx_pb: float,
+    mut_pb: float,
+    generations: int,
+    population_size: int,
+    *,
+    seed: int | np.random.Generator | None = None,
+    hall_of_fame: HallOfFame | None = None,
+    statistics: Statistics | None = None,
+    logbook: Logbook | None = None,
+    history_logger: HistoryLogger | None = None,
+    checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
+    initial_population: Population | None = None,
+    start_generation: int = 1,
+) -> TrainingResult:
+    _validate_parameters(
+        cx_pb,
+        mut_pb,
+        generations,
+        population_size,
+        initial_population,
+        start_generation,
+    )
+
+    rng = (
+        seed
+        if isinstance(seed, np.random.Generator)
+        else np.random.default_rng(seed)
+    )
+
+    if initial_population is not None:
+        population = initial_population
+    else:
+        population = toolbox.population(population_size)
+        _evaluate_invalid_fitness(toolbox, population)
+        _record_generation_metrics(
+            generation=0,
+            population=population,
+            hall_of_fame=hall_of_fame,
+            statistics=statistics,
+            logbook=logbook,
+            history_logger=history_logger,
+            checkpoint_callback=checkpoint_callback,
+        )
+
+    for generation in range(start_generation, generations + 1):
+        parents = toolbox.select(population, population_size)
+        offspring = [toolbox.clone(individual) for individual in parents]
+
+        for i in range(1, len(offspring), 2):
+            if rng.random() < cx_pb:
+                offspring[i - 1], offspring[i] = toolbox.mate(
+                    offspring[i - 1],
+                    offspring[i],
+                )
+                del offspring[i - 1].fitness.values
+                del offspring[i].fitness.values
+
+        for i in range(len(offspring)):
+            if rng.random() < mut_pb:
+                (offspring[i],) = toolbox.mutate(offspring[i])
+                del offspring[i].fitness.values
+
+        _evaluate_invalid_fitness(toolbox, population)
+
+        population = toolbox.select(
+            [*population, *offspring],
+            population_size,
+        )
+
+        _record_generation_metrics(
+            generation=generation,
+            population=population,
+            hall_of_fame=hall_of_fame,
+            statistics=statistics,
+            logbook=logbook,
+            history_logger=history_logger,
+            checkpoint_callback=checkpoint_callback,
+        )
+
+    return TrainingResult(
+        final_population=population,
+        logbook=logbook,
+        history_logger=history_logger,
+        hall_of_fame=hall_of_fame,
+    )
+
+
 def _validate_parameters(
     cx_pb: float,
     mut_pb: float,

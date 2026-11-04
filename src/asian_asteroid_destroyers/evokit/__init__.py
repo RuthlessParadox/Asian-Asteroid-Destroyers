@@ -1,6 +1,7 @@
 from .algorithms import (
     EvolutionAlgorithm as EvolutionAlgorithm,
     TrainingResult as TrainingResult,
+    run_nsga_evolution as run_nsga_evolution,
     run_simple_evolution as run_simple_evolution,
 )
 from .cache_teardown import (
