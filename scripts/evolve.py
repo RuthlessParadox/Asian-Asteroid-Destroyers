@@ -66,7 +66,7 @@ def main() -> None:
 
     template = get_default_controller_template()
     flat_genes_length = len(flatten_chromosome(template))
-    weights = (1.0, 1.0, 1.0, 1.0, 1.0)
+    weights = (1.0, 1.0, 1.0, -1.0, -1.0)
 
     if args.resume is not None:
         data_directory = pathlib.Path(args.resume)
@@ -124,12 +124,13 @@ def main() -> None:
         )
         return individual_class(valid_genes)
 
-    mate_operator = cx_fuzzy_blend(template=template, rng=rng, alpha=0.3)
+    mate_operator = cx_fuzzy_blend(template=template, rng=rng, alpha=0.25)
     mutate_operator = mut_fuzzy_gaussian(
         template=template,
         rng=rng,
         mu=0.0,
-        sigma=0.1,
+        sigma=0.04,
+        independent_probability=0.08,
     )
     select_operator = sel_tournament(tournament_size=3)
 

@@ -25,7 +25,7 @@ def mut_fuzzy_gaussian(
     rng: np.random.Generator,
     mu: float = 0.0,
     sigma: float = 0.05,
-    independent_probability: float = 0.2,
+    independent_probability: float = 0.05,
 ) -> MutationOperator:
     triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
 

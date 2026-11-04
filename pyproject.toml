@@ -57,10 +57,10 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.evolution]
-generations = 100
-population_size = 100
+generations = 500
+population_size = 80
 save_interval = 10
-cx_pb = 0.7
-mut_pb = 0.2
+cx_pb = 0.65
+mut_pb = 0.4
 gene_size = 123
 scenarios_path = "assets/scenarios/training_scenarios.json"

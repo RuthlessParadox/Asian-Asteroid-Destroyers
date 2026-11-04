@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 def cx_fuzzy_blend(
     template: ControllerChromosome,
     rng: np.random.Generator,
-    alpha: float = 0.3,
+    alpha: float = 0.25,
 ) -> CrossoverOperator:
     triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
     membership_function_blocks: list[npt.NDArray[np.intp]] = []

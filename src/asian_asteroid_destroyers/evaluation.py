@@ -105,6 +105,6 @@ class FuzzyFitnessEvaluator:
             total_asteroid_fraction / scenario_count,
             total_accuracy / scenario_count,
             total_survival_fraction / scenario_count,
-            -(total_deaths / scenario_count),
-            -(total_volatility / scenario_count),
+            total_deaths / scenario_count,
+            total_volatility / scenario_count,
         )
