@@ -264,8 +264,8 @@ class FuzzyController(KesslerController):
         if math.isnan(physical_turn_rate) or math.isinf(physical_turn_rate):
             physical_turn_rate = 0.0
 
-        thrust = max(-480.0, min(float(physical_thrust), 480.0))
-        turn_rate = max(-180.0, min(float(physical_turn_rate), 180.0))
+        thrust = max(-479.9999, min(float(physical_thrust), 479.9999))
+        turn_rate = max(-179.9999, min(float(physical_turn_rate), 179.9999))
 
         fire = bool(self._determine_tactical_fire())
         drop_mine = False
