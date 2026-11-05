@@ -52,7 +52,7 @@ class _TacticalFeatureExtractor:
 
         delta = wrapped_proj - np.array(ship.position, dtype=np.float64)
 
-        if np.allclose(delta, 0.0):
+        if np.allclose(delta, 0.0) or np.any(np.isnan(delta)):
             return float(ship.heading)
 
         return cast(
@@ -284,16 +284,20 @@ class FuzzyController(KesslerController):
         target_thrust: float,
         target_turn: float,
     ) -> tuple[float, float]:
-        if self._last_thrust == 0 or self._last_turn == 0:
+        if self._last_thrust is None or self._last_turn is None:
             return target_thrust, target_turn
 
-        if self._last_thrust is None or self._last_turn is None:
+        if self._last_thrust == 0.0 and self._last_turn == 0.0:
             return target_thrust, target_turn
 
         d_thrust = target_thrust - self._last_thrust
         d_turn = target_turn - self._last_turn
 
-        scale = max(0.1, 1.0 - (self.mean_volatility * self._damping_factor))
+        volatility = self.mean_volatility
+        if np.isnan(volatility) or np.isinf(volatility):
+            volatility = 0.0
+
+        scale = max(0.1, min(1.0 - (volatility * self._damping_factor), 1.0))
 
         return (
             self._last_thrust + (d_thrust * scale),
@@ -324,8 +328,10 @@ class FuzzyController(KesslerController):
         if self._last_thrust is not None and self._last_turn is not None:
             delta_thrust = abs(thrust - self._last_thrust)
             delta_turn = abs(turn_rate - self._last_turn)
-            self._total_accumulated_volatility += delta_thrust + delta_turn
-            self._processed_steps += 1
+
+            if not np.isnan(delta_thrust) and not np.isnan(delta_turn):
+                self._total_accumulated_volatility += delta_thrust + delta_turn
+                self._processed_steps += 1
 
         self._last_thrust = thrust
         self._last_turn = turn_rate
