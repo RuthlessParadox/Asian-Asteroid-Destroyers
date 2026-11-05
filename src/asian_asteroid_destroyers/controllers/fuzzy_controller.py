@@ -51,6 +51,10 @@ class _TacticalFeatureExtractor:
         wrapped_proj = np.mod(predictive_pos, map_size)
 
         delta = wrapped_proj - np.array(ship.position, dtype=np.float64)
+
+        if np.allclose(delta, 0.0):
+            return float(ship.heading)
+
         return cast(
             float,
             np.degrees(
@@ -240,6 +244,11 @@ class FuzzyController(KesslerController):
         blended_turn = (w_threat * raw_turn_def) + (
             (1.0 - w_threat) * raw_turn_off
         )
+
+        if np.isnan(blended_thrust) or np.isinf(blended_thrust):
+            blended_thrust = 0.0
+        if np.isnan(blended_turn) or np.isinf(blended_turn):
+            blended_turn = 0.0
 
         physical_thrust = denorm_thrust(blended_thrust)
         physical_turn_rate = denorm_turn_rate(blended_turn)
