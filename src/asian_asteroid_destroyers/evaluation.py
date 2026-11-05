@@ -85,21 +85,28 @@ class FuzzyFitnessEvaluator:
         for scenario in scenarios_pool:
             controller = FuzzyController(chromosome)
 
-            score_object, _ = run_simulation(
-                scenario=scenario,
-                controllers=[controller],
-            )
+            try:
+                score_object, _ = run_simulation(
+                    scenario=scenario,
+                    controllers=[controller],
+                )
 
-            time_limit = (
-                scenario.time_limit if scenario.time_limit > 0.0 else 1.0
-            )
-            total_survival_fraction += score_object.sim_time / time_limit
-            total_volatility += controller.mean_volatility
+                time_limit = (
+                    scenario.time_limit if scenario.time_limit > 0.0 else 1.0
+                )
+                total_survival_fraction += score_object.sim_time / time_limit
+                total_volatility += controller.mean_volatility
 
-            for team in score_object.teams:
-                total_asteroid_fraction += team.fraction_total_asteroids_hit
-                total_accuracy += team.accuracy
-                total_deaths += team.deaths
+                for team in score_object.teams:
+                    total_asteroid_fraction += (
+                        team.fraction_total_asteroids_hit
+                    )
+                    total_accuracy += team.accuracy
+                    total_deaths += team.deaths
+            except AssertionError:
+                total_deaths += 10.0
+                total_volatility += 10.0
+                continue
 
         return (
             total_asteroid_fraction / scenario_count,
