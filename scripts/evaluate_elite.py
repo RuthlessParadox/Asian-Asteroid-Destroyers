@@ -88,16 +88,24 @@ def main() -> None:
         controller = FuzzyController(chromosome=chromosome)
         print(f"Executing scenario: {scenario.name}")
 
-        score, _ = game_environment.run(
-            scenario=scenario,
-            controllers=[controller],
-        )
+        try:
+            score, _ = game_environment.run(
+                scenario=scenario,
+                controllers=[controller],
+            )
 
-        _report_metrics(
-            scenario_name=scenario.name or "Unnamed Scenario",
-            score=score,
-            controller=controller,
-        )
+            _report_metrics(
+                scenario_name=scenario.name or "Unnamed Scenario",
+                score=score,
+                controller=controller,
+            )
+        except AssertionError as error:
+            print("=========================================")
+            print(f" PERFORMANCE METRICS: {scenario.name}")
+            print("=========================================")
+            print(f"  Error running game: {error}")
+            print("=========================================\n")
+            continue
 
     print("All performance evaluation profiles completed successfully.")
 
