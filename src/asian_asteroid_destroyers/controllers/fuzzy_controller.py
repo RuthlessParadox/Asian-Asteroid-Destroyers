@@ -254,12 +254,6 @@ class FuzzyController(KesslerController):
         physical_thrust = denorm_thrust(blended_thrust)
         physical_turn_rate = denorm_turn_rate(blended_turn)
 
-        if abs(ship_state.speed) > 238.0:
-            if (ship_state.speed > 0.0 and physical_thrust > 0.0) or (
-                ship_state.speed < 0.0 and physical_thrust < 0.0
-            ):
-                physical_thrust = 0.0
-
         physical_thrust, physical_turn_rate = self._apply_volatility_damping(
             physical_thrust,
             physical_turn_rate,
