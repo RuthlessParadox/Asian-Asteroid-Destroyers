@@ -438,13 +438,25 @@ def get_default_controller_template() -> ControllerChromosome:
 
     # --- Threat Gate Subsystem ---
     # Inputs: [normalized_tti, norm_density]
+    # MF 3: TTI Close,  MF 5: TTI Far
+    # MF 6: Dense Low,  MF 8: Dense High
+    # Added MF 4 (TTI Medium) and MF 7 (Dense Medium) for transitional safety
     gate_rules = [
+        # Rule 0: Critical TTI combined with high local density -> Panic Max
         RuleGene(
             antecedents=[(0, 3), (1, 8)],
-            consequent_coefficients=[-0.6, 0.4],
-            consequent_offset=0.7,
+            consequent_coefficients=[-0.4, 0.3],
+            consequent_offset=0.8,
             activation_gate=1.0,
         ),
+        # Rule 1: Intermediate tracking -> Scale threat weight proportionally
+        RuleGene(
+            antecedents=[(0, 4), (1, 7)],
+            consequent_coefficients=[-0.2, 0.4],
+            consequent_offset=0.3,
+            activation_gate=1.0,
+        ),
+        # Rule 2: Clear skies / Low density -> Total Offensive Chase mode
         RuleGene(
             antecedents=[(0, 5), (1, 6)],
             consequent_coefficients=[0.0, 0.0],

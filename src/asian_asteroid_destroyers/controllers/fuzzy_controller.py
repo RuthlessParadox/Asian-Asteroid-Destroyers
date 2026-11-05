@@ -135,13 +135,13 @@ class _TacticalFeatureExtractor:
         normalized_tti = norm_tti(tti) if tti is not None else 1.0
 
         # Capture density within immediate tactical radius (e.g., 300 units)
-        surrounding = self._sa.agent_ship.nearest_n_asteroids_wrapped(5)
+        surrounding = self._sa.agent_ship.nearest_n_asteroids_wrapped(8)
         dense_count = 0
         for ast in surrounding:
             if ast.distance_wrap < 300.0:
                 dense_count += 1
 
-        norm_density = min(float(dense_count) / 5.0, 1.0)
+        norm_density = min(float(dense_count) / 8.0, 1.0)
 
         return [
             normalized_tti,
