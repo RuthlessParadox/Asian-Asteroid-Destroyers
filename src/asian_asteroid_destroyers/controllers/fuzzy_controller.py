@@ -252,7 +252,7 @@ class FuzzyController(KesslerController):
         thrust = max(-480.0, min(float(physical_thrust), 480.0))
         turn_rate = max(-180.0, min(float(physical_turn_rate), 180.0))
 
-        fire = self._determine_tactical_fire()
+        fire = bool(self._determine_tactical_fire())
         drop_mine = False
 
         self._update_volatility_metrics(thrust, turn_rate)
