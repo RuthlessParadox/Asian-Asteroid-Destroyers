@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Final, cast
 
 import numpy as np
@@ -257,6 +258,11 @@ class FuzzyController(KesslerController):
             physical_thrust,
             physical_turn_rate,
         )
+
+        if math.isnan(physical_thrust) or math.isinf(physical_thrust):
+            physical_thrust = 0.0
+        if math.isnan(physical_turn_rate) or math.isinf(physical_turn_rate):
+            physical_turn_rate = 0.0
 
         thrust = max(-480.0, min(float(physical_thrust), 480.0))
         turn_rate = max(-180.0, min(float(physical_turn_rate), 180.0))
