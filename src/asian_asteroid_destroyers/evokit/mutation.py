@@ -26,16 +26,18 @@ def mut_fuzzy_gaussian(
     mu: float = 0.0,
     sigma: float = 0.05,
     independent_probability: float = 0.05,
-    gate_flip_probabilty: float = 0.1,
+    gate_flip_probability: float = 0.1,
 ) -> MutationOperator:
     triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
 
     gate_indices: list[int] = []
     current_index = 0
     for blueprint in (
-        template.thrust_blueprint,
-        template.turn_blueprint,
-        template.fire_blueprint,
+        template.thrust_offensive,
+        template.thrust_defensive,
+        template.turn_offensive,
+        template.turn_defensive,
+        template.threat_gate,
     ):
         for param in blueprint.membership_function_pool:
             current_index += len(param)
@@ -57,7 +59,7 @@ def mut_fuzzy_gaussian(
             genes[param_mask] += noise[param_mask]
 
         for gate_index in gate_indices:
-            if rng.random() < gate_flip_probabilty:
+            if rng.random() < gate_flip_probability:
                 genes[gate_index] = 1.0 - genes[gate_index]
 
         individual[:] = repair_geometry_invariants(

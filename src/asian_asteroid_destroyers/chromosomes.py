@@ -70,9 +70,11 @@ class SubsystemChromosome(NamedTuple):
 class ControllerChromosome(NamedTuple):
     """The master chromosome bundle injected directly into the controller."""
 
-    thrust_blueprint: SubsystemChromosome
-    turn_blueprint: SubsystemChromosome
-    fire_blueprint: SubsystemChromosome
+    thrust_offensive: SubsystemChromosome
+    thrust_defensive: SubsystemChromosome
+    turn_offensive: SubsystemChromosome
+    turn_defensive: SubsystemChromosome
+    threat_gate: SubsystemChromosome
 
 
 def compile_subsystem(blueprint: SubsystemChromosome) -> TSKInferenceEngine:
@@ -136,9 +138,11 @@ def flatten_chromosome(chromosome: ControllerChromosome) -> FlatGenome:
     flat_genes: FlatGenome = []
 
     for blueprint in (
-        chromosome.thrust_blueprint,
-        chromosome.turn_blueprint,
-        chromosome.fire_blueprint,
+        chromosome.thrust_offensive,
+        chromosome.thrust_defensive,
+        chromosome.turn_offensive,
+        chromosome.turn_defensive,
+        chromosome.threat_gate,
     ):
         for param in blueprint.membership_function_pool:
             if isinstance(param, MFParamTriangular):
@@ -240,20 +244,30 @@ def hydrate_chromosome_blueprint(
     Uses a template structural architecture to reconstruct separate sub-system
     inference models with full compile-time static type safety.
     """
-    thrust_blueprint, next_index = _hydrate_subsystem(
+    thrust_offensive, next_index = _hydrate_subsystem(
         flat_genes,
         0,
-        template.thrust_blueprint,
+        template.thrust_offensive,
     )
-    turn_blueprint, next_index = _hydrate_subsystem(
+    thrust_defensive, next_index = _hydrate_subsystem(
         flat_genes,
         next_index,
-        template.turn_blueprint,
+        template.thrust_defensive,
     )
-    fire_blueprint, last_idx = _hydrate_subsystem(
+    turn_offensive, next_index = _hydrate_subsystem(
         flat_genes,
         next_index,
-        template.fire_blueprint,
+        template.turn_offensive,
+    )
+    turn_defensive, next_index = _hydrate_subsystem(
+        flat_genes,
+        next_index,
+        template.turn_defensive,
+    )
+    threat_gate, last_idx = _hydrate_subsystem(
+        flat_genes,
+        next_index,
+        template.threat_gate,
     )
 
     if last_idx != len(flat_genes):
@@ -264,9 +278,11 @@ def hydrate_chromosome_blueprint(
         )
 
     return ControllerChromosome(
-        thrust_blueprint=thrust_blueprint,
-        turn_blueprint=turn_blueprint,
-        fire_blueprint=fire_blueprint,
+        thrust_offensive=thrust_offensive,
+        thrust_defensive=thrust_defensive,
+        turn_offensive=turn_offensive,
+        turn_defensive=turn_defensive,
+        threat_gate=threat_gate,
     )
 
 
@@ -274,9 +290,11 @@ def create_geometry_repair_maps(
     template: ControllerChromosome,
 ) -> tuple[npt.NDArray[np.intp], npt.NDArray[np.intp]]:
     subsystems = (
-        template.thrust_blueprint,
-        template.turn_blueprint,
-        template.fire_blueprint,
+        template.thrust_offensive,
+        template.thrust_defensive,
+        template.turn_offensive,
+        template.turn_defensive,
+        template.threat_gate,
     )
 
     triangular_indices: list[list[int]] = []
@@ -348,80 +366,112 @@ def repair_geometry_invariants(
 def get_default_controller_template() -> ControllerChromosome:
     def make_isolated_pool() -> list[MFParamTriangular | MFParamTrapezoidal]:
         return [
-            # --- Inputs 0: Normalized Angular Bearings / Headings [-1.0, 1.0] ---
-            MFParamTrapezoidal(
-                -1.0, -1.0, -0.25, 0.0
-            ),  # MF 0: Negative / Left
-            MFParamTriangular(-0.15, 0.0, 0.15),  # MF 1: Aligned / Center
-            MFParamTrapezoidal(0.0, 0.25, 1.0, 1.0),  # MF 2: Positive / Right
-            # --- Inputs 1: Normalized Time-To-Impact / Distances [0.0, 1.0] ---
-            MFParamTrapezoidal(0.0, 0.0, 0.15, 0.3),  # MF 3: Critical / Close
-            MFParamTriangular(0.2, 0.4, 0.6),  # MF 4: Intermediate / Medium
-            MFParamTrapezoidal(0.5, 0.8, 1.0, 1.0),  # MF 5: Far / Clear
-            # --- Inputs 2: Normalized Engine Velocities [-1.0, 1.0] ---
-            MFParamTrapezoidal(
-                -1.0, -1.0, -0.1, 0.0
-            ),  # MF 6: High Negative Rate
-            MFParamTriangular(-0.06, 0.0, 0.06),  # MF 7: Stationary / Linear
-            MFParamTrapezoidal(0.0, 0.1, 1.0, 1.0),  # MF 8: High Positive Rate
+            # --- Inputs 0: Normalized Angular Bearings / Headings ---
+            MFParamTrapezoidal(-1.0, -1.0, -0.25, 0.0),  # MF 0: Left
+            MFParamTriangular(-0.15, 0.0, 0.15),  # MF 1: Center
+            MFParamTrapezoidal(0.0, 0.25, 1.0, 1.0),  # MF 2: Right
+            # --- Inputs 1: Normalized Time-To-Impact / Distances ---
+            MFParamTrapezoidal(0.0, 0.0, 0.15, 0.3),  # MF 3: Close
+            MFParamTriangular(0.2, 0.4, 0.6),  # MF 4: Medium
+            MFParamTrapezoidal(0.5, 0.8, 1.0, 1.0),  # MF 5: Far
+            # --- Inputs 2: Normalized Velocities / Densities ---
+            MFParamTrapezoidal(-1.0, -1.0, -0.1, 0.0),  # MF 6: Neg/Low
+            MFParamTriangular(-0.06, 0.0, 0.06),  # MF 7: Zero/Mid
+            MFParamTrapezoidal(0.0, 0.1, 1.0, 1.0),  # MF 8: Pos/High
         ]
 
-    thrust_rules = [
+    # --- Offensive Thrust Subsystem ---
+    # Inputs: [normalized_error, norm_dist, norm_turn_rate_ship]
+    t_off_rules = [
         RuleGene(
-            antecedents=[(0, 0), (1, 3), (2, 8)],
-            consequent_coefficients=[-0.1, 0.05, -0.2],
-            consequent_offset=-0.4,
+            antecedents=[(0, 1), (1, 5), (2, 7)],
+            consequent_coefficients=[0.0, -0.2, 0.0],
+            consequent_offset=0.8,
             activation_gate=1.0,
         ),
         RuleGene(
-            antecedents=[(0, 2), (1, 5), (2, 7)],
-            consequent_coefficients=[0.05, 0.02, -0.1],
+            antecedents=[(0, 0), (1, 4), (2, 8)],
+            consequent_coefficients=[-0.1, 0.0, -0.05],
             consequent_offset=0.3,
             activation_gate=1.0,
         ),
     ]
 
-    turn_rules = [
+    # --- Defensive Thrust Subsystem ---
+    # Inputs: [norm_lateral_threat, normalized_tti, norm_speed_ship]
+    t_def_rules = [
         RuleGene(
-            antecedents=[(0, 2), (1, 4), (2, 7)],
-            consequent_coefficients=[0.3, 0.0, -0.15],
-            consequent_offset=0.25,
-            activation_gate=1.0,
-        ),
-        RuleGene(
-            antecedents=[(0, 0), (1, 4), (2, 7)],
-            consequent_coefficients=[0.3, 0.0, -0.15],
-            consequent_offset=-0.25,
+            antecedents=[(0, 1), (1, 3), (2, 8)],
+            consequent_coefficients=[0.0, 0.4, -0.3],
+            consequent_offset=-0.6,
             activation_gate=1.0,
         ),
     ]
 
-    fire_rules = [
+    # --- Offensive Turn Subsystem ---
+    # Inputs: [normalized_error, norm_dist, norm_turn_rate_ship]
+    r_off_rules = [
         RuleGene(
-            antecedents=[(0, 1), (1, 0), (2, 8)],
-            consequent_coefficients=[-0.02, -0.05, 0.1],
-            consequent_offset=0.1,
+            antecedents=[(0, 2), (1, 4), (2, 7)],
+            consequent_coefficients=[0.4, 0.0, -0.1],
+            consequent_offset=0.3,
             activation_gate=1.0,
         ),
         RuleGene(
-            antecedents=[(0, 2), (1, 2), (2, 6)],
-            consequent_coefficients=[0.0, 0.0, 0.0],
-            consequent_offset=-0.1,
+            antecedents=[(0, 0), (1, 4), (2, 7)],
+            consequent_coefficients=[0.4, 0.0, -0.1],
+            consequent_offset=-0.3,
+            activation_gate=1.0,
+        ),
+    ]
+
+    # --- Defensive Turn Subsystem ---
+    # Inputs: [norm_lateral_threat, normalized_tti, norm_speed_ship]
+    r_def_rules = [
+        RuleGene(
+            antecedents=[(0, 0), (1, 3), (2, 7)],
+            consequent_coefficients=[-0.5, 0.0, 0.0],
+            consequent_offset=0.5,
+            activation_gate=1.0,
+        ),
+    ]
+
+    # --- Threat Gate Subsystem ---
+    # Inputs: [normalized_tti, norm_density]
+    gate_rules = [
+        RuleGene(
+            antecedents=[(0, 3), (1, 8)],
+            consequent_coefficients=[-0.6, 0.4],
+            consequent_offset=0.7,
+            activation_gate=1.0,
+        ),
+        RuleGene(
+            antecedents=[(0, 5), (1, 6)],
+            consequent_coefficients=[0.0, 0.0],
+            consequent_offset=0.0,
             activation_gate=1.0,
         ),
     ]
 
     return ControllerChromosome(
-        thrust_blueprint=SubsystemChromosome(
+        thrust_offensive=SubsystemChromosome(
             membership_function_pool=make_isolated_pool(),
-            rules=thrust_rules,
+            rules=t_off_rules,
         ),
-        turn_blueprint=SubsystemChromosome(
+        thrust_defensive=SubsystemChromosome(
             membership_function_pool=make_isolated_pool(),
-            rules=turn_rules,
+            rules=t_def_rules,
         ),
-        fire_blueprint=SubsystemChromosome(
+        turn_offensive=SubsystemChromosome(
             membership_function_pool=make_isolated_pool(),
-            rules=fire_rules,
+            rules=r_off_rules,
+        ),
+        turn_defensive=SubsystemChromosome(
+            membership_function_pool=make_isolated_pool(),
+            rules=r_def_rules,
+        ),
+        threat_gate=SubsystemChromosome(
+            membership_function_pool=make_isolated_pool(),
+            rules=gate_rules,
         ),
     )

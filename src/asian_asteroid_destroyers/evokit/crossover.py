@@ -32,9 +32,11 @@ def cx_fuzzy_blend(
     rule_blocks: list[npt.NDArray[np.intp]] = []
 
     subsystems = (
-        template.thrust_blueprint,
-        template.turn_blueprint,
-        template.fire_blueprint,
+        template.thrust_offensive,
+        template.thrust_defensive,
+        template.turn_offensive,
+        template.turn_defensive,
+        template.threat_gate,
     )
 
     current_index = 0
