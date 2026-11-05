@@ -246,9 +246,9 @@ class FuzzyController(KesslerController):
             (1.0 - w_threat) * raw_turn_off
         )
 
-        if np.isnan(blended_thrust) or np.isinf(blended_thrust):
+        if math.isnan(blended_thrust) or math.isinf(blended_thrust):
             blended_thrust = 0.0
-        if np.isnan(blended_turn) or np.isinf(blended_turn):
+        if math.isnan(blended_turn) or math.isinf(blended_turn):
             blended_turn = 0.0
 
         physical_thrust = denorm_thrust(blended_thrust)
@@ -300,7 +300,7 @@ class FuzzyController(KesslerController):
         d_turn = target_turn - self._last_turn
 
         volatility = self.mean_volatility
-        if np.isnan(volatility) or np.isinf(volatility):
+        if math.isnan(volatility) or math.isinf(volatility):
             volatility = 0.0
 
         scale = max(0.1, min(1.0 - (volatility * self._damping_factor), 1.0))
