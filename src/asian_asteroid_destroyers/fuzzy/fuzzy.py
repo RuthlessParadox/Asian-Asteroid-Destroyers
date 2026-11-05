@@ -1,3 +1,4 @@
+import math
 from typing import Final, NamedTuple, Protocol, cast
 
 import numpy as np
@@ -278,6 +279,11 @@ class TSKInferenceEngine:
             np.prod(clause_mu, axis=1),
         )
         firing_strengths = raw_strengths * self._activation_masks
+        firing_strengths: npt.NDArray[np.float64] = np.where(
+            np.isnan(firing_strengths) | np.isinf(firing_strengths),
+            0.0,
+            firing_strengths,
+        )
         total_weight = float(np.sum(firing_strengths))
 
         if total_weight == 0.0:
@@ -290,7 +296,15 @@ class TSKInferenceEngine:
             )
             + self._offsets
         )
+        consequent_values = np.where(
+            np.isnan(consequent_values) | np.isinf(consequent_values),
+            0.0,
+            consequent_values,
+        )
         weighted_sum = float(np.sum(firing_strengths * consequent_values))
+
+        if math.isnan(weighted_sum) or math.isinf(weighted_sum):
+            return fallback_default
 
         return weighted_sum / total_weight
 
