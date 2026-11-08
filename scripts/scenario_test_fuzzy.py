@@ -19,12 +19,12 @@ from asian_asteroid_destroyers.chromosomes import (
     RuleGene,
     SubsystemChromosome,
     flatten_chromosome,
+    get_default_controller_template,
     hydrate_chromosome_blueprint,
 )
 from asian_asteroid_destroyers.controllers.fuzzy_controller import (
     FuzzyController,
 )
-from asian_asteroid_destroyers.scenarios import create_training_portfolio
 
 
 def create_subsystem_template(
@@ -55,6 +55,7 @@ def create_subsystem_template(
             ],
             consequent_coefficients=[0.0, 0.0, 0.0],
             consequent_offset=output_default,
+            activation_gate=0.0,
         )
     ]
     return SubsystemChromosome(
@@ -63,32 +64,7 @@ def create_subsystem_template(
     )
 
 
-chromosome_template = ControllerChromosome(
-    thrust_blueprint=create_subsystem_template(
-        input_ranges=[
-            (0.0, 1400.0),
-            (0.0, 10.0),
-            (0.0, 240.0),
-        ],
-        output_default=0.0,
-    ),
-    turn_blueprint=create_subsystem_template(
-        input_ranges=[
-            (-180.0, 180.0),
-            (0.0, 10.0),
-            (-180.0, 180.0),
-        ],
-        output_default=0.0,
-    ),
-    fire_blueprint=create_subsystem_template(
-        input_ranges=[
-            (-180.0, 180.0),
-            (0.0, 10.0),
-            (0.0, 1.0),
-        ],
-        output_default=0.0,
-    ),
-)
+chromosome_template = get_default_controller_template()
 
 flat_genes = flatten_chromosome(chromosome_template)
 chromosome = hydrate_chromosome_blueprint(
