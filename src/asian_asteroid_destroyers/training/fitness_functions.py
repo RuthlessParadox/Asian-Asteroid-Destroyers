@@ -9,16 +9,18 @@ import time
 
 sys.path.append("")
 
-from typing import cast
+import random
 
+import numpy as np
 from kesslergame import GraphicsType, KesslerGame
 from kesslergame.kessler_game import SettingsDict
 
-from asian_asteroid_destroyers.controllers.fuzzy_controller import MyFuzzyController
-from asian_asteroid_destroyers.scenarios.example_scenarios import training_set
-from asian_asteroid_destroyers.training import config
-
-# from controllers.example_controller_fuzzy2 import MyFuzzyController2
+from asian_asteroid_destroyers.controllers.fuzzy_controller import (
+    FuzzyController,
+)
+from asian_asteroid_destroyers.scenarios import (
+    create_training_portfolio,
+)
 
 DEFAULT_WEIGHTS = {
     "fraction_total_asteroids_hit": 1.0,
@@ -42,7 +44,7 @@ def calculate_fitness(team, weights):
 def example_fitness(individual, weights=None, settings=None):
     if weights is None:
         weights = DEFAULT_WEIGHTS
-    controller = MyFuzzyController(chromosome=individual)
+    controller = FuzzyController(chromosome=individual)
     total_score = 0
     game_settings: SettingsDict = {
         "perf_tracker": False,
@@ -58,7 +60,8 @@ def example_fitness(individual, weights=None, settings=None):
     game = KesslerGame(settings=game_settings)  # Instantiate the game object
     # game = TrainerEnvironment(settings=game_settings)  # Kessler default settings for training - has some defaults that override what we want though
 
-    for index, scenario in enumerate(training_set):
+    range = np.random.default_rng(42)
+    for index, scenario in enumerate(create_training_portfolio(range)):
         start = time.perf_counter()
         print(f"Starting scenario {index + 1}", flush=True)
 
@@ -79,12 +82,12 @@ def example_fitness(individual, weights=None, settings=None):
 
 
 def create_fitness_function(weights=None):
-    seleted_weights = dict(DEFAULT_WEIGHTS if weights is None else weights)
+    selected_weights = dict(DEFAULT_WEIGHTS if weights is None else weights)
 
     def fitness(individual):
         return example_fitness(
             individual,
-            weights=seleted_weights,
+            weights=selected_weights,
         )
 
     return fitness

@@ -48,7 +48,7 @@ def test_toolbox_initialization_defaults(
 
     assert toolbox.clone(mock_individual) is not toolbox.clone(mock_individual)
 
-    items: list[Individual] = [mock_individual]
+    items = [cast(Individual, [mock_individual])]
     assert list(toolbox.map(mock_evaluate, items)) == [(1.0,)]
 
     with pytest.raises(
