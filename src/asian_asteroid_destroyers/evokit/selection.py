@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Callable, cast
 import numpy as np
 from deap import tools
 
-from .types import FloatMatrix, Population
+from .types import Population
 
 if TYPE_CHECKING:
     from .types import SelectionOperator
@@ -69,43 +69,50 @@ def sel_nsga_2(
 
 
 def sel_nsga_3(
-    reference_points: FloatMatrix[tuple[int, int]],
+    num_objectives: int = 5,
+    subdivisions: int = 4,
 ) -> SelectionOperator:
-    class NSGA3Proxy:
-        def __init__(self, ref_points: FloatMatrix[tuple[int, int]]) -> None:
-            self._selector: tuple[object, ...] = (
-                tools.selNSGA3WithMemory(ref_points.tolist()),
-            )
+    raw_points = np.array(
+        _generate_reference_points(num_objectives, subdivisions),
+        dtype=np.float64,
+    )
+    typed_sel_nsga3 = cast(
+        Callable[
+            [
+                Population,
+                int,
+                np.ndarray[tuple[int, ...], np.dtype[np.float64]],
+            ],
+            Population,
+        ],
+        tools.selNSGA3,
+    )
 
-        def __call__(
-            self,
-            individuals: Population,
-            k: int,
-            non_dominated_values: FloatMatrix[tuple[int, int]],
-        ) -> Population:
-            raw_function = self._selector[0]
-            operator = cast(
-                Callable[[Population, int, list[list[float]]], Population],
-                raw_function,
-            )
-            return operator(individuals, k, non_dominated_values.tolist())
-
-    nsga_3_instance = NSGA3Proxy(reference_points)
-
-    def sel_nsga_3_wrapper(
-        population: Population,
-        k: int,
-    ) -> Population:
-        raw_list = [
-            list(individual.fitness.values) for individual in population
-        ]
-        non_dominated_values = cast(
-            FloatMatrix[tuple[int, int]],
-            np.array(raw_list, dtype=np.float64),
-        )
-        return nsga_3_instance(population, k, non_dominated_values)
+    def sel_nsga_3_wrapper(population: Population, k: int) -> Population:
+        return typed_sel_nsga3(population, k, raw_points)
 
     return sel_nsga_3_wrapper
+
+
+def _generate_reference_points(
+    num_objectives: int,
+    subdivisions: int,
+) -> list[list[float]]:
+    points: list[list[float]] = []
+    current_point = [0.0] * num_objectives
+
+    def _generate(obj_idx: int, remaining_elements: int) -> None:
+        if obj_idx == num_objectives - 1:
+            current_point[obj_idx] = remaining_elements / subdivisions
+            points.append(list(current_point))
+            return
+
+        for i in range(remaining_elements + 1):
+            current_point[obj_idx] = i / subdivisions
+            _generate(obj_idx + 1, remaining_elements - i)
+
+    _generate(0, subdivisions)
+    return points
 
 
 def sel_spea_2() -> SelectionOperator:

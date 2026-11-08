@@ -1,6 +1,7 @@
 from .algorithms import (
     EvolutionAlgorithm as EvolutionAlgorithm,
     TrainingResult as TrainingResult,
+    run_nsga_evolution as run_nsga_evolution,
     run_simple_evolution as run_simple_evolution,
 )
 from .cache_teardown import (
@@ -28,7 +29,10 @@ from .fitness import (
     is_dynamic_fitness_name as is_dynamic_fitness_name,
     reconstruct_fitness_weights as reconstruct_fitness_weights,
 )
-from .hall_of_fame import HallOfFame as HallOfFame
+from .hall_of_fame import (
+    HallOfFame as HallOfFame,
+    IndividualSimilarityChecker as IndividualSimilarityChecker,
+)
 from .history_logger import HistoryLogger as HistoryLogger
 from .individual import (
     Individual as Individual,

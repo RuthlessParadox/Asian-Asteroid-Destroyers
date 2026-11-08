@@ -220,6 +220,14 @@ class SituationalAwareness:
         return self._map_size
 
     @property
+    def map_width(self) -> float:
+        return float(self._map_size.item(0))
+
+    @property
+    def map_height(self) -> float:
+        return float(self._map_size.item(1))
+
+    @property
     def asteroid_positions(self) -> npt.NDArray[np.float64]:
         return self._asteroid_positions[: self._asteroid_count]
 
@@ -935,20 +943,19 @@ class AgentShip:
 
     def _update_bullet_ratio(self) -> float:
         assert self._sa is not None
-        if self._sa.asteroid_sizes.size == 0:
-            return 0.0
-
         sizes = self._sa.asteroid_sizes
+        if sizes.size == 0:
+            return 1.0
+
         shots_needed = (
             cast(int, np.sum(np.equal(sizes, 1))) * 1
             + cast(int, np.sum(np.equal(sizes, 2))) * 4
             + cast(int, np.sum(np.equal(sizes, 3))) * 13
             + cast(int, np.sum(np.equal(sizes, 4))) * 40
         )
+
         return (
-            (self.bullets_remaining - shots_needed) / shots_needed
-            if shots_needed > 0
-            else 0.0
+            self.bullets_remaining / shots_needed if shots_needed > 0 else 1.0
         )
 
 

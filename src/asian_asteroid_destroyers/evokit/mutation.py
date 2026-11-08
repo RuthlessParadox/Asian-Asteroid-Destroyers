@@ -6,6 +6,12 @@ from typing import TYPE_CHECKING, Callable, cast
 import numpy as np
 from deap import tools
 
+from asian_asteroid_destroyers.chromosomes import (
+    FlatGenome,
+    create_geometry_repair_maps,
+    repair_geometry_invariants,
+)
+
 from .individual import Individual
 
 if TYPE_CHECKING:
@@ -17,55 +23,50 @@ if TYPE_CHECKING:
 def mut_fuzzy_gaussian(
     template: ControllerChromosome,
     rng: np.random.Generator,
-    mu: float,
-    sigma: float,
-    independent_probability: float = 0.2,
+    mu: float = 0.0,
+    sigma: float = 0.05,
+    independent_probability: float = 0.05,
+    gate_flip_probability: float = 0.1,
 ) -> MutationOperator:
-    """Closure factory providing a highly optimized vectorized mutation operator.
+    triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
 
-    Args:
-        template: The structural chromosome configuration used to extract the
-            exact flat geometric indices.
-        rng: The explicit dependency-injected random number generator.
-        mu: Mean of the Gaussian noise distribution.
-        sigma: Standard deviation of the Gaussian step.
-        independent_probability: Independent probability for each specific gene to mutate.
-    """
-
-    membership_function_slices: list[tuple[int, int]] = []
+    gate_indices: list[int] = []
     current_index = 0
-
     for blueprint in (
-        template.thrust_blueprint,
-        template.turn_blueprint,
-        template.fire_blueprint,
+        template.thrust_offensive,
+        template.thrust_defensive,
+        template.turn_offensive,
+        template.turn_defensive,
+        template.threat_gate,
     ):
         for param in blueprint.membership_function_pool:
-            param_length = len(param)
-            membership_function_slices.append(
-                (current_index, current_index + param_length),
-            )
-            current_index += param_length
-
+            current_index += len(param)
         for rule in blueprint.rules:
             current_index += len(rule.consequent_coefficients) + 1
+            gate_indices.append(current_index)
+            current_index += 1
 
     def mut_fuzzy_gaussian_wrapper(
         individual: Individual,
     ) -> tuple[Individual]:
-        """Applies vectorized Gaussian noise and repairs bounds in place."""
         genes = np.array(individual, dtype=np.float64)
+        param_mask = rng.random(size=genes.size) < independent_probability
+        for gate_index in gate_indices:
+            param_mask[gate_index] = False
 
-        mutation_mask = rng.random(size=genes.size) < independent_probability
-
-        if np.any(mutation_mask):
+        if np.any(param_mask):
             noise = rng.normal(mu, sigma, size=genes.size)
-            genes += noise * mutation_mask
+            genes[param_mask] += noise[param_mask]
 
-            for start, end in membership_function_slices:
-                genes[start:end].sort()
+        for gate_index in gate_indices:
+            if rng.random() < gate_flip_probability:
+                genes[gate_index] = 1.0 - genes[gate_index]
 
-            individual[:] = genes.tolist()
+        individual[:] = repair_geometry_invariants(
+            cast(FlatGenome, genes.tolist()),
+            triangular_array,
+            trapezoidal_array,
+        )
 
         return (individual,)
 

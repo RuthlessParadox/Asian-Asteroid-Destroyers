@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 def sample_hall_of_fame() -> HallOfFame:
     individual_class = get_individual_class((1.0, -1.0))
 
-    hall_of_fame = HallOfFame(max_size=3)
+    hall_of_fame = HallOfFame()
 
     individual_1 = individual_class([0.1, 0.2, 0.3])
     individual_1.fitness.values = (10.0, -2.0)
