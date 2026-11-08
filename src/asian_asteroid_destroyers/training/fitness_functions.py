@@ -7,6 +7,8 @@ import random
 import sys
 import time
 
+from scripts.scenario_test_fuzzy import my_test_scenario
+
 sys.path.append("")
 
 import random
@@ -17,9 +19,6 @@ from kesslergame.kessler_game import SettingsDict
 
 from asian_asteroid_destroyers.controllers.fuzzy_controller import (
     FuzzyController,
-)
-from asian_asteroid_destroyers.scenarios import (
-    create_training_portfolio,
 )
 
 DEFAULT_WEIGHTS = {
@@ -61,7 +60,8 @@ def example_fitness(individual, weights=None, settings=None):
     # game = TrainerEnvironment(settings=game_settings)  # Kessler default settings for training - has some defaults that override what we want though
 
     range = np.random.default_rng(42)
-    for index, scenario in enumerate(create_training_portfolio(range)):
+    scenarios = [my_test_scenario]
+    for index, scenario in enumerate(scenarios):
         start = time.perf_counter()
         print(f"Starting scenario {index + 1}", flush=True)
 
