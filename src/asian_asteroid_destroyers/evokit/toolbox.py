@@ -13,18 +13,16 @@ from .individual import Individual, get_individual_class
 from .mutation import mut_gaussian
 from .selection import sel_tournament
 from .types import (
-    CloneMethod,
     CrossoverOperator,
     FitnessEvaluator,
     IndividualGenerator,
-    MapMethod,
     MutationOperator,
     PopulationGenerator,
     SelectionOperator,
 )
 
 if TYPE_CHECKING:
-    from .types import Population
+    from .types import CloneMethod, MapMethod, Population
 
 
 def _raise_unregistered(name: str) -> NoReturn:
@@ -46,13 +44,11 @@ class Toolbox(base.Toolbox):
     def __init__(self) -> None:
         super().__init__()
 
-        base_register = cast(
-            Callable[..., None], getattr(base.Toolbox, "register")
-        )
+        base_register: Callable[..., None] = getattr(base.Toolbox, "register")  # pyright: ignore[reportAny]
         base_register(self, "clone", copy.deepcopy)
-        self.clone = cast(CloneMethod, getattr(self, "clone"))
+        self.clone = getattr(self, "clone")
         base_register(self, "map", map)
-        self.map = cast(MapMethod, getattr(self, "map"))
+        self.map = getattr(self, "map")
 
         def _stub_factory(name: str) -> Callable[..., NoReturn]:
             return lambda *args, **kwargs: _raise_unregistered(name)
@@ -73,21 +69,16 @@ class Toolbox(base.Toolbox):
         *args: object,
         **kwargs: object,
     ) -> None:
-        base_register = cast(
-            Callable[..., None],
-            getattr(base.Toolbox, "register"),
-        )
+        base_register: Callable[..., None] = getattr(base.Toolbox, "register")  # pyright: ignore[reportAny]
         base_register(self, alias, function, *args, **kwargs)
         if hasattr(self, alias):
-            setattr(
-                self, alias, cast(Callable[..., object], getattr(self, alias))
-            )
+            setattr(self, alias, getattr(self, alias))
 
     @override
     def unregister(self, alias: str) -> None:
-        base_unregister = cast(
-            Callable[[object, str], None],
-            getattr(base.Toolbox, "unregister"),
+        base_unregister: Callable[[object, str], None] = getattr(  # pyright: ignore[reportAny]
+            base.Toolbox,
+            "unregister",
         )
         base_unregister(self, alias)
         if hasattr(self, alias):
