@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 LogValue = int | float
-LogRow = dict[str, LogValue]
+LogRow = Mapping[str, LogValue]
 
 _TYPE_MAPPING: dict[type, pl.DataType] = {
     int: pl.Int64(),
@@ -43,7 +43,7 @@ class Logbook:
 
     def record(self, generation: int, stats: GenerationStats) -> None:
         stats_map = cast(Mapping[str, LogValue], stats)
-        record = {
+        record: Mapping[str, LogValue] = {
             "generation": generation,
             **stats_map,
         }
@@ -53,7 +53,7 @@ class Logbook:
             self._compile()
 
     def save_parquet(self, file_path: str | Path) -> None:
-        self.dataframe.write_parquet(
+        self.dataframe.write_parquet(  # type: ignore[arg-type]
             file_path,
             compression="zstd",
             compression_level=3,
@@ -67,8 +67,10 @@ class Logbook:
     def _get_expected_schema() -> dict[str, pl.DataType]:
         schema: dict[str, pl.DataType] = {"generation": pl.Int64()}
 
-        annotations: dict[str, type] = GenerationStats.__annotations__
-        for field_name, python_type in annotations.items():
+        generation_stats_annotations: dict[str, type] = (
+            GenerationStats.__annotations__
+        )
+        for field_name, python_type in generation_stats_annotations.items():
             polars_type = _TYPE_MAPPING.get(python_type)
             if polars_type is None:
                 raise TypeError(

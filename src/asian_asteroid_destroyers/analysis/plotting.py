@@ -12,10 +12,10 @@ if TYPE_CHECKING:
 
 
 def plot_fitness_tracks(summary_df: pl.DataFrame) -> tuple[Figure, Axes]:
-    generations = summary_df.get_column("generation").to_numpy()
-    max_fitnesses = summary_df.get_column("max_fitness").to_numpy()
-    mean_fitnesses = summary_df.get_column("mean_fitness").to_numpy()
-    min_fitnesses = summary_df.get_column("min_fitness").to_numpy()
+    generations = summary_df.get_column("generation").to_numpy()  # type: ignore[arg-type]
+    max_fitnesses = summary_df.get_column("max_fitness").to_numpy()  # type: ignore[arg-type]
+    mean_fitnesses = summary_df.get_column("mean_fitness").to_numpy()  # type: ignore[arg-type]
+    min_fitnesses = summary_df.get_column("min_fitness").to_numpy()  # type: ignore[arg-type]
 
     fig, ax1 = plt.subplots(figsize=(10, 6))
 
@@ -59,7 +59,7 @@ def plot_fitness_tracks(summary_df: pl.DataFrame) -> tuple[Figure, Axes]:
 
     if "front_size" in summary_df.columns:
         ax2 = ax1.twinx()
-        front_sizes = summary_df.get_column("front_size").to_numpy()
+        front_sizes = summary_df.get_column("front_size").to_numpy()  # type: ignore[arg-type]
         _ = ax2.plot(
             generations,
             front_sizes,
@@ -81,8 +81,8 @@ def plot_fitness_tracks(summary_df: pl.DataFrame) -> tuple[Figure, Axes]:
 def plot_param_volatility(volatility_df: pl.DataFrame) -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    generations = volatility_df.get_column("generation").to_numpy()
-    param_stds = volatility_df.get_column("param_std").to_numpy()
+    generations = volatility_df.get_column("generation").to_numpy()  # type: ignore[arg-type]
+    param_stds = volatility_df.get_column("param_std").to_numpy()  # type: ignore[arg-type]
 
     _ = ax.plot(
         generations,
@@ -106,8 +106,8 @@ def plot_hall_of_fame_turnover(
 ) -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    generations = turnover_df.get_column("generation").to_numpy()
-    rates = turnover_df.get_column("turnover_rate").to_numpy()
+    generations = turnover_df.get_column("generation").to_numpy()  # type: ignore[arg-type]
+    rates = turnover_df.get_column("turnover_rate").to_numpy()  # type: ignore[arg-type]
 
     _ = ax.plot(
         generations,
@@ -131,12 +131,12 @@ def plot_geometry_drift(
 ) -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(figsize=(10, 6))
 
-    generations = drift_df.get_column("generation").to_numpy()
+    generations = drift_df.get_column("generation").to_numpy()  # type: ignore[arg-type]
     palette = ["#ec4899", "#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"]
 
     for idx, gene_idx in enumerate(gene_indices):
         column_name = f"gene_{gene_idx}"
-        coordinates = drift_df.get_column(column_name).to_numpy()
+        coordinates = drift_df.get_column(column_name).to_numpy()  # type: ignore[arg-type]
 
         _ = ax.plot(
             generations,

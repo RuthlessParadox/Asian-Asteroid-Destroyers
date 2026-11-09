@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, cast
+from typing import TYPE_CHECKING, Protocol
 
 from deap import tools
 from typing_extensions import override
@@ -40,10 +40,7 @@ class HallOfFame:
         similar: IndividualSimilarityChecker | None = None,
     ) -> None:
         kwargs = {"similar": similar} if similar is not None else {}
-        self._deap_hall_of_fame = cast(
-            _DEAPHallOfFame,
-            _UnannotatedParetoFront(**kwargs),
-        )
+        self._deap_hall_of_fame = _UnannotatedParetoFront(**kwargs)
 
     @property
     def max_size(self) -> int:

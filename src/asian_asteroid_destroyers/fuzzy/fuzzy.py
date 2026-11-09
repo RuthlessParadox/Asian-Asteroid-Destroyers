@@ -1,9 +1,13 @@
+from __future__ import annotations
+
 import math
-from typing import Final, NamedTuple, Protocol, cast
+from typing import TYPE_CHECKING, Final, NamedTuple, Protocol
 
 import numpy as np
-import numpy.typing as npt
 from typing_extensions import override
+
+if TYPE_CHECKING:
+    import numpy.typing as npt
 
 
 class RuleEvaluationResult(NamedTuple):
@@ -274,10 +278,7 @@ class TSKInferenceEngine:
 
         clause_mu = np.where(np.equal(types, 0), tri_mu, trap_mu)
 
-        raw_strengths = cast(
-            npt.NDArray[np.float64],
-            np.prod(clause_mu, axis=1),
-        )
+        raw_strengths: npt.NDArray[np.float64] = np.prod(clause_mu, axis=1)  # pyright: ignore[reportAny]
         firing_strengths = raw_strengths * self._activation_masks
         firing_strengths: npt.NDArray[np.float64] = np.where(
             np.isnan(firing_strengths) | np.isinf(firing_strengths),
@@ -289,12 +290,8 @@ class TSKInferenceEngine:
         if total_weight == 0.0:
             return fallback_default
 
-        consequent_values = (
-            cast(
-                npt.NDArray[np.float64],
-                np.sum(self._coefficients * input_array, axis=1),
-            )
-            + self._offsets
+        consequent_values: npt.NDArray[np.float64] = (  # pyright: ignore[reportAny]
+            np.sum(self._coefficients * input_array, axis=1) + self._offsets
         )
         consequent_values = np.where(
             np.isnan(consequent_values) | np.isinf(consequent_values),
