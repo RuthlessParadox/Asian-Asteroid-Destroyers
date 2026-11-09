@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Final
 
 import numpy as np
-import numpy.typing as npt
 import polars as pl
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    import numpy.typing as npt
 
     from asian_asteroid_destroyers.chromosomes import FlatGenome
 
@@ -21,8 +22,8 @@ class EvolutionMetrics:
         logbook_path: str | Path,
         history_path: str | Path,
     ) -> None:
-        self._logbook_lazyframe = pl.scan_parquet(logbook_path)
-        self._history_lazyframe = pl.scan_parquet(history_path)
+        self._logbook_lazyframe = pl.scan_parquet(logbook_path)  # type: ignore[arg-type]
+        self._history_lazyframe = pl.scan_parquet(history_path)  # type: ignore[arg-type]
 
     def extract_pareto_front_genomes(
         self,
@@ -39,7 +40,7 @@ class EvolutionMetrics:
             pl.col("hall_of_fame").struct.field("genome").alias("genome"),
         )
 
-        result_dataframe = processed_query.collect()
+        result_dataframe = processed_query.collect()  # type: ignore[arg-type]
 
         if result_dataframe.is_empty():
             raise ValueError(
@@ -62,14 +63,14 @@ class EvolutionMetrics:
             pl.col("hall_of_fame").list.len().alias("front_size"),
         )
 
-        return summary_lf.join(
+        return summary_lf.join(  # type: ignore[arg-type]
             front_size_lf,
             on="generation",
             how="left",
         ).collect()
 
     def compute_hall_of_fame_turnover(self) -> pl.DataFrame:
-        sorted_history = self._history_lazyframe.sort("generation").collect()
+        sorted_history = self._history_lazyframe.sort("generation").collect()  # type: ignore[arg-type]
 
         if sorted_history.is_empty():
             return pl.DataFrame(
@@ -131,7 +132,7 @@ class EvolutionMetrics:
             )
 
         return (
-            flattened_query.select(projections)
+            flattened_query.select(projections)  # type: ignore[arg-type]
             .group_by("generation")
             .agg(
                 [
@@ -145,7 +146,7 @@ class EvolutionMetrics:
 
     def collect_param_volatility(self) -> pl.DataFrame:
         return (
-            self._history_lazyframe.explode("hall_of_fame")
+            self._history_lazyframe.explode("hall_of_fame")  # type: ignore[arg-type]
             .select(
                 pl.col("generation"),
                 pl.col("hall_of_fame").struct.field("genome").alias("genome"),
@@ -157,11 +158,20 @@ class EvolutionMetrics:
             .collect()
         )
 
-    def extract_knee_point_genome(self) -> FlatGenome:
-        final_generation_df = (
-            self._history_lazyframe.sort("generation", descending=True)
-            .limit(1)
-            .explode("hall_of_fame")
+    def extract_weighted_best_genome(
+        self,
+        weights: list[float] | npt.NDArray[np.float64] | None = None,
+        generation: int | None = None,
+    ) -> FlatGenome:
+        query = self._history_lazyframe
+
+        if generation is not None:
+            query = query.filter(pl.col("generation") == generation)
+        else:
+            query = query.sort("generation", descending=True).limit(1)
+
+        generation_df = (
+            query.explode("hall_of_fame")  # type: ignore[arg-type]
             .select(
                 pl.col("hall_of_fame").struct.field("genome").alias("genome"),
                 pl.col("hall_of_fame")
@@ -171,17 +181,17 @@ class EvolutionMetrics:
             .collect()
         )
 
-        if final_generation_df.is_empty():
+        if generation_df.is_empty():
             raise ValueError(
                 "Could not resolve history snapshots to compute "
-                + "knee-point coordinates."
+                + f"weighted best coordinates for generation: {generation}"
             )
 
-        front_genomes: list[FlatGenome] = final_generation_df.get_column(
+        front_genomes: list[FlatGenome] = generation_df.get_column(
             "genome"
         ).to_list()
 
-        raw_fitness: list[list[float]] = final_generation_df.get_column(
+        raw_fitness: list[list[float]] = generation_df.get_column(
             "fitness"
         ).to_list()
         fitness_matrix = np.array(raw_fitness, dtype=np.float64)
@@ -197,18 +207,30 @@ class EvolutionMetrics:
             dtype=np.float64,
         )
 
-        min_bounds = cast(
-            npt.NDArray[np.float64],
-            np.min(fitness_matrix, axis=0),
-        )
+        min_bounds: npt.NDArray[np.float64] = np.min(fitness_matrix, axis=0)  # pyright: ignore[reportAny]
         ranges = ideal_target - min_bounds
         ranges[ranges == 0.0] = 1.0
 
         normalized_deltas = (fitness_matrix - ideal_target) / ranges
-        distances = cast(
-            npt.NDArray[np.float64],
-            np.linalg.norm(normalized_deltas, axis=1),
+
+        if weights is not None:
+            weight_array = np.array(weights, dtype=np.float64)
+            if weight_array.shape[0] != fitness_matrix.shape[1]:
+                raise ValueError(
+                    f"Length of weights ({weight_array.shape[0]}) must match "
+                    + f"number of fitness objectives ({fitness_matrix.shape[1]})."
+                )
+            weighted_deltas = normalized_deltas * weight_array
+        else:
+            weighted_deltas = normalized_deltas
+
+        distances: npt.NDArray[np.float64] = np.linalg.norm(  # pyright: ignore[reportAny]
+            weighted_deltas,
+            axis=1,
         )
         best_index = int(np.argmin(distances))
 
         return front_genomes[best_index]
+
+    def extract_knee_point_genome(self) -> FlatGenome:
+        return self.extract_weighted_best_genome(weights=None, generation=None)

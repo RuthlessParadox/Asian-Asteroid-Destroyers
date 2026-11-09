@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 from kesslergame import KesslerGame
 
@@ -13,13 +13,12 @@ from asian_asteroid_destroyers.chromosomes import (
 )
 from asian_asteroid_destroyers.controllers import FuzzyController
 from asian_asteroid_destroyers.infrastructure import get_evaluation_config
-from asian_asteroid_destroyers.scenarios import (
-    RootJsonSchema,
-    load_scenario_suite,
-)
+from asian_asteroid_destroyers.scenarios import load_scenario_suite
 
 if TYPE_CHECKING:
     from kesslergame.score import Score
+
+    from asian_asteroid_destroyers.scenarios import RootJsonSchema
 
 
 def _report_metrics(
@@ -60,7 +59,9 @@ def main() -> None:
     )
 
     print("Resolving balanced knee-point from Pareto frontier...")
-    selected_genome = metrics_extractor.extract_knee_point_genome()
+    selected_genome = metrics_extractor.extract_weighted_best_genome(
+        [5.0, 0.5, 0.5, 0.5, 0.5]
+    )
 
     template_blueprint = get_default_controller_template()
     chromosome = hydrate_chromosome_blueprint(
@@ -69,7 +70,7 @@ def main() -> None:
     )
 
     with open(args.scenarios_path, "r", encoding="utf-8") as file:
-        data = cast(RootJsonSchema, json.load(file))
+        data: RootJsonSchema = json.load(file)  # pyright: ignore[reportAny]
 
     scenarios = load_scenario_suite(
         {
