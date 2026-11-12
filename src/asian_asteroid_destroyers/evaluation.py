@@ -1,22 +1,20 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Final
 
 from kesslergame import TrainerEnvironment
 
 from asian_asteroid_destroyers.chromosomes import hydrate_chromosome_blueprint
 from asian_asteroid_destroyers.controllers import FuzzyController
-from asian_asteroid_destroyers.scenarios import (
-    RootJsonSchema,
-    load_scenario_suite,
-)
+from asian_asteroid_destroyers.scenarios import load_scenario_suite
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from asian_asteroid_destroyers.chromosomes import ControllerChromosome
     from asian_asteroid_destroyers.evokit import Individual
+    from asian_asteroid_destroyers.scenarios import RootJsonSchema
 
 __all__ = ["FuzzyFitnessEvaluator"]
 
@@ -49,7 +47,7 @@ class FuzzyFitnessEvaluator:
             )
 
         with open(profile_path, "r", encoding="utf-8") as file:
-            self._cached_json_data = cast(RootJsonSchema, json.load(file))
+            self._cached_json_data = json.load(file)
 
     @property
     def evaluation_seed(self) -> int:

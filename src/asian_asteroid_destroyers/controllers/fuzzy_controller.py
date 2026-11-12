@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Final
 
 import numpy as np
 from kesslergame import KesslerController
@@ -56,18 +56,10 @@ class _TacticalFeatureExtractor:
         if np.allclose(delta, 0.0) or np.any(np.isnan(delta)):
             return float(ship.heading)
 
-        return cast(
-            float,
-            np.degrees(
-                cast(
-                    np.float64,
-                    np.arctan2(
-                        cast(np.float64, delta[1]),
-                        cast(np.float64, delta[0]),
-                    ),
-                )
-            ),
-        )
+        delta_x: np.float64 = delta[0]  # pyright: ignore[reportAny]
+        delta_y: np.float64 = delta[1]  # pyright: ignore[reportAny]
+
+        return math.degrees(math.atan2(delta_y, delta_x))
 
     def get_offensive_inputs(self) -> list[float]:
         """Features for tracking, aligning with, and chasing down targets."""
@@ -116,7 +108,7 @@ class _TacticalFeatureExtractor:
             dtype=np.float64,
         )
 
-        dist = cast(float, np.maximum(np.linalg.norm(delta_p), 1.0))
+        dist: float = np.maximum(np.linalg.norm(delta_p), 1.0)  # pyright: ignore[reportAny]
 
         # Cross product evaluates if threat is tracking center-mass or passing
         cross_prod = float(np.cross(rel_vel, delta_p) / dist)
@@ -292,12 +284,14 @@ class FuzzyController(KesslerController):
     ) -> tuple[float, float]:
         if self._last_thrust is None or self._last_turn is None:
             return target_thrust, target_turn
+        last_thrust = self._last_thrust
+        last_turn = self._last_turn
 
-        if self._last_thrust == 0.0 and self._last_turn == 0.0:
+        if last_thrust == 0.0 and last_turn == 0.0:
             return target_thrust, target_turn
 
-        d_thrust = target_thrust - self._last_thrust
-        d_turn = target_turn - self._last_turn
+        d_thrust = target_thrust - last_thrust
+        d_turn = target_turn - last_turn
 
         volatility = self.mean_volatility
         if math.isnan(volatility) or math.isinf(volatility):
@@ -306,8 +300,8 @@ class FuzzyController(KesslerController):
         scale = max(0.1, min(1.0 - (volatility * self._damping_factor), 1.0))
 
         return (
-            self._last_thrust + (d_thrust * scale),
-            self._last_turn + (d_turn * scale),
+            last_thrust + (d_thrust * scale),
+            last_turn + (d_turn * scale),
         )
 
     def _determine_tactical_fire(self) -> bool:

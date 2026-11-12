@@ -7,7 +7,6 @@ import numpy as np
 from deap import tools
 
 from asian_asteroid_destroyers.chromosomes import (
-    FlatGenome,
     create_geometry_repair_maps,
     repair_geometry_invariants,
 )
@@ -17,7 +16,10 @@ from .individual import Individual
 if TYPE_CHECKING:
     import numpy.typing as npt
 
-    from asian_asteroid_destroyers.chromosomes import ControllerChromosome
+    from asian_asteroid_destroyers.chromosomes import (
+        ControllerChromosome,
+        FlatGenome,
+    )
 
     from .types import CrossoverOperator
 
@@ -126,13 +128,16 @@ def cx_fuzzy_blend(
             output_1[rule_indices] = array_2[rule_indices]
             output_2[rule_indices] = array_1[rule_indices]
 
+        output_1_flat: FlatGenome = output_1.tolist()  # pyright: ignore[reportAny]
+        output_2_flat: FlatGenome = output_2.tolist()  # pyright: ignore[reportAny]
+
         individual_1[:] = repair_geometry_invariants(
-            cast(FlatGenome, output_1.tolist()),
+            output_1_flat,
             triangular_array,
             trapezoidal_array,
         )
         individual_2[:] = repair_geometry_invariants(
-            cast(FlatGenome, output_2.tolist()),
+            output_2_flat,
             triangular_array,
             trapezoidal_array,
         )

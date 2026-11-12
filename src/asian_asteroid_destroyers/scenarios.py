@@ -108,7 +108,7 @@ def load_scenario_suite(config: ScenarioConfig) -> list[Scenario]:
 
                 for i in range(count):
                     zone_index = (
-                        cast(int, zone_indices[i])
+                        zone_indices[i]
                         if zone_indices is not None
                         else 0
                     )
@@ -123,8 +123,8 @@ def load_scenario_suite(config: ScenarioConfig) -> list[Scenario]:
                     asteroid_states.append(
                         {
                             "position": (pos_x, pos_y),
-                            "speed": cast(float, speeds[i]),
-                            "angle": cast(float, angles[i]),
+                            "speed": speeds[i],
+                            "angle": angles[i],
                             "size": size,
                         }
                     )

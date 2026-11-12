@@ -7,7 +7,6 @@ import numpy as np
 from deap import tools
 
 from asian_asteroid_destroyers.chromosomes import (
-    FlatGenome,
     create_geometry_repair_maps,
     repair_geometry_invariants,
 )
@@ -15,7 +14,10 @@ from asian_asteroid_destroyers.chromosomes import (
 from .individual import Individual
 
 if TYPE_CHECKING:
-    from asian_asteroid_destroyers.chromosomes import ControllerChromosome
+    from asian_asteroid_destroyers.chromosomes import (
+        ControllerChromosome,
+        FlatGenome,
+    )
 
     from .types import MutationOperator
 
@@ -62,8 +64,10 @@ def mut_fuzzy_gaussian(
             if rng.random() < gate_flip_probability:
                 genes[gate_index] = 1.0 - genes[gate_index]
 
+        genes_flat: FlatGenome = genes.tolist()  # pyright: ignore[reportAny]
+
         individual[:] = repair_geometry_invariants(
-            cast(FlatGenome, genes.tolist()),
+            genes_flat,
             triangular_array,
             trapezoidal_array,
         )

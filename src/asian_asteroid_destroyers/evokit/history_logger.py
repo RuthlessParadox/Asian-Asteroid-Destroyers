@@ -68,7 +68,7 @@ class HistoryLogger:
             self._compile()
 
     def save_parquet(self, file_path: str | Path) -> None:
-        self.dataframe.write_parquet(
+        self.dataframe.write_parquet(  # type: ignore[arg-type]
             file_path,
             compression="zstd",
             compression_level=3,
