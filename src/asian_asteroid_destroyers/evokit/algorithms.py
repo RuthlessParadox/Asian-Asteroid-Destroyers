@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import signal
 import sys
+from tracemalloc import start
 from typing import TYPE_CHECKING, NamedTuple, Protocol, TypeVar
 
 import numpy as np
@@ -9,6 +10,8 @@ from pathos.multiprocessing import ProcessPool
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableSequence
+
+    from asian_asteroid_destroyers.benchmarks.metrics import BenchMarkMetrics
 
     from .hall_of_fame import HallOfFame
     from .history_logger import HistoryLogger
@@ -49,6 +52,7 @@ class EvolutionAlgorithm(Protocol[R_co]):
         checkpoint_callback: Callable[[int, R_co], None] | None = None,
         initial_population: Population | None = None,
         start_generation: int = 1,
+        benchmark_metrics: BenchMarkMetrics | None = None,
     ) -> R_co: ...
 
 
@@ -67,6 +71,7 @@ def run_simple_evolution(
     checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
     initial_population: Population | None = None,
     start_generation: int = 1,
+    benchmark_metrics: BenchMarkMetrics | None = None,
 ) -> TrainingResult:
     _validate_parameters(
         cx_pb,
@@ -132,6 +137,7 @@ def run_nsga_evolution(
     mut_pb: float,
     generations: int,
     population_size: int,
+    # benchmark_metrics: BenchMarkMetrics | None,
     *,
     seed: int | np.random.Generator | None = None,
     hall_of_fame: HallOfFame | None = None,
@@ -141,6 +147,7 @@ def run_nsga_evolution(
     checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
     initial_population: Population | None = None,
     start_generation: int = 1,
+    benchmark_metrics: BenchMarkMetrics | None = None,
 ) -> TrainingResult:
     _validate_parameters(
         cx_pb,
@@ -196,6 +203,10 @@ def run_nsga_evolution(
             )
 
         for generation in range(start_generation, generations + 1):
+            generation_start = None
+            if benchmark_metrics is not None:
+                generation_start = benchmark_metrics.start_timer()
+
             parents = toolbox.select(population, population_size)
             offspring = [toolbox.clone(individual) for individual in parents]
 
@@ -235,6 +246,17 @@ def run_nsga_evolution(
                 population_size,
             )
 
+            if benchmark_metrics is not None:
+                elapsed = benchmark_metrics.stop_timer(generation_start)
+                fitness_values = [
+                    individual.fitness.values[0]
+                    for individual in population
+                    if individual.fitness.valid
+                ]
+                benchmark_metrics.record_generation(
+                    fitness_values,
+                    elapsed,
+                )
             _record_generation_metrics(
                 generation=generation,
                 population=population,

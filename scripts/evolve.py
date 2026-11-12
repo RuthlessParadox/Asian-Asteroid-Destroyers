@@ -35,11 +35,12 @@ from asian_asteroid_destroyers.infrastructure import (
     make_checkpoint_saver,
 )
 
+from asian_asteroid_destroyers.benchmarks.metrics import BenchMarkMetrics
+
 if TYPE_CHECKING:
     from asian_asteroid_destroyers.evokit import Individual, TrainingResult
 
 GLOBAL_EVALUATOR_INSTANCE: FuzzyFitnessEvaluator | None = None
-
 
 class _MultiprocessingEvaluationWorker:
     __slots__: tuple[str, ...] = ("evaluator",)
@@ -159,6 +160,8 @@ def main() -> None:
 
     _ = signal.signal(signal.SIGINT, emergency_saver.handle_interrupt)
 
+    metrics = BenchMarkMetrics()
+
     def combined_callback(generation: int, state: TrainingResult) -> None:
         emergency_saver.update_state(generation, state)
         periodic_saver(generation, state)
@@ -181,6 +184,7 @@ def main() -> None:
         checkpoint_callback=combined_callback,
         initial_population=population,
         start_generation=start_generation,
+        benchmark_metrics=metrics,
     )
 
     print("\nEvolutionary horizon run successfully finished.")
