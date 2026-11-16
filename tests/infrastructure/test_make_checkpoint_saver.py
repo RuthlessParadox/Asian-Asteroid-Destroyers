@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import gzip
 import pickle
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -16,7 +16,6 @@ from asian_asteroid_destroyers.evokit import (
 )
 from asian_asteroid_destroyers.infrastructure import (
     POINTER_FILENAME,
-    CheckpointPayload,
     get_periodic_history_filename,
     get_periodic_logbook_filename,
     get_periodic_runtime_filename,
@@ -27,6 +26,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from asian_asteroid_destroyers.evokit import EvolutionAlgorithm
+    from asian_asteroid_destroyers.infrastructure import CheckpointPayload
 
 
 @pytest.fixture
@@ -52,7 +52,7 @@ def sample_history() -> HistoryLogger:
 
 @pytest.fixture
 def sample_hall_of_fame() -> HallOfFame:
-    return HallOfFame(max_size=1)
+    return HallOfFame()
 
 
 @pytest.fixture
@@ -130,7 +130,9 @@ def test_saver_callback_saves_on_matching_interval(
     ).strip() == get_periodic_runtime_filename(10)
 
     with gzip.open(expected_runtime, "rb") as file:
-        payload = cast(CheckpointPayload, pickle.load(file))
+        payload: CheckpointPayload = (  # pyright: ignore[reportAny]
+            pickle.load(file)
+        )
         assert payload["generation"] == 10
         assert (
             payload["algorithm_path"]

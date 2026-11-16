@@ -14,7 +14,7 @@ from asian_asteroid_destroyers.evokit import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
 
 @pytest.fixture
@@ -48,7 +48,7 @@ def test_toolbox_initialization_defaults(
 
     assert toolbox.clone(mock_individual) is not toolbox.clone(mock_individual)
 
-    items = [cast(Individual, [mock_individual])]
+    items = [cast(Individual, mock_individual)]
     assert list(toolbox.map(mock_evaluate, items)) == [(1.0,)]
 
     with pytest.raises(
@@ -179,7 +179,7 @@ def test_default_individual_factory_via_build(
     toolbox = build_toolbox(evaluation_function=MagicMock(), gene_size=3)
 
     result = toolbox.individual()
-    passed_args: list[float] = [float(item) for item in result]
+    passed_args: Sequence[float] = [float(item) for item in result]
     assert passed_args == [0.1, 0.2, 0.3]
 
 

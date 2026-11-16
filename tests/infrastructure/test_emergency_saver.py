@@ -3,7 +3,7 @@ from __future__ import annotations
 import gzip
 import inspect
 import pickle
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
@@ -20,7 +20,6 @@ from asian_asteroid_destroyers.infrastructure import (
     EMERGENCY_LOGBOOK_FILENAME,
     EMERGENCY_RUNTIME_FILENAME,
     POINTER_FILENAME,
-    CheckpointPayload,
     EmergencySaver,
 )
 
@@ -28,6 +27,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from asian_asteroid_destroyers.evokit import EvolutionAlgorithm
+    from asian_asteroid_destroyers.infrastructure import CheckpointPayload
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def sample_history_logger() -> HistoryLogger:
 
 @pytest.fixture
 def sample_hall_of_fame() -> HallOfFame:
-    return HallOfFame(max_size=1)
+    return HallOfFame()
 
 
 @pytest.fixture
@@ -145,7 +145,9 @@ def test_handle_interrupt_saves_checkpoint_and_exits_successfully(
     )
 
     with gzip.open(expected_runtime_path, "rb") as file:
-        payload = cast(CheckpointPayload, pickle.load(file))
+        payload: CheckpointPayload = (  # pyright: ignore[reportAny]
+            pickle.load(file)
+        )
         assert payload["generation"] == 42
         assert (
             payload["algorithm_path"]

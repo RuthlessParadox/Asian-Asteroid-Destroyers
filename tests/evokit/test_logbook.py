@@ -92,7 +92,9 @@ def test_save_parquet_creates_valid_file(
 
     assert os.path.exists(temporary_file_path)
 
-    loaded_dataframe = pl.read_parquet(temporary_file_path)
+    loaded_dataframe = pl.read_parquet(
+        temporary_file_path,  # type: ignore[call-arg]
+    )
     assert loaded_dataframe.height == 1
     assert loaded_dataframe["generation"][0] == 1
 
@@ -109,7 +111,9 @@ def test_save_parquet_overwrites_existing_file(
     logbook.record(generation=2, stats=valid_stats)
     logbook.save_parquet(temporary_file_path)
 
-    loaded_dataframe = pl.read_parquet(temporary_file_path)
+    loaded_dataframe = pl.read_parquet(
+        temporary_file_path,  # type: ignore[call-arg]
+    )
 
     assert loaded_dataframe.height == 2
     assert list(loaded_dataframe["generation"]) == [1, 2]

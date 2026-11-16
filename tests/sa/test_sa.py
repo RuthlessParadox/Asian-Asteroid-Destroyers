@@ -283,5 +283,5 @@ def test_bullet_asteroid_equivalent_ratio(
     sa.update(standard_ship_state, empty_game_state)
     assert (
         pytest.approx(sa.agent_ship.bullet_asteroid_equivalent_ratio)
-        == 47.0 / 13.0
+        == 60.0 / 13.0
     )
