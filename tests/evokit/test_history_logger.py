@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, TypedDict
 
 import polars as pl
 import pytest
@@ -71,9 +71,8 @@ def test_record_and_retrieve_dataframe(
     assert dataframe.height == 1
     assert dataframe["generation"][0] == 0
 
-    hall_of_fame_list = cast(
-        list[_SnapshotDict],
-        dataframe["hall_of_fame"].item(0),
+    hall_of_fame_list: list[_SnapshotDict] = (  # pyright: ignore[reportAny]
+        dataframe["hall_of_fame"].item(0)
     )
     assert hall_of_fame_list is not None
     assert len(hall_of_fame_list) == 2
@@ -107,7 +106,9 @@ def test_record_with_invalid_fitness(sample_hall_of_fame: HallOfFame) -> None:
     history_logger.record(generation=10, hall_of_fame=sample_hall_of_fame)
     dataframe = history_logger.dataframe
 
-    hof_list = cast(list[_SnapshotDict], dataframe["hall_of_fame"].item(0))
+    hof_list: list[_SnapshotDict] = (  # pyright: ignore[reportAny]
+        dataframe["hall_of_fame"].item(0)
+    )
     assert hof_list is not None
     for snapshot in hof_list:
         assert list(snapshot["fitness"]) == []
@@ -125,7 +126,9 @@ def test_save_parquet_creates_file(
 
     assert output_file.exists()
 
-    loaded_dataframe = pl.read_parquet(output_file)
+    loaded_dataframe = pl.read_parquet(
+        output_file,  # type: ignore[call-arg]
+    )
     assert loaded_dataframe.height == 1
     assert loaded_dataframe["generation"][0] == 1
 

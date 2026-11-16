@@ -3,25 +3,23 @@ from __future__ import annotations
 import gzip
 import pickle
 import sys
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
 
 from asian_asteroid_destroyers.evokit import (
-    TrainingResult,
     clear_fitness_cache,
     clear_individual_cache,
     get_fitness_class,
     get_individual_class,
 )
-from asian_asteroid_destroyers.infrastructure import (
-    CheckpointPayload,
-    MainHydratingUnpickler,
-)
+from asian_asteroid_destroyers.infrastructure import MainHydratingUnpickler
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from asian_asteroid_destroyers.infrastructure import CheckpointPayload
 
 
 @pytest.fixture(autouse=True)
@@ -43,16 +41,11 @@ def test_unpickler_restores_dynamic_individual_class_on_cold_start(
     individual_class = get_individual_class(weights)
     instance = individual_class([5.5, 6.6])
 
-    state = TrainingResult(
-        final_population=[instance],
-        logbook=None,
-        history_logger=None,
-        hall_of_fame=None,
-    )
     payload: CheckpointPayload = {
         "algorithm_path": "mock.loop",
         "generation": 1,
-        "state": state,
+        "final_population": [instance],
+        "hall_of_fame": None,
         "rng_state": np.random.default_rng(1).bit_generator.state,
     }
 
@@ -67,9 +60,11 @@ def test_unpickler_restores_dynamic_individual_class_on_cold_start(
 
     with gzip.open(test_file, "rb") as file:
         unpickler = MainHydratingUnpickler(file)
-        loaded_payload = cast(CheckpointPayload, unpickler.load())
+        loaded_payload: CheckpointPayload = (  # pyright: ignore[reportAny]
+            unpickler.load()
+        )
 
-    loaded_population = loaded_payload["state"].final_population
+    loaded_population = loaded_payload["final_population"]
     assert len(loaded_population) == 1
 
     loaded_individual = loaded_population[0]
@@ -99,7 +94,7 @@ def test_unpickler_restores_dynamic_fitness_class_on_cold_start(
 
     with gzip.open(test_file, "rb") as file:
         unpickler = MainHydratingUnpickler(file)
-        loaded_fitness = cast(object, unpickler.load())
+        loaded_fitness: object = unpickler.load()  # pyright: ignore[reportAny]
 
     assert loaded_fitness.__class__.__name__ == "DynamicFitness_neg0_05_10_0"
     assert getattr(loaded_fitness, "weights") == weights
@@ -116,6 +111,8 @@ def test_unpickler_passes_through_standard_objects_normally(
 
     with gzip.open(test_file, "rb") as file:
         unpickler = MainHydratingUnpickler(file)
-        loaded_data = cast(dict[str, object], unpickler.load())
+        loaded_data: dict[str, object] = (  # pyright: ignore[reportAny]
+            unpickler.load()
+        )
 
     assert loaded_data == standard_data

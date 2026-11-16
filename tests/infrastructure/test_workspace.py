@@ -134,10 +134,12 @@ def test_update_active_pointer_isolates_filesystem_failures(
     ):
         update_active_pointer(tmp_path, checkpoint_name)
 
-    captured = capsys.readouterr()
+    out: str
+    out, _ = capsys.readouterr()
     assert (
-        "Warning: Could not rotate active checkpoint pointer: Permission Denied"
-        in captured.out
+        "Warning: Could not rotate active checkpoint pointer: "
+        + "Permission Denied"
+        in out
     )
 
     pointer_file = tmp_path / POINTER_FILENAME

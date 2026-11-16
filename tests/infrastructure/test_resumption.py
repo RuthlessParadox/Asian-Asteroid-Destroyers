@@ -82,7 +82,7 @@ def sample_payload() -> CheckpointPayload:
         "algorithm_path": _MOCK_FULL_PATH,
         "generation": 40,
         "final_population": [Individual([0.0]), Individual([1.0])],
-        "hall_of_fame": HallOfFame(max_size=1),
+        "hall_of_fame": HallOfFame(),
         "rng_state": rng_state,
     }
 
