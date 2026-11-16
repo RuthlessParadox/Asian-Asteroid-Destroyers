@@ -11,7 +11,8 @@ from pathos.multiprocessing import ProcessPool
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableSequence
 
-    from asian_asteroid_destroyers.benchmarks.metrics import BenchMarkMetrics
+    # from asian_asteroid_destroyers.benchmarks.metrics import BenchMarkMetrics
+    from asian_asteroid_destroyers.benchmarks.metrics1 import BenchMarkMetrics
 
     from .hall_of_fame import HallOfFame
     from .history_logger import HistoryLogger
@@ -203,10 +204,8 @@ def run_nsga_evolution(
             )
 
         for generation in range(start_generation, generations + 1):
-            generation_start = None
             if benchmark_metrics is not None:
-                generation_start = benchmark_metrics.start_timer()
-
+                benchmark_metrics.start_generation()
             parents = toolbox.select(population, population_size)
             offspring = [toolbox.clone(individual) for individual in parents]
 
@@ -247,15 +246,14 @@ def run_nsga_evolution(
             )
 
             if benchmark_metrics is not None:
-                elapsed = benchmark_metrics.stop_timer(generation_start)
                 fitness_values = [
                     individual.fitness.values[0]
                     for individual in population
                     if individual.fitness.valid
                 ]
                 benchmark_metrics.record_generation(
+                    generation,
                     fitness_values,
-                    elapsed,
                 )
             _record_generation_metrics(
                 generation=generation,

@@ -15,6 +15,11 @@
 
 # should only collect data; not control training
 
+# TODO field to store time;  private vars; fields; class should know the time; programmers shouldn't be responsible
+# TODO add onto data array and then flush for every amount of entries,
+# TODO accumulate into dataframe, group dataframes together
+# TODO save data to disc
+
 import statistics
 import time
 
