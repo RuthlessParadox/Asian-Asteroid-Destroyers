@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 import numpy as np
 import polars as pl
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    import os
+    from collections.abc import Sequence
 
     import numpy.typing as npt
 
@@ -19,11 +21,11 @@ class EvolutionMetrics:
 
     def __init__(
         self,
-        logbook_path: str | Path,
-        history_path: str | Path,
+        logbook_path: str | os.PathLike[str],
+        history_path: str | os.PathLike[str],
     ) -> None:
-        self._logbook_lazyframe = pl.scan_parquet(logbook_path)  # type: ignore[arg-type]
-        self._history_lazyframe = pl.scan_parquet(history_path)  # type: ignore[arg-type]
+        self._logbook_lazyframe = pl.scan_parquet(Path(logbook_path))  # type: ignore[arg-type]
+        self._history_lazyframe = pl.scan_parquet(Path(history_path))  # type: ignore[arg-type]
 
     def extract_pareto_front_genomes(
         self,
@@ -117,7 +119,10 @@ class EvolutionMetrics:
             schema={"generation": pl.Int64(), "turnover_rate": pl.Float64()},
         )
 
-    def collect_geometry_drift(self, gene_indices: list[int]) -> pl.DataFrame:
+    def collect_geometry_drift(
+        self,
+        gene_indices: Sequence[int],
+    ) -> pl.DataFrame:
         flattened_query = self._history_lazyframe.explode(
             "hall_of_fame"
         ).select(
@@ -160,7 +165,7 @@ class EvolutionMetrics:
 
     def extract_weighted_best_genome(
         self,
-        weights: list[float] | npt.NDArray[np.float64] | None = None,
+        weights: Sequence[float] | npt.NDArray[np.float64] | None = None,
         generation: int | None = None,
     ) -> FlatGenome:
         query = self._history_lazyframe

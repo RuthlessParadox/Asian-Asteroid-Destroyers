@@ -15,6 +15,7 @@ from .workspace import (
 )
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Mapping
     from types import FrameType
 
@@ -56,7 +57,7 @@ class EmergencySaver:
 
     def __init__(
         self,
-        output_directory: str | Path,
+        output_directory: str | os.PathLike[str],
         rng: np.random.Generator,
         algorithm: EvolutionAlgorithm[TrainingResult],
     ) -> None:
@@ -122,7 +123,7 @@ class EmergencySaver:
 
 
 def make_checkpoint_saver(
-    output_directory: str | Path,
+    output_directory: str | os.PathLike[str],
     rng: np.random.Generator,
     algorithm: EvolutionAlgorithm[TrainingResult],
     save_interval: int = 10,

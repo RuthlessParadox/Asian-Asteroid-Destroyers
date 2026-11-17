@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import polars as pl
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
@@ -127,7 +129,7 @@ def plot_hall_of_fame_turnover(
 
 def plot_geometry_drift(
     drift_df: pl.DataFrame,
-    gene_indices: list[int],
+    gene_indices: Sequence[int],
 ) -> tuple[Figure, Axes]:
     fig, ax = plt.subplots(figsize=(10, 6))
 
