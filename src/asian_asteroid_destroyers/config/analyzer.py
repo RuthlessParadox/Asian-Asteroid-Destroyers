@@ -44,6 +44,9 @@ def get_analyzer_config() -> AnalyzerArgs:
     if any(gene < 0 for gene in track_genes):
         raise ValueError("Gene indices must be non-negative integers.")
 
+    if len(track_genes) != len(set(track_genes)):
+        raise ValueError("Duplicate gene indices are not allowed.")
+
     return AnalyzerArgs(
         run_dir=run_dir,
         track_genes=track_genes,
