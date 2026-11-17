@@ -2,6 +2,8 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
+from .parsers import parse_positive_int
+
 
 @dataclass(frozen=True)
 class AnalyzerArgs:
@@ -23,7 +25,7 @@ def get_analyzer_config() -> AnalyzerArgs:
     )
     _ = parser.add_argument(
         "--track-genes",
-        type=int,
+        type=parse_positive_int,
         nargs="+",
         default=[],
         help="Space-separated list of flat gene indices to trace for drift",

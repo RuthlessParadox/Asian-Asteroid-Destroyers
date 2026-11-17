@@ -5,9 +5,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from asian_asteroid_destroyers.config.base import (
-    load_baseline_config,
-)
+from .base import load_baseline_config
+from .parsers import parse_non_negative_float, parse_positive_int
 
 
 @dataclass(frozen=True)
@@ -31,37 +30,37 @@ def get_trainer_config() -> TrainerArgs:
 
     _ = parser.add_argument(
         "--generations",
-        type=int,
+        type=parse_positive_int,
         default=baseline.generations,
         help="Number of evolutionary generations to simulate",
     )
     _ = parser.add_argument(
         "--population-size",
-        type=int,
+        type=parse_positive_int,
         default=baseline.population_size,
         help="Size of the individual population",
     )
     _ = parser.add_argument(
         "--save-interval",
-        type=int,
+        type=parse_positive_int,
         default=baseline.save_interval,
         help="Generation frequency for periodic checkpoints",
     )
     _ = parser.add_argument(
         "--cx-pb",
-        type=float,
+        type=parse_non_negative_float,
         default=baseline.cx_pb,
         help="Crossover probability coefficient",
     )
     _ = parser.add_argument(
         "--mut-pb",
-        type=float,
+        type=parse_non_negative_float,
         default=baseline.mut_pb,
         help="Mutation probability coefficient",
     )
     _ = parser.add_argument(
         "--gene-size",
-        type=int,
+        type=parse_positive_int,
         default=baseline.gene_size,
         help="Size of individual genetic configurations",
     )
