@@ -1,7 +1,4 @@
 # pyright: reportUnknownMemberType=false
-from __future__ import annotations
-
-import pathlib
 import sys
 
 from asian_asteroid_destroyers.analysis import (
@@ -11,16 +8,16 @@ from asian_asteroid_destroyers.analysis import (
     plot_hall_of_fame_turnover,
     plot_param_volatility,
 )
+from asian_asteroid_destroyers.config import get_analyzer_config
 from asian_asteroid_destroyers.infrastructure import (
     EMERGENCY_HISTORY_FILENAME,
     EMERGENCY_LOGBOOK_FILENAME,
-    get_analyzer_config,
 )
 
 
 def main() -> int:
     args = get_analyzer_config()
-    run_path = pathlib.Path(args.run_dir)
+    run_path = args.run_dir
 
     if not run_path.exists():
         print(f"Error: Target workspace path does not exist: {run_path}")
