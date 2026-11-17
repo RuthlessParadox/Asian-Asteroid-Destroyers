@@ -41,6 +41,9 @@ def get_analyzer_config() -> AnalyzerArgs:
             f"Target workspace path does not exist: {run_dir}"
         )
 
+    if any(gene < 0 for gene in track_genes):
+        raise ValueError("Gene indices must be non-negative integers.")
+
     return AnalyzerArgs(
         run_dir=run_dir,
         track_genes=track_genes,
