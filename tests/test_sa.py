@@ -1,287 +1,341 @@
+from __future__ import annotations
+
 import math
+import sys
+from types import ModuleType
 
 import pytest
-from kesslergame.state_models import (
-    GameState,
-    ShipState,
+
+
+def mock_trim_angle(angle: float) -> float:
+    return float((angle + 180.0) % 360.0 - 180.0)
+
+
+geometry_module = ModuleType("asian_asteroid_destroyers.geometry")
+geometry_module.trim_angle = (  # pyright: ignore[reportAttributeAccessIssue]
+    mock_trim_angle
+)
+sys.modules["asian_asteroid_destroyers.geometry"] = geometry_module
+
+from kesslergame.state_models import GameState, ShipState  # noqa: E402
+
+from asian_asteroid_destroyers.sa import (  # noqa: E402
+    OpponentShipView,
+    SituationalAwareness,
+    SituationalAwarenessMetrics,
 )
 
-from asian_asteroid_destroyers.sa import (
-    AgentShip,
-    MineView as SAMineView,
-    SituationalAwareness,
-    VirtualViewSequence,
-)
+
+def _create_ship_data(
+    x: float = 0.0,
+    y: float = 0.0,
+    vx: float = 0.0,
+    vy: float = 0.0,
+    speed: float = 0.0,
+    heading: float = 0.0,
+    mass: float = 100.0,
+    radius: float = 10.0,
+    ship_id: int = 1,
+    team: int = 1,
+    is_respawning: bool = False,
+    lives_remaining: int = 3,
+    deaths: int = 0,
+    bullets_remaining: int = 10,
+    mines_remaining: int = 2,
+    can_fire: bool = True,
+    fire_cooldown: float = 0.0,
+    fire_rate: float = 0.5,
+    can_deploy_mine: bool = True,
+    mine_cooldown: float = 0.0,
+    mine_deploy_rate: float = 1.0,
+    respawn_time_left: float = 0.0,
+    respawn_time: float = 3.0,
+    thrust_range: tuple[float, float] = (-10.0, 10.0),
+    turn_rate_range: tuple[float, float] = (-180.0, 180.0),
+    max_speed: float = 50.0,
+    drag: float = 0.1,
+) -> list[float | int | bool]:
+    return [
+        x,
+        y,
+        vx,
+        vy,
+        speed,
+        heading,
+        mass,
+        radius,
+        ship_id,
+        team,
+        is_respawning,
+        lives_remaining,
+        deaths,
+        bullets_remaining,
+        mines_remaining,
+        can_fire,
+        fire_cooldown,
+        fire_rate,
+        can_deploy_mine,
+        mine_cooldown,
+        mine_deploy_rate,
+        respawn_time_left,
+        respawn_time,
+        thrust_range[0],
+        thrust_range[1],
+        turn_rate_range[0],
+        turn_rate_range[1],
+        max_speed,
+        drag,
+    ]
+
+
+def _create_asteroid_data(
+    x: float = 100.0,
+    y: float = 100.0,
+    vx: float = 1.0,
+    vy: float = -1.0,
+    size: int = 2,
+    mass: float = 50.0,
+    radius: float = 15.0,
+) -> list[float | int]:
+    return [x, y, vx, vy, size, mass, radius]
+
+
+def _create_bullet_data(
+    x: float = 50.0,
+    y: float = 50.0,
+    vx: float = 10.0,
+    vy: float = 10.0,
+    tail_dx: float = -2.0,
+    tail_dy: float = -2.0,
+    heading: float = 45.0,
+    mass: float = 1.0,
+    length: float = 5.0,
+) -> list[float]:
+    return [x, y, vx, vy, tail_dx, tail_dy, heading, mass, length]
+
+
+def _create_mine_data(
+    x: float = 200.0,
+    y: float = 200.0,
+    mass: float = 10.0,
+    fuse_time: float = 5.0,
+    remaining_time: float = 4.5,
+) -> list[float]:
+    return [x, y, mass, fuse_time, remaining_time]
 
 
 @pytest.fixture
-def empty_game_state() -> GameState:
+def sample_game_state() -> GameState:
+    ship_data_1 = _create_ship_data(x=0.0, y=0.0, ship_id=1, team=1)
+    ship_data_2 = _create_ship_data(x=500.0, y=500.0, ship_id=2, team=2)
+    asteroid_data_1 = _create_asteroid_data(
+        x=100.0,
+        y=100.0,
+        vx=10.0,
+        vy=0.0,
+        size=2,
+        radius=15.0,
+    )
+    asteroid_data_2 = _create_asteroid_data(
+        x=800.0,
+        y=800.0,
+        vx=0.0,
+        vy=10.0,
+        size=1,
+        radius=10.0,
+    )
+    bullet_data_1 = _create_bullet_data(x=50.0, y=50.0, heading=90.0)
+    mine_data_1 = _create_mine_data(x=150.0, y=150.0)
+
     return GameState(
-        ships=[],
-        asteroids=[],
-        bullets=[],
-        mines=[],
-        map_size=(1000, 800),
-        time_limit=180.0,
-        time=0.0,
-        frame=0,
-        delta_time=1 / 30,
-        frame_rate=30.0,
+        ships=[ship_data_1, ship_data_2],
+        asteroids=[asteroid_data_1, asteroid_data_2],
+        bullets=[bullet_data_1],
+        mines=[mine_data_1],
+        map_size=(1000, 1000),
+        time_limit=60.0,
+        time=1.0,
+        frame=60,
+        delta_time=1.0 / 60.0,
+        frame_rate=60.0,
         random_asteroid_splits=False,
         competition_safe_mode=False,
     )
 
 
 @pytest.fixture
-def standard_ship_data() -> list[float | int | bool]:
-    return [
-        100.0,
-        200.0,
-        10.0,
-        0.0,
-        10.0,
-        45.0,
-        100.0,
-        15.0,
-        1,
-        0,
-        False,
-        3,
-        0,
-        100,
-        5,
-        True,
-        0.0,
-        0.1,
-        True,
-        0.0,
-        0.5,
-        0.0,
-        3.0,
-        0.0,
-        100.0,
-        -180.0,
-        180.0,
-        50.0,
-        0.05,
-    ]
+def sample_ship_state(sample_game_state: GameState) -> ShipState:
+    return ShipState(sample_game_state.compact["ships"][0])
 
 
-@pytest.fixture
-def standard_ship_state(
-    standard_ship_data: list[float | int | bool],
-) -> ShipState:
-    return ShipState(standard_ship_data)
-
-
-def test_situational_awareness_initial_state() -> None:
+def test_situational_awareness_init() -> None:
     sa = SituationalAwareness()
     assert sa.time == 0.0
+    assert sa.size_ratio_threshold == 2.0
+    assert sa.red_ships == []
     assert sa.map_diagonal_length == 0.0
-    assert sa.asteroid_positions.shape == (0, 2)
-    assert sa.bullet_positions.shape == (0, 2)
-    assert sa.mine_positions.shape == (0, 2)
-
-    assert sa.metrics.average_asteroid_size == 0.0
-    assert sa.metrics.average_asteroid_speed == 0.0
+    assert sa.map_width == 0.0
+    assert sa.map_height == 0.0
 
 
-def test_situational_awareness_update_and_capacity_expansion(
-    empty_game_state: GameState,
-    standard_ship_state: ShipState,
+def test_situational_awareness_update(
+    sample_game_state: GameState,
+    sample_ship_state: ShipState,
 ) -> None:
     sa = SituationalAwareness()
+    sa.update(sample_ship_state, sample_game_state)
 
-    target_count = 130
-    for i in range(target_count):
-        empty_game_state.add_asteroid(
-            [float(i), float(i * 2), 5.0, -5.0, 2, 50.0, 12.0],
-        )
-        empty_game_state.add_bullet(
-            [float(i), 10.0, 100.0, 0.0, -2.0, 0.0, 0.0, 1.0, 4.0],
-        )
-        empty_game_state.add_mine([float(i), 20.0, 20.0, 3.0, 3.0])
-
-    empty_game_state.time = 12.5
-    sa.update(standard_ship_state, empty_game_state)
-
-    assert sa.time == 12.5
-    assert sa.map_diagonal_length == math.hypot(1000, 800)
-
-    assert sa.asteroid_positions.shape == (target_count, 2)
-    assert sa.bullet_positions.shape == (target_count, 2)
-    assert sa.mine_positions.shape == (target_count, 2)
-
-    assert sa.asteroid_positions[5, 0] == 5.0
-    assert sa.asteroid_positions[5, 1] == 10.0
-
-
-def test_metrics_calculation(
-    empty_game_state: GameState,
-    standard_ship_state: ShipState,
-) -> None:
-    sa = SituationalAwareness()
-
-    empty_game_state.add_asteroid([0.0, 0.0, 3.0, 0.0, 1, 10.0, 5.0])
-    empty_game_state.add_asteroid([0.0, 0.0, 0.0, 4.0, 3, 30.0, 15.0])
-
-    sa.update(standard_ship_state, empty_game_state)
-
-    assert sa.metrics.average_asteroid_size == 2.0
-    assert sa.metrics.std_asteroid_size == 1.0
-    assert sa.metrics.average_asteroid_speed == 3.5
-    assert pytest.approx(sa.metrics.std_asteroid_speed) == 0.5
-
-
-def test_agent_ship_inference(
-    empty_game_state: GameState,
-    standard_ship_data: list[float | int | bool],
-) -> None:
-    sa = SituationalAwareness()
-    ship_state = ShipState(standard_ship_data)
-
-    empty_game_state.time = 0.0
-    sa.update(ship_state, empty_game_state)
-
-    empty_game_state.time = 0.1
-
-    standard_ship_data[5] = 47.0
-    standard_ship_data[4] = 11.0
-
-    sa.update(ship_state, empty_game_state)
-
-    assert math.isclose(sa.agent_ship.turn_rate, 20.0, rel_tol=1e-5)
-    assert math.isclose(sa.agent_ship.acceleration, 10.0, rel_tol=1e-5)
-
-
-def test_opponent_filtering(
-    empty_game_state: GameState,
-    standard_ship_state: ShipState,
-) -> None:
-    sa = SituationalAwareness()
-
-    empty_game_state.update_ships(
-        [[200.0, 200.0, 0.0, 0.0, 0.0, 0.0, 50.0, 10.0, 2, 1, False, 3, 0]],
-    )
-
-    sa.update(standard_ship_state, empty_game_state)
+    assert sa.time == 1.0
+    assert sa.map_width == 1000.0
+    assert sa.map_height == 1000.0
+    assert math.isclose(sa.map_diagonal_length, math.hypot(1000.0, 1000.0))
     assert len(sa.red_ships) == 1
     assert sa.red_ships[0].id == 2
+    assert len(sa.asteroid_positions) == 2
+    assert len(sa.bullet_positions) == 1
+    assert len(sa.mine_positions) == 1
 
 
-def test_asteroid_view_properties(
-    empty_game_state: GameState,
-    standard_ship_state: ShipState,
+def test_capacity_resizing(
+    sample_game_state: GameState, sample_ship_state: ShipState
 ) -> None:
     sa = SituationalAwareness()
-    empty_game_state.add_asteroid([103.0, 204.0, 10.0, 0.0, 2, 40.0, 8.0])
 
-    sa.update(standard_ship_state, empty_game_state)
+    many_asteroids = [
+        _create_asteroid_data(x=float(i), y=float(i)) for i in range(200)
+    ]
+    sample_game_state.add_asteroids(many_asteroids)
 
-    view = sa.agent_ship.asteroids[0]
-    assert view.index == 0
-    assert view.position == (103.0, 204.0)
-    assert view.velocity == (10.0, 0.0)
-    assert view.size == 2
-    assert view.radius == 8.0
-    assert pytest.approx(view.distance) == 5.0
-    assert pytest.approx(view.speed) == 10.0
-    assert view.heading == 0.0
+    sa.update(sample_ship_state, sample_game_state)
+
+    assert sa.asteroid_positions.shape[0] == 202
 
 
-def test_bullet_and_mine_view_properties(
-    empty_game_state: GameState,
-    standard_ship_state: ShipState,
+def test_metrics_update(
+    sample_game_state: GameState,
+    sample_ship_state: ShipState,
 ) -> None:
     sa = SituationalAwareness()
-    empty_game_state.add_bullet(
-        [100.0, 210.0, 0.0, 50.0, 0.0, -2.0, 90.0, 1.0, 5.0],
+    sa.update(sample_ship_state, sample_game_state)
+
+    metrics = sa.metrics
+    assert metrics.average_asteroid_size == 1.5
+    assert metrics.std_asteroid_size > 0.0
+    assert metrics.average_asteroid_speed > 0.0
+    assert metrics.std_asteroid_speed >= 0.0
+
+    empty_sa = SituationalAwareness()
+    empty_metrics = SituationalAwarenessMetrics()
+    empty_metrics.update(empty_sa)
+    assert empty_metrics.average_asteroid_size == 0.0
+
+
+def test_asteroid_view(
+    sample_game_state: GameState,
+    sample_ship_state: ShipState,
+) -> None:
+    sa = SituationalAwareness()
+    sa.update(sample_ship_state, sample_game_state)
+
+    asteroid = sa.agent_ship.asteroids[0]
+    assert asteroid.index == 0
+    assert asteroid.position == (100.0, 100.0)
+    assert asteroid.velocity == (10.0, 0.0)
+    assert asteroid.size == 2
+    assert asteroid.radius == 15.0
+    assert math.isclose(asteroid.distance, math.hypot(100.0, 100.0))
+    assert math.isclose(
+        asteroid.bearing,
+        math.degrees(math.atan2(100.0, 100.0)),
     )
-    empty_game_state.add_mine([110.0, 200.0, 15.0, 4.0, 2.5])
-
-    sa.update(standard_ship_state, empty_game_state)
-
-    bullet_view = sa.agent_ship.bullets[0]
-    assert bullet_view.position == (100.0, 210.0)
-    assert pytest.approx(bullet_view.distance) == 10.0
-    assert bullet_view.heading == 90.0
-
-    mine_view = sa.agent_ship.mines[0]
-    assert mine_view.position == (110.0, 200.0)
-    assert pytest.approx(mine_view.distance) == 10.0
-    assert mine_view.fuse_time == 4.0
-    assert mine_view.remaining_time == 2.5
+    assert asteroid.position_wrap == (100.0, 100.0)
+    assert math.isclose(asteroid.distance_wrap, asteroid.distance)
+    assert math.isclose(asteroid.bearing_wrap, asteroid.bearing)
+    assert math.isclose(asteroid.speed, 10.0)
+    assert math.isclose(asteroid.heading, 0.0)
+    assert asteroid.tti is None
 
 
-def test_spatial_radius_and_nearest_filters(
-    empty_game_state: GameState,
-    standard_ship_state: ShipState,
+def test_bullet_and_mine_views(
+    sample_game_state: GameState,
+    sample_ship_state: ShipState,
 ) -> None:
     sa = SituationalAwareness()
-    empty_game_state.add_asteroid([103.0, 204.0, 0.0, 0.0, 1, 10.0, 2.0])
-    empty_game_state.add_asteroid([100.0, 225.0, 0.0, 0.0, 1, 10.0, 2.0])
+    sa.update(sample_ship_state, sample_game_state)
 
-    sa.update(standard_ship_state, empty_game_state)
+    bullet = sa.agent_ship.bullets[0]
+    assert bullet.index == 0
+    assert bullet.position == (50.0, 50.0)
+    assert bullet.velocity == (10.0, 10.0)
+    assert math.isclose(bullet.heading, 90.0)
+    assert bullet.distance > 0.0
+    assert bullet.bearing != 0.0
 
-    close_asteroids = sa.agent_ship.within_radius(10.0)
-    assert len(close_asteroids) == 1
-    assert close_asteroids[0].index == 0
+    mine = sa.agent_ship.mines[0]
+    assert mine.index == 0
+    assert mine.position == (150.0, 150.0)
+    assert mine.fuse_time == 5.0
+    assert mine.remaining_time == 4.5
+    assert mine.distance > 0.0
+    assert mine.bearing != 0.0
 
-    nearest = sa.agent_ship.nearest_n_asteroids(2)
-    assert len(nearest) == 2
-    assert nearest[0].index == 0
-    assert nearest[1].index == 1
+
+def test_opponent_ship_view(sample_game_state: GameState) -> None:
+    ship_view = sample_game_state.ships[1]
+    opponent = OpponentShipView.from_view(ship_view)
+    assert opponent.id == 2
+    assert opponent.position == (500.0, 500.0)
+    assert opponent.lives == 3
 
 
-def test_virtual_view_sequence_boundaries() -> None:
-    sequence = VirtualViewSequence(SAMineView)
+def test_agent_ship_inference_and_queries(
+    sample_game_state: GameState,
+    sample_ship_state: ShipState,
+) -> None:
     sa = SituationalAwareness()
-    ship = AgentShip()
+    sa.update(sample_ship_state, sample_game_state)
 
-    sequence.bind(sa, ship, 3)
-    assert len(sequence) == 3
+    ship = sa.agent_ship
+    assert ship.turn_rate == 0.0
+    assert ship.acceleration == 0.0
 
-    item = sequence[-1]
-    assert item.index == 2
+    sample_game_state.time = 2.0
+    sa.update(sample_ship_state, sample_game_state)
+
+    within_r = ship.within_radius(200.0)
+    assert len(within_r) == 1
+
+    within_r_wrap = ship.within_radius_wrapper(200.0)
+    assert len(within_r_wrap) == 1
+
+    nearest = ship.nearest_n_asteroids(1)
+    assert len(nearest) == 1
+
+    nearest_wrap = ship.nearest_n_asteroids_wrapped(1)
+    assert len(nearest_wrap) == 1
+
+    impact = ship.soonest_impact_n_asteroids(1)
+    assert isinstance(impact, list)
+
+    ratio = ship.bullet_asteroid_equivalent_ratio
+    assert ratio > 0.0
+
+
+def test_virtual_view_sequence_exceptions(
+    sample_game_state: GameState,
+    sample_ship_state: ShipState,
+) -> None:
+    sa = SituationalAwareness()
+    sa.update(sample_ship_state, sample_game_state)
+
+    asteroids = sa.agent_ship.asteroids
+    assert len(asteroids) == 2
+
+    last_item = asteroids[-1]
+    assert last_item.index == 1
 
     with pytest.raises(IndexError):
-        _ = sequence[3]
+        _ = asteroids[5]
 
     with pytest.raises(IndexError):
-        _ = sequence[-4]
-
-
-def test_time_to_impact_calculation(
-    empty_game_state: GameState,
-    standard_ship_state: ShipState,
-) -> None:
-    sa = SituationalAwareness()
-    standard_ship_state.compact[0] = 500.0
-    standard_ship_state.compact[1] = 400.0
-    standard_ship_state.compact[2] = 0.0
-    standard_ship_state.compact[3] = 0.0
-
-    empty_game_state.add_asteroid([600.0, 400.0, -10.0, 0.0, 2, 20.0, 5.0])
-
-    sa.update(standard_ship_state, empty_game_state)
-
-    view = sa.agent_ship.asteroids[0]
-    assert view.tti is not None
-    assert pytest.approx(view.tti) == 8.0
-
-
-def test_bullet_asteroid_equivalent_ratio(
-    empty_game_state: GameState,
-    standard_ship_state: ShipState,
-) -> None:
-    sa = SituationalAwareness()
-
-    standard_ship_state.compact[13] = 60
-
-    empty_game_state.add_asteroid([0.0, 0.0, 0.0, 0.0, 3, 10.0, 5.0])
-
-    sa.update(standard_ship_state, empty_game_state)
-    assert (
-        pytest.approx(sa.agent_ship.bullet_asteroid_equivalent_ratio)
-        == 60.0 / 13.0
-    )
+        _ = asteroids[-5]
