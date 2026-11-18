@@ -369,7 +369,10 @@ class AsteroidView:
     _index: Final[int]
 
     def __init__(
-        self, sa: SituationalAwareness, ship: AgentShip, index: int
+        self,
+        sa: SituationalAwareness,
+        ship: AgentShip,
+        index: int,
     ) -> None:
         self._sa = sa
         self._ship = ship
@@ -381,16 +384,22 @@ class AsteroidView:
 
     @property
     def position(self) -> tuple[float, float]:
+        asteroid_position = (  # pyright: ignore[reportAny]
+            self._sa.asteroid_positions[self._index]
+        )
         return (
-            self._sa.asteroid_positions[self._index, 0],
-            self._sa.asteroid_positions[self._index, 1],
+            float(asteroid_position[0]),  # pyright: ignore[reportAny]
+            float(asteroid_position[1]),  # pyright: ignore[reportAny]
         )
 
     @property
     def velocity(self) -> tuple[float, float]:
+        asteroid_velocity = (  # pyright: ignore[reportAny]
+            self._sa.asteroid_velocities[self._index]
+        )
         return (
-            self._sa.asteroid_velocities[self._index, 0],
-            self._sa.asteroid_velocities[self._index, 1],
+            float(asteroid_velocity[0]),  # pyright: ignore[reportAny]
+            float(asteroid_velocity[1]),  # pyright: ignore[reportAny]
         )
 
     @property
