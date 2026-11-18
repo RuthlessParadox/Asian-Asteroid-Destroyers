@@ -195,7 +195,8 @@ def test_situational_awareness_update(
 
 
 def test_capacity_resizing(
-    sample_game_state: GameState, sample_ship_state: ShipState
+    sample_game_state: GameState,
+    sample_ship_state: ShipState,
 ) -> None:
     sa = SituationalAwareness()
 
