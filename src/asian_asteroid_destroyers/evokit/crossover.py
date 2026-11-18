@@ -128,8 +128,12 @@ def cx_fuzzy_blend(
             output_1[rule_indices] = array_2[rule_indices]
             output_2[rule_indices] = array_1[rule_indices]
 
-        output_1_flat: FlatGenome = output_1.tolist()  # pyright: ignore[reportAny]
-        output_2_flat: FlatGenome = output_2.tolist()  # pyright: ignore[reportAny]
+        output_1_flat: FlatGenome = (  # pyright: ignore[reportAny]
+            output_1.tolist()
+        )
+        output_2_flat: FlatGenome = (  # pyright: ignore[reportAny]
+            output_2.tolist()
+        )
 
         individual_1[:] = repair_geometry_invariants(
             output_1_flat,
