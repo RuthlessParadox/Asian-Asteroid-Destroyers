@@ -12,6 +12,7 @@ from .evaluation import (
 )
 from .parsers import (
     parse_non_negative_float as parse_non_negative_float,
+    parse_non_negative_int as parse_non_negative_int,
     parse_positive_int as parse_positive_int,
 )
 from .trainer import (

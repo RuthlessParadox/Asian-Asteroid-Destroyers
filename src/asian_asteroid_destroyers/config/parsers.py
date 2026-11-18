@@ -7,6 +7,19 @@ def parse_positive_int(value: str) -> int:
     except ValueError:
         raise argparse.ArgumentTypeError(f"invalid int value: '{value}'")
 
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError(
+            f"Value must be positive integer (got {parsed})."
+        )
+    return parsed
+
+
+def parse_non_negative_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"invalid int value: '{value}'")
+
     if parsed < 0:
         raise argparse.ArgumentTypeError(
             f"Value must be non-negative integer (got {parsed})."
