@@ -7,6 +7,8 @@ import numpy as np
 from asian_asteroid_destroyers.fuzzy import TSKInferenceEngine
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import numpy.typing as npt
 
 __all__ = [
@@ -166,7 +168,7 @@ def flatten_chromosome(chromosome: ControllerChromosome) -> FlatGenome:
 
 
 def _hydrate_subsystem(
-    flat_genes: FlatGenome,
+    flat_genes: Sequence[float],
     start_index: int,
     template: SubsystemChromosome,
 ) -> tuple[SubsystemChromosome, int]:
@@ -236,7 +238,7 @@ def _hydrate_subsystem(
 
 
 def hydrate_chromosome_blueprint(
-    flat_genes: FlatGenome,
+    flat_genes: Sequence[float],
     template: ControllerChromosome,
 ) -> ControllerChromosome:
     """Hydrates a flat sequence of float genes into a structured chromosome object.
@@ -329,7 +331,7 @@ def create_geometry_repair_maps(
 
 
 def repair_geometry_invariants(
-    flat_genes: FlatGenome,
+    flat_genes: Sequence[float],
     triangular_array: npt.NDArray[np.intp],
     trapezoidal_array: npt.NDArray[np.intp],
     min_width: float = 0.05,
