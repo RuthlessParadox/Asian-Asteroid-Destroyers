@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Final, Generic, NamedTuple, TypeVar
+from typing import TYPE_CHECKING, Final, Generic, NamedTuple, Protocol, TypeVar
 
 import numpy as np
 
 from asian_asteroid_destroyers.geometry import trim_angle
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterator, Sequence
 
     import numpy.typing as npt
     from kesslergame.state_models import GameState, ShipState, ShipView
@@ -23,6 +23,13 @@ __all__ = [
     "AgentShip",
     "VirtualViewSequence",
 ]
+
+
+class _EntityWithPositionAndVelocity(Protocol):
+    @property
+    def position(self) -> tuple[float, float]: ...
+    @property
+    def velocity(self) -> tuple[float, float]: ...
 
 
 class SituationalAwareness:
@@ -122,60 +129,103 @@ class SituationalAwareness:
             dtype=np.float64,
         )
 
+    @staticmethod
+    def _resize_float_array(
+        required_capacity: int,
+        current_capacity: int,
+        array: npt.NDArray[np.float64],
+    ) -> npt.NDArray[np.float64]:
+        if required_capacity <= current_capacity:
+            return array
+        new_capacity = max(current_capacity * 2, required_capacity)
+        resized: npt.NDArray[np.float64] = np.resize(
+            array,
+            (new_capacity, 2) if array.ndim > 1 else new_capacity,
+        )
+        return resized
+
+    @staticmethod
+    def _resize_int_array(
+        required_capacity: int,
+        current_capacity: int,
+        array: npt.NDArray[np.int8],
+    ) -> npt.NDArray[np.int8]:
+        if required_capacity <= current_capacity:
+            return array
+        new_capacity = max(current_capacity * 2, required_capacity)
+        resized: npt.NDArray[np.int8] = np.resize(array, new_capacity)
+        return resized
+
     def _ensure_asteroid_capacity(self, required_capacity: int) -> None:
         current_capacity = self._asteroid_sizes.size
-        if required_capacity > current_capacity:
-            new_capacity = max(current_capacity * 2, required_capacity)
-            self._asteroid_positions = np.resize(
-                self._asteroid_positions,
-                (new_capacity, 2),
-            )
-            self._asteroid_velocities = np.resize(
-                self._asteroid_velocities,
-                (new_capacity, 2),
-            )
-            self._asteroid_sizes = np.resize(
-                self._asteroid_sizes,
-                new_capacity,
-            )
-            self._asteroid_radii = np.resize(
-                self._asteroid_radii,
-                new_capacity,
-            )
+        self._asteroid_positions = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._asteroid_positions,
+        )
+        self._asteroid_velocities = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._asteroid_velocities,
+        )
+        self._asteroid_sizes = self._resize_int_array(
+            required_capacity,
+            current_capacity,
+            self._asteroid_sizes,
+        )
+        self._asteroid_radii = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._asteroid_radii,
+        )
 
     def _ensure_bullet_capacity(self, required_capacity: int) -> None:
         current_capacity = self._bullet_headings.size
-        if required_capacity > current_capacity:
-            new_capacity = max(current_capacity * 2, required_capacity)
-            self._bullet_positions = np.resize(
-                self._bullet_positions,
-                (new_capacity, 2),
-            )
-            self._bullet_velocities = np.resize(
-                self._bullet_velocities,
-                (new_capacity, 2),
-            )
-            self._bullet_headings = np.resize(
-                self._bullet_headings,
-                new_capacity,
-            )
+        self._bullet_positions = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._bullet_positions,
+        )
+        self._bullet_velocities = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._bullet_velocities,
+        )
+        self._bullet_headings = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._bullet_headings,
+        )
 
     def _ensure_mine_capacity(self, required_capacity: int) -> None:
         current_capacity = self._mine_fuse_times.size
-        if required_capacity > current_capacity:
-            new_capacity = max(current_capacity * 2, required_capacity)
-            self._mine_positions = np.resize(
-                self._mine_positions,
-                (new_capacity, 2),
-            )
-            self._mine_fuse_times = np.resize(
-                self._mine_fuse_times,
-                new_capacity,
-            )
-            self._mine_remaining_times = np.resize(
-                self._mine_remaining_times,
-                new_capacity,
-            )
+        self._mine_positions = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._mine_positions,
+        )
+        self._mine_fuse_times = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._mine_fuse_times,
+        )
+        self._mine_remaining_times = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._mine_remaining_times,
+        )
+
+    @staticmethod
+    def _populate_positions_and_velocities(
+        entities: Sequence[_EntityWithPositionAndVelocity],
+        positions: npt.NDArray[np.float64],
+        velocities: npt.NDArray[np.float64],
+    ) -> None:
+        for index, entity in enumerate(entities):
+            positions[index, 0] = entity.position[0]
+            positions[index, 1] = entity.position[1]
+            velocities[index, 0] = entity.velocity[0]
+            velocities[index, 1] = entity.velocity[1]
 
     def update(self, ship_state: ShipState, game_state: GameState) -> None:
         self.time = game_state.time
@@ -188,22 +238,24 @@ class SituationalAwareness:
         asteroids_view = game_state.asteroids
         self._asteroid_count = len(asteroids_view)
         self._ensure_asteroid_capacity(self._asteroid_count)
+        self._populate_positions_and_velocities(
+            asteroids_view,
+            self._asteroid_positions,
+            self._asteroid_velocities,
+        )
         for index, asteroid in enumerate(asteroids_view):
-            self._asteroid_positions[index, 0] = asteroid.position[0]
-            self._asteroid_positions[index, 1] = asteroid.position[1]
-            self._asteroid_velocities[index, 0] = asteroid.velocity[0]
-            self._asteroid_velocities[index, 1] = asteroid.velocity[1]
             self._asteroid_sizes[index] = asteroid.size
             self._asteroid_radii[index] = asteroid.radius
 
         bullets_view = game_state.bullets
         self._bullet_count = len(bullets_view)
         self._ensure_bullet_capacity(self._bullet_count)
+        self._populate_positions_and_velocities(
+            bullets_view,
+            self._bullet_positions,
+            self._bullet_velocities,
+        )
         for index, bullet in enumerate(bullets_view):
-            self._bullet_positions[index, 0] = bullet.position[0]
-            self._bullet_positions[index, 1] = bullet.position[1]
-            self._bullet_velocities[index, 0] = bullet.velocity[0]
-            self._bullet_velocities[index, 1] = bullet.velocity[1]
             self._bullet_headings[index] = bullet.heading
 
         mines_view = game_state.mines
@@ -303,8 +355,8 @@ class SituationalAwarenessMetrics:
         if sizes.size > 0:
             self.average_asteroid_size = float(np.mean(sizes))
             self.std_asteroid_size = float(np.std(sizes))
-            speeds: npt.NDArray[np.float64] = np.linalg.norm(  # pyright: ignore[reportAny]
-                sa.asteroid_velocities, axis=1
+            speeds: npt.NDArray[np.float64] = (  # pyright: ignore[reportAny]
+                np.linalg.norm(sa.asteroid_velocities, axis=1)
             )
             self.average_asteroid_speed = float(np.mean(speeds))
             self.std_asteroid_speed = float(np.std(speeds))
@@ -343,50 +395,79 @@ class AsteroidView:
 
     @property
     def size(self) -> int:
-        return int(self._sa.asteroid_sizes[self._index])  # pyright: ignore[reportAny]
+        return int(
+            self._sa.asteroid_sizes[self._index]  # pyright: ignore[reportAny]
+        )
 
     @property
     def radius(self) -> float:
-        return self._sa.asteroid_radii[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._sa.asteroid_radii[self._index]  # pyright: ignore[reportAny]
+        )
 
     @property
     def distance(self) -> float:
-        return self._ship.distances[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._ship.distances[self._index]  # pyright: ignore[reportAny]
+        )
 
     @property
     def bearing(self) -> float:
-        return self._ship.bearings[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._ship.bearings[self._index]  # pyright: ignore[reportAny]
+        )
 
     @property
     def position_wrap(self) -> tuple[float, float]:
-        asteroid_position_wrap = self._ship.positions_wrap[self._index]  # pyright: ignore[reportAny]
-        return asteroid_position_wrap[0], asteroid_position_wrap[1]
+        asteroid_position_wrap = (  # pyright: ignore[reportAny]
+            self._ship.positions_wrap[self._index]
+        )
+        return (
+            float(asteroid_position_wrap[0]),  # pyright: ignore[reportAny]
+            float(asteroid_position_wrap[1]),  # pyright: ignore[reportAny]
+        )
 
     @property
     def distance_wrap(self) -> float:
-        return self._ship.distances_wrap[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._ship.distances_wrap[  # pyright: ignore[reportAny]
+                self._index
+            ]
+        )
 
     @property
     def bearing_wrap(self) -> float:
-        return self._ship.bearings_wrap[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._ship.bearings_wrap[self._index]  # pyright: ignore[reportAny]
+        )
 
     @property
     def speed(self) -> float:
-        velocity: npt.NDArray[np.float64] = self._sa.asteroid_velocities[  # pyright: ignore[reportAny]
-            self._index
-        ]
-        return math.hypot(velocity[0], velocity[1])  # pyright: ignore[reportAny]
+        velocity = (  # pyright: ignore[reportAny]
+            self._sa.asteroid_velocities[self._index]
+        )
+        return math.hypot(
+            float(velocity[0]),  # pyright: ignore[reportAny]
+            float(velocity[1]),  # pyright: ignore[reportAny]
+        )
 
     @property
     def heading(self) -> float:
-        velocity: npt.NDArray[np.float64] = self._sa.asteroid_velocities[  # pyright: ignore[reportAny]
-            self._index
-        ]
-        return math.degrees(math.atan2(velocity[1], velocity[0]))  # pyright: ignore[reportAny]
+        velocity = (  # pyright: ignore[reportAny]
+            self._sa.asteroid_velocities[self._index]
+        )
+        return math.degrees(
+            math.atan2(
+                float(velocity[1]),  # pyright: ignore[reportAny]
+                float(velocity[0]),  # pyright: ignore[reportAny]
+            )
+        )
 
     @property
     def tti(self) -> float | None:
-        asteroid_tti: np.float64 = self._ship.ttis[self._index]  # pyright: ignore[reportAny]
+        asteroid_tti = float(
+            self._ship.ttis[self._index]  # pyright: ignore[reportAny]
+        )
         return None if math.isnan(asteroid_tti) else asteroid_tti
 
 
@@ -409,29 +490,45 @@ class BulletView:
 
     @property
     def position(self) -> tuple[float, float]:
-        bullet_position: npt.NDArray[np.float64] = self._sa.bullet_positions[  # pyright: ignore[reportAny]
-            self._index
-        ]
-        return bullet_position[0], bullet_position[1]
+        bullet_position = (  # pyright: ignore[reportAny]
+            self._sa.bullet_positions[self._index]
+        )
+        return (
+            float(bullet_position[0]),  # pyright: ignore[reportAny]
+            float(bullet_position[1]),  # pyright: ignore[reportAny]
+        )
 
     @property
     def velocity(self) -> tuple[float, float]:
-        bullet_velocity: npt.NDArray[np.float64] = self._sa.bullet_velocities[  # pyright: ignore[reportAny]
-            self._index
-        ]
-        return bullet_velocity[0], bullet_velocity[1]
+        bullet_velocity = (  # pyright: ignore[reportAny]
+            self._sa.bullet_velocities[self._index]
+        )
+        return (
+            float(bullet_velocity[0]),  # pyright: ignore[reportAny]
+            float(bullet_velocity[1]),  # pyright: ignore[reportAny]
+        )
 
     @property
     def heading(self) -> float:
-        return self._sa.bullet_headings[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._sa.bullet_headings[self._index]  # pyright: ignore[reportAny]
+        )
 
     @property
     def distance(self) -> float:
-        return self._ship.bullet_distances[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._ship.bullet_distances[  # pyright: ignore[reportAny]
+                self._index
+            ]
+        )
 
     @property
     def bearing(self) -> float:
-        return self._ship.bullet_bearings[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._ship.bullet_bearings[  # pyright: ignore[reportAny]
+                self._index
+            ]
+        )
 
 
 class MineView:
@@ -453,26 +550,41 @@ class MineView:
 
     @property
     def position(self) -> tuple[float, float]:
+        mine_position = (  # pyright: ignore[reportAny]
+            self._sa.mine_positions[self._index]
+        )
         return (
-            self._sa.mine_positions[self._index, 0],
-            self._sa.mine_positions[self._index, 1],
+            float(mine_position[0]),  # pyright: ignore[reportAny]
+            float(mine_position[1]),  # pyright: ignore[reportAny]
         )
 
     @property
     def fuse_time(self) -> float:
-        return self._sa.mine_fuse_times[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._sa.mine_fuse_times[self._index]  # pyright: ignore[reportAny]
+        )
 
     @property
     def remaining_time(self) -> float:
-        return self._sa.mine_remaining_times[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._sa.mine_remaining_times[  # pyright: ignore[reportAny]
+                self._index
+            ]
+        )
 
     @property
     def distance(self) -> float:
-        return self._ship.mine_distances[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._ship.mine_distances[  # pyright: ignore[reportAny]
+                self._index
+            ]
+        )
 
     @property
     def bearing(self) -> float:
-        return self._ship.mine_bearings[self._index]  # pyright: ignore[reportAny]
+        return float(
+            self._ship.mine_bearings[self._index]  # pyright: ignore[reportAny]
+        )
 
 
 class OpponentShipView(NamedTuple):
@@ -688,27 +800,48 @@ class AgentShip:
         dt = self._time - self._last_time
         return (self.speed - self.last_speed) / dt if dt > 0 else 0.0
 
-    def _get_distances(self) -> npt.NDArray[np.float64]:
-        if self._cache_distance is not None:
-            return self._cache_distance
-
-        assert self._sa is not None
-        computed: npt.NDArray[np.float64] = np.linalg.norm(  # pyright: ignore[reportAny]
-            self._sa.asteroid_positions - np.array(self.position),
-            axis=1,
+    def _compute_distances(
+        self,
+        positions: npt.NDArray[np.float64],
+    ) -> npt.NDArray[np.float64]:
+        if positions.shape[0] == 0:
+            return np.empty(0, dtype=np.float64)
+        computed: npt.NDArray[np.float64] = (  # pyright: ignore[reportAny]
+            np.linalg.norm(
+                positions - np.array(self.position),
+                axis=1,
+            )
         )
-        self._cache_distance = computed
         return computed
+
+    def _compute_bearings(
+        self,
+        positions: npt.NDArray[np.float64],
+    ) -> npt.NDArray[np.float64]:
+        if positions.shape[0] == 0:
+            return np.empty(0, dtype=np.float64)
+        delta = positions - np.array(self.position)
+        return np.degrees(np.arctan2(delta[:, 1], delta[:, 0]))
+
+    def _get_distances(self) -> npt.NDArray[np.float64]:
+        if self._cache_distance is None:
+            assert self._sa is not None
+            computed = self._compute_distances(
+                self._sa.asteroid_positions,
+            )
+            self._cache_distance = computed
+            return computed
+        return self._cache_distance
 
     def _get_bearings(self) -> npt.NDArray[np.float64]:
-        if self._cache_bearing is not None:
-            return self._cache_bearing
-
-        assert self._sa is not None
-        delta = self._sa.asteroid_positions - np.array(self.position)
-        computed = np.degrees(np.arctan2(delta[:, 1], delta[:, 0]))
-        self._cache_bearing = computed
-        return computed
+        if self._cache_bearing is None:
+            assert self._sa is not None
+            computed = self._compute_bearings(
+                self._sa.asteroid_positions,
+            )
+            self._cache_bearing = computed
+            return computed
+        return self._cache_bearing
 
     def _get_positions_wrap(self) -> npt.NDArray[np.float64]:
         if self._cache_position_wrap is not None:
@@ -726,24 +859,22 @@ class AgentShip:
         return computed
 
     def _get_distances_wrap(self) -> npt.NDArray[np.float64]:
-        if self._cache_distance_wrap is not None:
-            return self._cache_distance_wrap
-
-        computed: npt.NDArray[np.float64] = np.linalg.norm(  # pyright: ignore[reportAny]
-            self._get_positions_wrap() - np.array(self.position),
-            axis=1,
-        )
-        self._cache_distance_wrap = computed
-        return computed
+        if self._cache_distance_wrap is None:
+            computed = self._compute_distances(
+                self._get_positions_wrap(),
+            )
+            self._cache_distance_wrap = computed
+            return computed
+        return self._cache_distance_wrap
 
     def _get_bearings_wrap(self) -> npt.NDArray[np.float64]:
-        if self._cache_bearing_wrap is not None:
-            return self._cache_bearing_wrap
-
-        delta = self._get_positions_wrap() - np.array(self.position)
-        computed = np.degrees(np.arctan2(delta[:, 1], delta[:, 0]))
-        self._cache_bearing_wrap = computed
-        return computed
+        if self._cache_bearing_wrap is None:
+            computed = self._compute_bearings(
+                self._get_positions_wrap(),
+            )
+            self._cache_bearing_wrap = computed
+            return computed
+        return self._cache_bearing_wrap
 
     def _get_ttis(self) -> npt.NDArray[np.float64]:
         if self._cache_tti is not None:
@@ -829,60 +960,44 @@ class AgentShip:
         return ttis
 
     def _get_bullet_distances(self) -> npt.NDArray[np.float64]:
-        if self._cache_bullet_distance is not None:
-            return self._cache_bullet_distance
-
-        assert self._sa is not None
-        if self._sa.bullet_headings.size == 0:
-            return np.empty(0, dtype=np.float64)
-
-        computed: npt.NDArray[np.float64] = np.linalg.norm(  # pyright: ignore[reportAny]
-            self._sa.bullet_positions - np.array(self.position),
-            axis=1,
-        )
-        self._cache_bullet_distance = computed
-        return computed
+        if self._cache_bullet_distance is None:
+            assert self._sa is not None
+            computed = self._compute_distances(
+                self._sa.bullet_positions,
+            )
+            self._cache_bullet_distance = computed
+            return computed
+        return self._cache_bullet_distance
 
     def _get_bullet_bearings(self) -> npt.NDArray[np.float64]:
-        if self._cache_bullet_bearing is not None:
-            return self._cache_bullet_bearing
-
-        assert self._sa is not None
-        if self._sa.bullet_headings.size == 0:
-            return np.empty(0, dtype=np.float64)
-
-        delta = self._sa.bullet_positions - np.array(self.position)
-        computed = np.degrees(np.arctan2(delta[:, 1], delta[:, 0]))
-        self._cache_bullet_bearing = computed
-        return computed
+        if self._cache_bullet_bearing is None:
+            assert self._sa is not None
+            computed = self._compute_bearings(
+                self._sa.bullet_positions,
+            )
+            self._cache_bullet_bearing = computed
+            return computed
+        return self._cache_bullet_bearing
 
     def _get_mine_distances(self) -> npt.NDArray[np.float64]:
-        if self._cache_mine_distance is not None:
-            return self._cache_mine_distance
-
-        assert self._sa is not None
-        if self._sa.mine_fuse_times.size == 0:
-            return np.empty(0, dtype=np.float64)
-
-        computed: npt.NDArray[np.float64] = np.linalg.norm(  # pyright: ignore[reportAny]
-            self._sa.mine_positions - np.array(self.position),
-            axis=1,
-        )
-        self._cache_mine_distance = computed
-        return computed
+        if self._cache_mine_distance is None:
+            assert self._sa is not None
+            computed = self._compute_distances(
+                self._sa.mine_positions,
+            )
+            self._cache_mine_distance = computed
+            return computed
+        return self._cache_mine_distance
 
     def _get_mine_bearings(self) -> npt.NDArray[np.float64]:
-        if self._cache_mine_bearing is not None:
-            return self._cache_mine_bearing
-
-        assert self._sa is not None
-        if self._sa.mine_fuse_times.size == 0:
-            return np.empty(0, dtype=np.float64)
-
-        delta = self._sa.mine_positions - np.array(self.position)
-        computed = np.degrees(np.arctan2(delta[:, 1], delta[:, 0]))
-        self._cache_mine_bearing = computed
-        return computed
+        if self._cache_mine_bearing is None:
+            assert self._sa is not None
+            computed = self._compute_bearings(
+                self._sa.mine_positions,
+            )
+            self._cache_mine_bearing = computed
+            return computed
+        return self._cache_mine_bearing
 
     def within_radius(self, radius: float) -> list[AsteroidView]:
         asteroid_distances = self.distances
@@ -892,7 +1007,7 @@ class AgentShip:
             if asteroid_distances[asteroid.index] < radius
         ]
 
-    def within_radius_wrap(self, radius: float) -> list[AsteroidView]:
+    def within_radius_wrapper(self, radius: float) -> list[AsteroidView]:
         asteroid_distances_wrapped = self.distances_wrap
         return [
             asteroid
@@ -901,16 +1016,18 @@ class AgentShip:
         ]
 
     def nearest_n_asteroids(self, n_asteroids: int) -> list[AsteroidView]:
-        indices: list[int] = np.argsort(self.distances)[:n_asteroids].tolist()  # pyright: ignore[reportAny]
+        indices: list[int] = (  # pyright: ignore[reportAny]
+            np.argsort(self.distances)[:n_asteroids].tolist()
+        )
         return [self.asteroids[index] for index in indices]
 
     def nearest_n_asteroids_wrapped(
         self,
         n_asteroids: int,
     ) -> list[AsteroidView]:
-        indices: list[int] = np.argsort(self.distances_wrap)[  # pyright: ignore[reportAny]
-            :n_asteroids
-        ].tolist()
+        indices: list[int] = (  # pyright: ignore[reportAny]
+            np.argsort(self.distances_wrap)[:n_asteroids].tolist()
+        )
         return [self.asteroids[index] for index in indices]
 
     def soonest_impact_n_asteroids(
@@ -927,7 +1044,9 @@ class AgentShip:
             :n_asteroids
         ]
 
-        indices: list[int] = sorted_indices.tolist()  # pyright: ignore[reportAny]
+        indices: list[int] = (  # pyright: ignore[reportAny]
+            sorted_indices.tolist()
+        )
         return [self.asteroids[index] for index in indices]
 
     def _update_bullet_ratio(self) -> float:
