@@ -4,9 +4,13 @@ import argparse
 import sys
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from .base import load_baseline_config
 from .parsers import parse_non_negative_float, parse_positive_int
+
+if TYPE_CHECKING:
+    from .base import EvolutionConfig
 
 
 @dataclass(frozen=True)
@@ -21,8 +25,10 @@ class TrainerArgs:
     resume: Path | None = None
 
 
-def get_trainer_config() -> TrainerArgs:
-    baseline = load_baseline_config("pyproject.toml")
+def get_trainer_config(baseline: EvolutionConfig | None = None) -> TrainerArgs:
+    if baseline is None:
+        baseline = load_baseline_config("pyproject.toml")
+
     parser = argparse.ArgumentParser(
         description="Run evolutionary training with layered hyperparameters.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
