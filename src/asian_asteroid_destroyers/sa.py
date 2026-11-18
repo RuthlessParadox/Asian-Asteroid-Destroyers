@@ -13,6 +13,17 @@ if TYPE_CHECKING:
     import numpy.typing as npt
     from kesslergame.state_models import GameState, ShipState, ShipView
 
+__all__ = [
+    "SituationalAwareness",
+    "SituationalAwarenessMetrics",
+    "AsteroidView",
+    "BulletView",
+    "MineView",
+    "OpponentShipView",
+    "AgentShip",
+    "VirtualViewSequence",
+]
+
 
 class SituationalAwareness:
     __slots__: tuple[str, ...] = (
