@@ -6,7 +6,83 @@ from hypothesis import given, strategies as st
 from asian_asteroid_destroyers.config import (
     parse_non_negative_float,
     parse_non_negative_int,
+    parse_positive_int,
 )
+
+
+@pytest.mark.parametrize(
+    "raw_value,expected",
+    [
+        ("1", 1),
+        ("5", 5),
+        ("100", 100),
+    ],
+)
+def test_parse_positive_int_valid(raw_value: str, expected: int) -> None:
+    assert parse_positive_int(raw_value) == expected
+
+
+@pytest.mark.parametrize(
+    "raw_value,expected_message",
+    [
+        ("abc", "invalid int value: 'abc'"),
+        ("3.14", "invalid int value: '3.14'"),
+    ],
+)
+def test_parse_positive_int_invalid_syntax(
+    raw_value: str,
+    expected_message: str,
+) -> None:
+    with pytest.raises(argparse.ArgumentTypeError) as exc_info:
+        _ = parse_positive_int(raw_value)
+    assert str(exc_info.value) == expected_message
+
+
+@pytest.mark.parametrize(
+    "raw_value,expected_message",
+    [
+        ("0", "Value must be positive integer (got 0)."),
+        ("-1", "Value must be positive integer (got -1)."),
+        ("-100", "Value must be positive integer (got -100)."),
+    ],
+)
+def test_parse_positive_int_zero_and_negative(
+    raw_value: str,
+    expected_message: str,
+) -> None:
+    with pytest.raises(argparse.ArgumentTypeError) as exc_info:
+        _ = parse_positive_int(raw_value)
+    assert str(exc_info.value) == expected_message
+
+
+@given(value=st.integers(min_value=1))
+def test_parse_positive_int_valid_property(value: int) -> None:
+    raw = str(value)
+    assert parse_positive_int(raw) == value
+
+
+@given(value=st.integers(max_value=0))
+def test_parse_positive_int_non_positive_property(value: int) -> None:
+    raw = str(value)
+    with pytest.raises(argparse.ArgumentTypeError):
+        _ = parse_positive_int(raw)
+
+
+@given(
+    raw=st.text(
+        alphabet=st.characters(blacklist_categories=("Nd",)),
+        min_size=1,
+    )
+)
+def test_parse_positive_int_invalid_syntax_property(raw: str) -> None:
+    try:
+        _ = int(raw)
+        return
+    except ValueError:
+        pass
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        _ = parse_positive_int(raw)
 
 
 @pytest.mark.parametrize(
