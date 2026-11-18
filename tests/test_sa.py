@@ -7,13 +7,13 @@ from types import ModuleType
 import pytest
 
 
-def mock_trim_angle(angle: float) -> float:
+def _mock_trim_angle(angle: float) -> float:
     return float((angle + 180.0) % 360.0 - 180.0)
 
 
 geometry_module = ModuleType("asian_asteroid_destroyers.geometry")
 geometry_module.trim_angle = (  # pyright: ignore[reportAttributeAccessIssue]
-    mock_trim_angle
+    _mock_trim_angle
 )
 sys.modules["asian_asteroid_destroyers.geometry"] = geometry_module
 
