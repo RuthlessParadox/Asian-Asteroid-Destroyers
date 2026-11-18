@@ -11,8 +11,8 @@ from asian_asteroid_destroyers.chromosomes import (
     get_default_controller_template,
     hydrate_chromosome_blueprint,
 )
+from asian_asteroid_destroyers.config import get_evaluation_config
 from asian_asteroid_destroyers.controllers import FuzzyController
-from asian_asteroid_destroyers.infrastructure import get_evaluation_config
 from asian_asteroid_destroyers.scenarios import load_scenario_suite
 
 if TYPE_CHECKING:
