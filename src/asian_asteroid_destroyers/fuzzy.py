@@ -9,6 +9,16 @@ from typing_extensions import override
 if TYPE_CHECKING:
     import numpy.typing as npt
 
+__all__ = [
+    "RuleEvaluationResult",
+    "MembershipFunction",
+    "TriangularMF",
+    "TrapezoidalMF",
+    "FuzzyClause",
+    "TSKRule",
+    "TSKInferenceEngine",
+]
+
 
 class RuleEvaluationResult(NamedTuple):
     firing_strength: float
