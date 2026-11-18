@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 
@@ -360,7 +360,7 @@ def repair_geometry_invariants(
             genes[trapezoidal_array[:, 2]] + min_width,
         )
 
-    return cast(FlatGenome, genes.tolist())
+    return genes.tolist()  # pyright: ignore[reportAny]
 
 
 def get_default_controller_template() -> ControllerChromosome:
