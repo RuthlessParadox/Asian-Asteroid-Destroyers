@@ -2,7 +2,7 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
-from .parsers import parse_positive_int
+from .parsers import parse_non_negative_int
 
 
 @dataclass(frozen=True)
@@ -25,7 +25,7 @@ def get_analyzer_config() -> AnalyzerArgs:
     )
     _ = parser.add_argument(
         "--track-genes",
-        type=parse_positive_int,
+        type=parse_non_negative_int,
         nargs="+",
         default=[],
         help="Space-separated list of flat gene indices to trace for drift",
@@ -42,9 +42,6 @@ def get_analyzer_config() -> AnalyzerArgs:
         raise FileNotFoundError(
             f"Target workspace path does not exist: {run_dir}"
         )
-
-    if any(gene < 0 for gene in track_genes):
-        raise ValueError("Gene indices must be non-negative integers.")
 
     if len(track_genes) != len(set(track_genes)):
         raise ValueError("Duplicate gene indices are not allowed.")
