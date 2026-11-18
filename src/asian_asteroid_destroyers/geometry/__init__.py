@@ -1,7 +1,4 @@
-from .angles import (
-    calculate_turn_rate as calculate_turn_rate,
-    trim_angle as trim_angle,
-)
+from .angles import trim_angle as trim_angle
 from .normalization import (
     denorm_thrust as denorm_thrust,
     denorm_turn_rate as denorm_turn_rate,
