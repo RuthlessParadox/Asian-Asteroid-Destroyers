@@ -14,14 +14,14 @@ if TYPE_CHECKING:
     from kesslergame.state_models import GameState, ShipState, ShipView
 
 __all__ = [
-    "SituationalAwareness",
+    "OpponentShipView",
     "SituationalAwarenessMetrics",
+    "VirtualViewSequence",
     "AsteroidView",
     "BulletView",
     "MineView",
-    "OpponentShipView",
     "AgentShip",
-    "VirtualViewSequence",
+    "SituationalAwareness",
 ]
 
 
@@ -32,303 +32,26 @@ class _EntityWithPositionAndVelocity(Protocol):
     def velocity(self) -> tuple[float, float]: ...
 
 
-class SituationalAwareness:
-    __slots__: tuple[str, ...] = (
-        "time",
-        "agent_ship",
-        "metrics",
-        "size_ratio_threshold",
-        "red_ships",
-        "map_diagonal_length",
-        "_asteroid_count",
-        "_bullet_count",
-        "_mine_count",
-        "_map_size",
-        "_asteroid_positions",
-        "_asteroid_velocities",
-        "_asteroid_sizes",
-        "_asteroid_radii",
-        "_bullet_positions",
-        "_bullet_velocities",
-        "_bullet_headings",
-        "_mine_positions",
-        "_mine_fuse_times",
-        "_mine_remaining_times",
-    )
+class OpponentShipView(NamedTuple):
+    position: tuple[float, float]
+    velocity: tuple[float, float]
+    radius: float
+    lives: int
+    speed: float
+    heading: float
+    id: int
 
-    time: float
-    agent_ship: AgentShip
-    metrics: SituationalAwarenessMetrics
-    size_ratio_threshold: Final[float]
-    red_ships: list[OpponentShipView]
-    map_diagonal_length: float
-
-    _asteroid_count: int
-    _bullet_count: int
-    _mine_count: int
-
-    _map_size: npt.NDArray[np.float64]
-
-    _asteroid_positions: npt.NDArray[np.float64]
-    _asteroid_velocities: npt.NDArray[np.float64]
-    _asteroid_sizes: npt.NDArray[np.int8]
-    _asteroid_radii: npt.NDArray[np.float64]
-
-    _bullet_positions: npt.NDArray[np.float64]
-    _bullet_velocities: npt.NDArray[np.float64]
-    _bullet_headings: npt.NDArray[np.float64]
-
-    _mine_positions: npt.NDArray[np.float64]
-    _mine_fuse_times: npt.NDArray[np.float64]
-    _mine_remaining_times: npt.NDArray[np.float64]
-
-    def __init__(self) -> None:
-        self.time = 0.0
-        self.agent_ship = AgentShip()
-        self.metrics = SituationalAwarenessMetrics()
-        self.size_ratio_threshold = 2.0
-        self.red_ships = []
-        self.map_diagonal_length = 0.0
-
-        self._asteroid_count = 0
-        self._bullet_count = 0
-        self._mine_count = 0
-
-        self._map_size = np.zeros(2, dtype=np.float64)
-
-        initial_capacity = 128
-
-        self._asteroid_positions = np.zeros(
-            (initial_capacity, 2),
-            dtype=np.float64,
+    @classmethod
+    def from_view(cls, ship_view: ShipView) -> OpponentShipView:
+        return cls(
+            position=ship_view.position,
+            velocity=ship_view.velocity,
+            radius=ship_view.radius,
+            lives=ship_view.lives_remaining,
+            speed=ship_view.speed,
+            heading=ship_view.heading,
+            id=ship_view.id,
         )
-        self._asteroid_velocities = np.zeros(
-            (initial_capacity, 2),
-            dtype=np.float64,
-        )
-        self._asteroid_sizes = np.zeros(initial_capacity, dtype=np.int8)
-        self._asteroid_radii = np.zeros(initial_capacity, dtype=np.float64)
-
-        self._bullet_positions = np.zeros(
-            (initial_capacity, 2),
-            dtype=np.float64,
-        )
-        self._bullet_velocities = np.zeros(
-            (initial_capacity, 2),
-            dtype=np.float64,
-        )
-        self._bullet_headings = np.zeros(initial_capacity, dtype=np.float64)
-
-        self._mine_positions = np.zeros(
-            (initial_capacity, 2),
-            dtype=np.float64,
-        )
-        self._mine_fuse_times = np.zeros(initial_capacity, dtype=np.float64)
-        self._mine_remaining_times = np.zeros(
-            initial_capacity,
-            dtype=np.float64,
-        )
-
-    @staticmethod
-    def _resize_float_array(
-        required_capacity: int,
-        current_capacity: int,
-        array: npt.NDArray[np.float64],
-    ) -> npt.NDArray[np.float64]:
-        if required_capacity <= current_capacity:
-            return array
-        new_capacity = max(current_capacity * 2, required_capacity)
-        resized: npt.NDArray[np.float64] = np.resize(
-            array,
-            (new_capacity, 2) if array.ndim > 1 else new_capacity,
-        )
-        return resized
-
-    @staticmethod
-    def _resize_int_array(
-        required_capacity: int,
-        current_capacity: int,
-        array: npt.NDArray[np.int8],
-    ) -> npt.NDArray[np.int8]:
-        if required_capacity <= current_capacity:
-            return array
-        new_capacity = max(current_capacity * 2, required_capacity)
-        resized: npt.NDArray[np.int8] = np.resize(array, new_capacity)
-        return resized
-
-    def _ensure_asteroid_capacity(self, required_capacity: int) -> None:
-        current_capacity = self._asteroid_sizes.size
-        self._asteroid_positions = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._asteroid_positions,
-        )
-        self._asteroid_velocities = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._asteroid_velocities,
-        )
-        self._asteroid_sizes = self._resize_int_array(
-            required_capacity,
-            current_capacity,
-            self._asteroid_sizes,
-        )
-        self._asteroid_radii = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._asteroid_radii,
-        )
-
-    def _ensure_bullet_capacity(self, required_capacity: int) -> None:
-        current_capacity = self._bullet_headings.size
-        self._bullet_positions = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._bullet_positions,
-        )
-        self._bullet_velocities = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._bullet_velocities,
-        )
-        self._bullet_headings = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._bullet_headings,
-        )
-
-    def _ensure_mine_capacity(self, required_capacity: int) -> None:
-        current_capacity = self._mine_fuse_times.size
-        self._mine_positions = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._mine_positions,
-        )
-        self._mine_fuse_times = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._mine_fuse_times,
-        )
-        self._mine_remaining_times = self._resize_float_array(
-            required_capacity,
-            current_capacity,
-            self._mine_remaining_times,
-        )
-
-    @staticmethod
-    def _populate_positions_and_velocities(
-        entities: Sequence[_EntityWithPositionAndVelocity],
-        positions: npt.NDArray[np.float64],
-        velocities: npt.NDArray[np.float64],
-    ) -> None:
-        for index, entity in enumerate(entities):
-            positions[index, 0] = entity.position[0]
-            positions[index, 1] = entity.position[1]
-            velocities[index, 0] = entity.velocity[0]
-            velocities[index, 1] = entity.velocity[1]
-
-    def update(self, ship_state: ShipState, game_state: GameState) -> None:
-        self.time = game_state.time
-
-        if self.map_diagonal_length == 0.0:
-            map_x, map_y = game_state.map_size
-            self._map_size = np.array([map_x, map_y], dtype=np.float64)
-            self.map_diagonal_length = math.hypot(map_x, map_y)
-
-        asteroids_view = game_state.asteroids
-        self._asteroid_count = len(asteroids_view)
-        self._ensure_asteroid_capacity(self._asteroid_count)
-        self._populate_positions_and_velocities(
-            asteroids_view,
-            self._asteroid_positions,
-            self._asteroid_velocities,
-        )
-        for index, asteroid in enumerate(asteroids_view):
-            self._asteroid_sizes[index] = asteroid.size
-            self._asteroid_radii[index] = asteroid.radius
-
-        bullets_view = game_state.bullets
-        self._bullet_count = len(bullets_view)
-        self._ensure_bullet_capacity(self._bullet_count)
-        self._populate_positions_and_velocities(
-            bullets_view,
-            self._bullet_positions,
-            self._bullet_velocities,
-        )
-        for index, bullet in enumerate(bullets_view):
-            self._bullet_headings[index] = bullet.heading
-
-        mines_view = game_state.mines
-        self._mine_count = len(mines_view)
-        self._ensure_mine_capacity(self._mine_count)
-        for index, mine in enumerate(mines_view):
-            self._mine_positions[index, 0] = mine.position[0]
-            self._mine_positions[index, 1] = mine.position[1]
-            self._mine_fuse_times[index] = mine.fuse_time
-            self._mine_remaining_times[index] = mine.remaining_time
-
-        self.agent_ship.update(game_state, ship_state, self)
-
-        self.red_ships.clear()
-        self.red_ships = [
-            OpponentShipView.from_view(ship)
-            for ship in game_state.ships
-            if ship.id != ship_state.id
-        ]
-
-        self.metrics.update(self)
-
-    @property
-    def map_size(self) -> npt.NDArray[np.float64]:
-        return self._map_size
-
-    @property
-    def map_width(self) -> float:
-        return float(self._map_size.item(0))
-
-    @property
-    def map_height(self) -> float:
-        return float(self._map_size.item(1))
-
-    @property
-    def asteroid_positions(self) -> npt.NDArray[np.float64]:
-        return self._asteroid_positions[: self._asteroid_count]
-
-    @property
-    def asteroid_velocities(self) -> npt.NDArray[np.float64]:
-        return self._asteroid_velocities[: self._asteroid_count]
-
-    @property
-    def asteroid_sizes(self) -> npt.NDArray[np.int8]:
-        return self._asteroid_sizes[: self._asteroid_count]
-
-    @property
-    def asteroid_radii(self) -> npt.NDArray[np.float64]:
-        return self._asteroid_radii[: self._asteroid_count]
-
-    @property
-    def bullet_positions(self) -> npt.NDArray[np.float64]:
-        return self._bullet_positions[: self._bullet_count]
-
-    @property
-    def bullet_velocities(self) -> npt.NDArray[np.float64]:
-        return self._bullet_velocities[: self._bullet_count]
-
-    @property
-    def bullet_headings(self) -> npt.NDArray[np.float64]:
-        return self._bullet_headings[: self._bullet_count]
-
-    @property
-    def mine_positions(self) -> npt.NDArray[np.float64]:
-        return self._mine_positions[: self._mine_count]
-
-    @property
-    def mine_fuse_times(self) -> npt.NDArray[np.float64]:
-        return self._mine_fuse_times[: self._mine_count]
-
-    @property
-    def mine_remaining_times(self) -> npt.NDArray[np.float64]:
-        return self._mine_remaining_times[: self._mine_count]
 
 
 class SituationalAwarenessMetrics:
@@ -360,6 +83,52 @@ class SituationalAwarenessMetrics:
             )
             self.average_asteroid_speed = float(np.mean(speeds))
             self.std_asteroid_speed = float(np.std(speeds))
+
+
+T = TypeVar("T", "AsteroidView", "BulletView", "MineView")
+
+
+class VirtualViewSequence(Generic[T]):
+    __slots__: tuple[str, ...] = ("_view_class", "_sa", "_ship", "_size")
+    _view_class: Final[type[T]]
+    _sa: SituationalAwareness | None
+    _ship: AgentShip | None
+    _size: int
+
+    def __init__(self, view_class: type[T]) -> None:
+        self._view_class = view_class
+        self._sa = None
+        self._ship = None
+        self._size = 0
+
+    def __len__(self) -> int:
+        return self._size
+
+    def __getitem__(self, index: int) -> T:
+        if index < 0:
+            index += self._size
+        if index < 0 or index >= self._size:
+            raise IndexError(
+                "Virtual sequence index out of tactical range bounds."
+            )
+
+        assert self._sa is not None
+        assert self._ship is not None
+        return self._view_class(self._sa, self._ship, index)
+
+    def __iter__(self) -> Iterator[T]:
+        for i in range(self._size):
+            yield self[i]
+
+    def bind(
+        self,
+        sa: SituationalAwareness,
+        ship: AgentShip,
+        size: int,
+    ) -> None:
+        self._sa = sa
+        self._ship = ship
+        self._size = size
 
 
 class AsteroidView:
@@ -596,28 +365,6 @@ class MineView:
         )
 
 
-class OpponentShipView(NamedTuple):
-    position: tuple[float, float]
-    velocity: tuple[float, float]
-    radius: float
-    lives: int
-    speed: float
-    heading: float
-    id: int
-
-    @classmethod
-    def from_view(cls, ship_view: ShipView) -> OpponentShipView:
-        return cls(
-            position=ship_view.position,
-            velocity=ship_view.velocity,
-            radius=ship_view.radius,
-            lives=ship_view.lives_remaining,
-            speed=ship_view.speed,
-            heading=ship_view.heading,
-            id=ship_view.id,
-        )
-
-
 class AgentShip:
     __slots__: tuple[str, ...] = (
         "_time",
@@ -717,6 +464,46 @@ class AgentShip:
         self._cache_mine_distance = None
         self._cache_mine_bearing = None
 
+    @property
+    def distances(self) -> npt.NDArray[np.float64]:
+        return self._get_distances()
+
+    @property
+    def bearings(self) -> npt.NDArray[np.float64]:
+        return self._get_bearings()
+
+    @property
+    def positions_wrap(self) -> npt.NDArray[np.float64]:
+        return self._get_positions_wrap()
+
+    @property
+    def distances_wrap(self) -> npt.NDArray[np.float64]:
+        return self._get_distances_wrap()
+
+    @property
+    def bearings_wrap(self) -> npt.NDArray[np.float64]:
+        return self._get_bearings_wrap()
+
+    @property
+    def ttis(self) -> npt.NDArray[np.float64]:
+        return self._get_ttis()
+
+    @property
+    def bullet_distances(self) -> npt.NDArray[np.float64]:
+        return self._get_bullet_distances()
+
+    @property
+    def bullet_bearings(self) -> npt.NDArray[np.float64]:
+        return self._get_bullet_bearings()
+
+    @property
+    def mine_distances(self) -> npt.NDArray[np.float64]:
+        return self._get_mine_distances()
+
+    @property
+    def mine_bearings(self) -> npt.NDArray[np.float64]:
+        return self._get_mine_bearings()
+
     def update(
         self,
         game_state: GameState,
@@ -757,45 +544,55 @@ class AgentShip:
         self.bullets.bind(sa, self, sa.bullet_headings.size)
         self.mines.bind(sa, self, sa.mine_fuse_times.size)
 
-    @property
-    def distances(self) -> npt.NDArray[np.float64]:
-        return self._get_distances()
+    def within_radius(self, radius: float) -> list[AsteroidView]:
+        asteroid_distances = self.distances
+        return [
+            asteroid
+            for asteroid in self.asteroids
+            if asteroid_distances[asteroid.index] < radius
+        ]
 
-    @property
-    def bearings(self) -> npt.NDArray[np.float64]:
-        return self._get_bearings()
+    def within_radius_wrapper(self, radius: float) -> list[AsteroidView]:
+        asteroid_distances_wrapped = self.distances_wrap
+        return [
+            asteroid
+            for asteroid in self.asteroids
+            if asteroid_distances_wrapped[asteroid.index] < radius
+        ]
 
-    @property
-    def positions_wrap(self) -> npt.NDArray[np.float64]:
-        return self._get_positions_wrap()
+    def nearest_n_asteroids(self, n_asteroids: int) -> list[AsteroidView]:
+        indices: list[int] = (  # pyright: ignore[reportAny]
+            np.argsort(self.distances)[:n_asteroids].tolist()
+        )
+        return [self.asteroids[index] for index in indices]
 
-    @property
-    def distances_wrap(self) -> npt.NDArray[np.float64]:
-        return self._get_distances_wrap()
+    def nearest_n_asteroids_wrapped(
+        self,
+        n_asteroids: int,
+    ) -> list[AsteroidView]:
+        indices: list[int] = (  # pyright: ignore[reportAny]
+            np.argsort(self.distances_wrap)[:n_asteroids].tolist()
+        )
+        return [self.asteroids[index] for index in indices]
 
-    @property
-    def bearings_wrap(self) -> npt.NDArray[np.float64]:
-        return self._get_bearings_wrap()
+    def soonest_impact_n_asteroids(
+        self,
+        n_asteroids: int,
+    ) -> list[AsteroidView]:
+        ttis = self.ttis
+        valid_mask = ~np.isnan(ttis)
+        if not np.any(valid_mask):
+            return []
 
-    @property
-    def ttis(self) -> npt.NDArray[np.float64]:
-        return self._get_ttis()
+        valid_indices = np.where(valid_mask)[0]
+        sorted_indices = valid_indices[np.argsort(ttis[valid_mask])][
+            :n_asteroids
+        ]
 
-    @property
-    def bullet_distances(self) -> npt.NDArray[np.float64]:
-        return self._get_bullet_distances()
-
-    @property
-    def bullet_bearings(self) -> npt.NDArray[np.float64]:
-        return self._get_bullet_bearings()
-
-    @property
-    def mine_distances(self) -> npt.NDArray[np.float64]:
-        return self._get_mine_distances()
-
-    @property
-    def mine_bearings(self) -> npt.NDArray[np.float64]:
-        return self._get_mine_bearings()
+        indices: list[int] = (  # pyright: ignore[reportAny]
+            sorted_indices.tolist()
+        )
+        return [self.asteroids[index] for index in indices]
 
     def _infer_turn_rate(self) -> float:
         dt = self._time - self._last_time
@@ -1008,56 +805,6 @@ class AgentShip:
             return computed
         return self._cache_mine_bearing
 
-    def within_radius(self, radius: float) -> list[AsteroidView]:
-        asteroid_distances = self.distances
-        return [
-            asteroid
-            for asteroid in self.asteroids
-            if asteroid_distances[asteroid.index] < radius
-        ]
-
-    def within_radius_wrapper(self, radius: float) -> list[AsteroidView]:
-        asteroid_distances_wrapped = self.distances_wrap
-        return [
-            asteroid
-            for asteroid in self.asteroids
-            if asteroid_distances_wrapped[asteroid.index] < radius
-        ]
-
-    def nearest_n_asteroids(self, n_asteroids: int) -> list[AsteroidView]:
-        indices: list[int] = (  # pyright: ignore[reportAny]
-            np.argsort(self.distances)[:n_asteroids].tolist()
-        )
-        return [self.asteroids[index] for index in indices]
-
-    def nearest_n_asteroids_wrapped(
-        self,
-        n_asteroids: int,
-    ) -> list[AsteroidView]:
-        indices: list[int] = (  # pyright: ignore[reportAny]
-            np.argsort(self.distances_wrap)[:n_asteroids].tolist()
-        )
-        return [self.asteroids[index] for index in indices]
-
-    def soonest_impact_n_asteroids(
-        self,
-        n_asteroids: int,
-    ) -> list[AsteroidView]:
-        ttis = self.ttis
-        valid_mask = ~np.isnan(ttis)
-        if not np.any(valid_mask):
-            return []
-
-        valid_indices = np.where(valid_mask)[0]
-        sorted_indices = valid_indices[np.argsort(ttis[valid_mask])][
-            :n_asteroids
-        ]
-
-        indices: list[int] = (  # pyright: ignore[reportAny]
-            sorted_indices.tolist()
-        )
-        return [self.asteroids[index] for index in indices]
-
     def _update_bullet_ratio(self) -> float:
         assert self._sa is not None
         sizes = self._sa.asteroid_sizes
@@ -1076,47 +823,300 @@ class AgentShip:
         )
 
 
-T = TypeVar("T", AsteroidView, BulletView, MineView)
+class SituationalAwareness:
+    __slots__: tuple[str, ...] = (
+        "time",
+        "agent_ship",
+        "metrics",
+        "size_ratio_threshold",
+        "red_ships",
+        "map_diagonal_length",
+        "_asteroid_count",
+        "_bullet_count",
+        "_mine_count",
+        "_map_size",
+        "_asteroid_positions",
+        "_asteroid_velocities",
+        "_asteroid_sizes",
+        "_asteroid_radii",
+        "_bullet_positions",
+        "_bullet_velocities",
+        "_bullet_headings",
+        "_mine_positions",
+        "_mine_fuse_times",
+        "_mine_remaining_times",
+    )
 
+    time: float
+    agent_ship: AgentShip
+    metrics: SituationalAwarenessMetrics
+    size_ratio_threshold: Final[float]
+    red_ships: list[OpponentShipView]
+    map_diagonal_length: float
 
-class VirtualViewSequence(Generic[T]):
-    __slots__: tuple[str, ...] = ("_view_class", "_sa", "_ship", "_size")
-    _view_class: Final[type[T]]
-    _sa: SituationalAwareness | None
-    _ship: AgentShip | None
-    _size: int
+    _asteroid_count: int
+    _bullet_count: int
+    _mine_count: int
 
-    def __init__(self, view_class: type[T]) -> None:
-        self._view_class = view_class
-        self._sa = None
-        self._ship = None
-        self._size = 0
+    _map_size: npt.NDArray[np.float64]
 
-    def bind(
-        self,
-        sa: SituationalAwareness,
-        ship: AgentShip,
-        size: int,
+    _asteroid_positions: npt.NDArray[np.float64]
+    _asteroid_velocities: npt.NDArray[np.float64]
+    _asteroid_sizes: npt.NDArray[np.int8]
+    _asteroid_radii: npt.NDArray[np.float64]
+
+    _bullet_positions: npt.NDArray[np.float64]
+    _bullet_velocities: npt.NDArray[np.float64]
+    _bullet_headings: npt.NDArray[np.float64]
+
+    _mine_positions: npt.NDArray[np.float64]
+    _mine_fuse_times: npt.NDArray[np.float64]
+    _mine_remaining_times: npt.NDArray[np.float64]
+
+    def __init__(self) -> None:
+        self.time = 0.0
+        self.agent_ship = AgentShip()
+        self.metrics = SituationalAwarenessMetrics()
+        self.size_ratio_threshold = 2.0
+        self.red_ships = []
+        self.map_diagonal_length = 0.0
+
+        self._asteroid_count = 0
+        self._bullet_count = 0
+        self._mine_count = 0
+
+        self._map_size = np.zeros(2, dtype=np.float64)
+
+        initial_capacity = 128
+
+        self._asteroid_positions = np.zeros(
+            (initial_capacity, 2),
+            dtype=np.float64,
+        )
+        self._asteroid_velocities = np.zeros(
+            (initial_capacity, 2),
+            dtype=np.float64,
+        )
+        self._asteroid_sizes = np.zeros(initial_capacity, dtype=np.int8)
+        self._asteroid_radii = np.zeros(initial_capacity, dtype=np.float64)
+
+        self._bullet_positions = np.zeros(
+            (initial_capacity, 2),
+            dtype=np.float64,
+        )
+        self._bullet_velocities = np.zeros(
+            (initial_capacity, 2),
+            dtype=np.float64,
+        )
+        self._bullet_headings = np.zeros(initial_capacity, dtype=np.float64)
+
+        self._mine_positions = np.zeros(
+            (initial_capacity, 2),
+            dtype=np.float64,
+        )
+        self._mine_fuse_times = np.zeros(initial_capacity, dtype=np.float64)
+        self._mine_remaining_times = np.zeros(
+            initial_capacity,
+            dtype=np.float64,
+        )
+
+    @property
+    def map_size(self) -> npt.NDArray[np.float64]:
+        return self._map_size
+
+    @property
+    def map_width(self) -> float:
+        return float(self._map_size.item(0))
+
+    @property
+    def map_height(self) -> float:
+        return float(self._map_size.item(1))
+
+    @property
+    def asteroid_positions(self) -> npt.NDArray[np.float64]:
+        return self._asteroid_positions[: self._asteroid_count]
+
+    @property
+    def asteroid_velocities(self) -> npt.NDArray[np.float64]:
+        return self._asteroid_velocities[: self._asteroid_count]
+
+    @property
+    def asteroid_sizes(self) -> npt.NDArray[np.int8]:
+        return self._asteroid_sizes[: self._asteroid_count]
+
+    @property
+    def asteroid_radii(self) -> npt.NDArray[np.float64]:
+        return self._asteroid_radii[: self._asteroid_count]
+
+    @property
+    def bullet_positions(self) -> npt.NDArray[np.float64]:
+        return self._bullet_positions[: self._bullet_count]
+
+    @property
+    def bullet_velocities(self) -> npt.NDArray[np.float64]:
+        return self._bullet_velocities[: self._bullet_count]
+
+    @property
+    def bullet_headings(self) -> npt.NDArray[np.float64]:
+        return self._bullet_headings[: self._bullet_count]
+
+    @property
+    def mine_positions(self) -> npt.NDArray[np.float64]:
+        return self._mine_positions[: self._mine_count]
+
+    @property
+    def mine_fuse_times(self) -> npt.NDArray[np.float64]:
+        return self._mine_fuse_times[: self._mine_count]
+
+    @property
+    def mine_remaining_times(self) -> npt.NDArray[np.float64]:
+        return self._mine_remaining_times[: self._mine_count]
+
+    def update(self, ship_state: ShipState, game_state: GameState) -> None:
+        self.time = game_state.time
+
+        if self.map_diagonal_length == 0.0:
+            map_x, map_y = game_state.map_size
+            self._map_size = np.array([map_x, map_y], dtype=np.float64)
+            self.map_diagonal_length = math.hypot(map_x, map_y)
+
+        asteroids_view = game_state.asteroids
+        self._asteroid_count = len(asteroids_view)
+        self._ensure_asteroid_capacity(self._asteroid_count)
+        self._populate_positions_and_velocities(
+            asteroids_view,
+            self._asteroid_positions,
+            self._asteroid_velocities,
+        )
+        for index, asteroid in enumerate(asteroids_view):
+            self._asteroid_sizes[index] = asteroid.size
+            self._asteroid_radii[index] = asteroid.radius
+
+        bullets_view = game_state.bullets
+        self._bullet_count = len(bullets_view)
+        self._ensure_bullet_capacity(self._bullet_count)
+        self._populate_positions_and_velocities(
+            bullets_view,
+            self._bullet_positions,
+            self._bullet_velocities,
+        )
+        for index, bullet in enumerate(bullets_view):
+            self._bullet_headings[index] = bullet.heading
+
+        mines_view = game_state.mines
+        self._mine_count = len(mines_view)
+        self._ensure_mine_capacity(self._mine_count)
+        for index, mine in enumerate(mines_view):
+            self._mine_positions[index, 0] = mine.position[0]
+            self._mine_positions[index, 1] = mine.position[1]
+            self._mine_fuse_times[index] = mine.fuse_time
+            self._mine_remaining_times[index] = mine.remaining_time
+
+        self.agent_ship.update(game_state, ship_state, self)
+
+        self.red_ships.clear()
+        self.red_ships = [
+            OpponentShipView.from_view(ship)
+            for ship in game_state.ships
+            if ship.id != ship_state.id
+        ]
+
+        self.metrics.update(self)
+
+    @staticmethod
+    def _resize_float_array(
+        required_capacity: int,
+        current_capacity: int,
+        array: npt.NDArray[np.float64],
+    ) -> npt.NDArray[np.float64]:
+        if required_capacity <= current_capacity:
+            return array
+        new_capacity = max(current_capacity * 2, required_capacity)
+        resized: npt.NDArray[np.float64] = np.resize(
+            array,
+            (new_capacity, 2) if array.ndim > 1 else new_capacity,
+        )
+        return resized
+
+    @staticmethod
+    def _resize_int_array(
+        required_capacity: int,
+        current_capacity: int,
+        array: npt.NDArray[np.int8],
+    ) -> npt.NDArray[np.int8]:
+        if required_capacity <= current_capacity:
+            return array
+        new_capacity = max(current_capacity * 2, required_capacity)
+        resized: npt.NDArray[np.int8] = np.resize(array, new_capacity)
+        return resized
+
+    def _ensure_asteroid_capacity(self, required_capacity: int) -> None:
+        current_capacity = self._asteroid_sizes.size
+        self._asteroid_positions = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._asteroid_positions,
+        )
+        self._asteroid_velocities = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._asteroid_velocities,
+        )
+        self._asteroid_sizes = self._resize_int_array(
+            required_capacity,
+            current_capacity,
+            self._asteroid_sizes,
+        )
+        self._asteroid_radii = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._asteroid_radii,
+        )
+
+    def _ensure_bullet_capacity(self, required_capacity: int) -> None:
+        current_capacity = self._bullet_headings.size
+        self._bullet_positions = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._bullet_positions,
+        )
+        self._bullet_velocities = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._bullet_velocities,
+        )
+        self._bullet_headings = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._bullet_headings,
+        )
+
+    def _ensure_mine_capacity(self, required_capacity: int) -> None:
+        current_capacity = self._mine_fuse_times.size
+        self._mine_positions = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._mine_positions,
+        )
+        self._mine_fuse_times = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._mine_fuse_times,
+        )
+        self._mine_remaining_times = self._resize_float_array(
+            required_capacity,
+            current_capacity,
+            self._mine_remaining_times,
+        )
+
+    @staticmethod
+    def _populate_positions_and_velocities(
+        entities: Sequence[_EntityWithPositionAndVelocity],
+        positions: npt.NDArray[np.float64],
+        velocities: npt.NDArray[np.float64],
     ) -> None:
-        self._sa = sa
-        self._ship = ship
-        self._size = size
-
-    def __len__(self) -> int:
-        return self._size
-
-    def __getitem__(self, index: int) -> T:
-        if index < 0:
-            index += self._size
-        if index < 0 or index >= self._size:
-            raise IndexError(
-                "Virtual sequence index out of tactical range bounds."
-            )
-
-        assert self._sa is not None
-        assert self._ship is not None
-        return self._view_class(self._sa, self._ship, index)
-
-    def __iter__(self) -> Iterator[T]:
-        for i in range(self._size):
-            yield self[i]
+        for index, entity in enumerate(entities):
+            positions[index, 0] = entity.position[0]
+            positions[index, 1] = entity.position[1]
+            velocities[index, 0] = entity.velocity[0]
+            velocities[index, 1] = entity.velocity[1]
