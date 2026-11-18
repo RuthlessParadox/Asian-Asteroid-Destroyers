@@ -336,29 +336,16 @@ def repair_geometry_invariants(
 ) -> FlatGenome:
     genes = np.array(flat_genes, dtype=np.float64)
 
-    if triangular_array.size > 0:
-        genes[triangular_array[:, 1]] = np.maximum(
-            genes[triangular_array[:, 1]],
-            genes[triangular_array[:, 0]] + min_width,
-        )
-        genes[triangular_array[:, 2]] = np.maximum(
-            genes[triangular_array[:, 2]],
-            genes[triangular_array[:, 1]] + min_width,
-        )
+    def _enforce_increasing(array: npt.NDArray[np.intp]) -> None:
+        if array.size > 0:
+            for i in range(array.shape[1] - 1):
+                genes[array[:, i + 1]] = np.maximum(
+                    genes[array[:, i + 1]],
+                    genes[array[:, i]] + min_width,
+                )
 
-    if trapezoidal_array.size > 0:
-        genes[trapezoidal_array[:, 1]] = np.maximum(
-            genes[trapezoidal_array[:, 1]],
-            genes[trapezoidal_array[:, 0]] + min_width,
-        )
-        genes[trapezoidal_array[:, 2]] = np.maximum(
-            genes[trapezoidal_array[:, 2]],
-            genes[trapezoidal_array[:, 1]] + min_width,
-        )
-        genes[trapezoidal_array[:, 3]] = np.maximum(
-            genes[trapezoidal_array[:, 3]],
-            genes[trapezoidal_array[:, 2]] + min_width,
-        )
+    _enforce_increasing(triangular_array)
+    _enforce_increasing(trapezoidal_array)
 
     return genes.tolist()  # pyright: ignore[reportAny]
 
