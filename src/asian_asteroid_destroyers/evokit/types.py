@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterable, Sequence
-from typing import TypedDict, TypeVar
+from typing import TypedDict
 
 import numpy as np
 
@@ -22,9 +22,6 @@ __all__ = [
     "SelectionOperator",
 ]
 
-_Shape1D = TypeVar("_Shape1D", bound=tuple[int])
-_Shape2D = TypeVar("_Shape2D", bound=tuple[int, int])
-
 Population = Sequence[Individual]
 
 
@@ -36,8 +33,8 @@ class GenerationStats(TypedDict):
     std_fitness: float
 
 
-FloatVector = np.ndarray[_Shape1D, np.dtype[np.float64]]
-FloatMatrix = np.ndarray[_Shape2D, np.dtype[np.float64]]
+FloatVector = np.ndarray[tuple[int], np.dtype[np.float64]]
+FloatMatrix = np.ndarray[tuple[int, int], np.dtype[np.float64]]
 
 IndividualGenerator = Callable[[], Individual]
 PopulationGenerator = Callable[[int], Population]
