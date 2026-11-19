@@ -1,6 +1,5 @@
 import pickle
 import sys
-from typing import cast
 
 from typing_extensions import override
 
@@ -27,4 +26,4 @@ class MainHydratingUnpickler(pickle.Unpickler):
                     weights = reconstruct_fitness_weights(name)
                     _ = get_individual_class(weights)
 
-        return cast(object, super().find_class(module, name))
+        return super().find_class(module, name)  # pyright: ignore[reportAny]
