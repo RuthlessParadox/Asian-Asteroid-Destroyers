@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 
 class Statistics:
+    __slots__: tuple[str, ...] = ("key", "index")
     key: Callable[[Individual], tuple[float, ...]]
     index: int
 
