@@ -199,19 +199,8 @@ def run_nsga_evolution(
             parents = toolbox.select(population, population_size)
             offspring = [toolbox.clone(individual) for individual in parents]
 
-            for i in range(1, len(offspring), 2):
-                if rng.random() < cx_pb:
-                    offspring[i - 1], offspring[i] = toolbox.mate(
-                        offspring[i - 1],
-                        offspring[i],
-                    )
-                    del offspring[i - 1].fitness.values
-                    del offspring[i].fitness.values
-
-            for i in range(len(offspring)):
-                if rng.random() < mut_pb:
-                    (offspring[i],) = toolbox.mutate(offspring[i])
-                    del offspring[i].fitness.values
+            _apply_crossover(toolbox, offspring, cx_pb, rng)
+            _apply_mutation(toolbox, offspring, mut_pb, rng)
 
             invalid_individuals = [
                 individual
