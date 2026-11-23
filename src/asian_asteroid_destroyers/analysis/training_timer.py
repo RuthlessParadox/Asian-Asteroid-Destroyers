@@ -1,6 +1,3 @@
-# TODO classes with one attribute
-# TODO TWO FUNCTIONS: start and end timer function
-# TODO integrate into algorithm checkpointing for capturing data; pickling, training times
 from __future__ import annotations
 
 import statistics
