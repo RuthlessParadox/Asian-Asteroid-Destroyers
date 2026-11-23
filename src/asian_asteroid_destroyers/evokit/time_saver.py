@@ -1,36 +1,20 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING
 
 import polars as pl
 from typing_extensions import override
 
-# if TYPE_CHECKING:
-# from pathlib import Path
-# from .types import GenerationStats
+if TYPE_CHECKING:
+    from pathlib import Path
 
 LogValue = int | float
 LogRow = Mapping[str, LogValue]
 
-_TYPE_MAPPING: dict[type, pl.DataType] = {
-    int: pl.Int64(),
-    float: pl.Float64(),
-    str: pl.String(),
-    bool: pl.Boolean(),
-}
 
-
-class GenerationStats(TypedDict):
-    generation_runtime: float
-    best_fitness: float
-    average_fitness: float
-    mean_fitness: float
-    fitness_std: float
-
-
-class BenchMarkMetrics:
+class TimeSaver:
+    __slots__: tuple[str, ...] = ("_buffer", "_dataframes", "_flush_interval")
     _buffer: list[LogRow]
     _dataframes: list[pl.DataFrame]
     _flush_interval: int
@@ -49,13 +33,10 @@ class BenchMarkMetrics:
 
         return pl.concat(self._dataframes, how="vertical")
 
-    def record(self, generation: int, stats: GenerationStats) -> None:
-        stats_map = cast(Mapping[str, LogValue], stats)
-        record: Mapping[str, LogValue] = {
-            "generation": generation,
-            **stats_map,
-        }
-        self._buffer.append(record)
+    def record(self, generation: int, training_time: float) -> None:
+        self._buffer.append(
+            {"generation": generation, "training_time": training_time}
+        )
 
         if len(self._buffer) >= self._flush_interval:
             self._compile()
@@ -73,19 +54,7 @@ class BenchMarkMetrics:
 
     @staticmethod
     def _get_expected_schema() -> dict[str, pl.DataType]:
-        schema: dict[str, pl.DataType] = {"generation": pl.Int64()}
-
-        annotations = GenerationStats.__annotations__
-        for field_name, python_type in annotations.items():
-            polars_type = _TYPE_MAPPING.get(python_type)
-            if polars_type is None:
-                raise TypeError(
-                    f"Unsupported type '{python_type.__name__}' detected on "
-                    + f"GenerationStats field '{field_name}'."
-                )
-            schema[field_name] = polars_type
-
-        return schema
+        return {"generation": pl.Int64(), "training_time": pl.Float64()}
 
     def _compile(self) -> None:
         if not self._buffer:
