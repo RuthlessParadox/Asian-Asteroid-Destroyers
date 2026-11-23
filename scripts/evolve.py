@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import dill
 import numpy as np
 
+from asian_asteroid_destroyers.benchmarks.metrics1 import BenchMarkMetrics
 from asian_asteroid_destroyers.chromosomes import (
     create_geometry_repair_maps,
     flatten_chromosome,
@@ -35,12 +36,11 @@ from asian_asteroid_destroyers.infrastructure import (
     make_checkpoint_saver,
 )
 
-from asian_asteroid_destroyers.benchmarks.metrics import BenchMarkMetrics
-
 if TYPE_CHECKING:
     from asian_asteroid_destroyers.evokit import Individual, TrainingResult
 
 GLOBAL_EVALUATOR_INSTANCE: FuzzyFitnessEvaluator | None = None
+
 
 class _MultiprocessingEvaluationWorker:
     __slots__: tuple[str, ...] = ("evaluator",)

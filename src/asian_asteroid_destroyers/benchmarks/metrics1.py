@@ -80,7 +80,7 @@ class BenchMarkMetrics:
     def training_runtime(self) -> float:
         if self.training_start is not None:
             return time.perf_counter() - self.training_start
-        return self.training_runtime
+        return self._training_runtime
 
     def start_generation(self) -> None:
         self.generation_start = time.perf_counter()
