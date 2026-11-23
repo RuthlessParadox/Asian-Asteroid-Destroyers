@@ -62,24 +62,24 @@ uv run scripts/evaluate_elite.py --history-path "example_history.parquet" --logb
 Asian-Asteroid-Destroyers/
 ├── src/
 │   ├── asian_asteroid_destroyers/
-│   │   ├── evokit/         # Core evolutionary algorithm logic
-│   │   ├── controllers/    # Kessler controllers
-│   │   ├── infrastructure/ # Infrastructure necessary to run training
-│   │   ├── analysis/       # Training data analysis
-│   │   ├── config/         # Argument parsing
-│   │   ├── geometry/       # Geometric utilities
-│   │   ├── evaluation.py   # Evaluator for evolutionary training
-│   │   ├── chromosomes.py  # Fuzzy chromosome and related functionality
-│   │   ├── fuzzy.py        # Fuzzy library
-│   │   ├── sa.py           # Situational awareness for controllers
-│   │   ├── scenarios.py    # Loading scenarios from JSONs
-├── scripts/                # Scripts to run from the terminal
+│   │   ├── evokit/                  # Core evolutionary algorithm logic
+│   │   ├── controllers/             # Kessler controllers
+│   │   ├── infrastructure/          # Infrastructure necessary to run training
+│   │   ├── analysis/                # Training data analysis
+│   │   ├── config/                  # Argument parsing
+│   │   ├── geometry/                # Geometric utilities
+│   │   ├── evaluation.py            # Evaluator for evolutionary training
+│   │   ├── chromosomes.py           # Fuzzy chromosome and related functionality
+│   │   ├── fuzzy.py                 # Fuzzy library
+│   │   ├── sa.py                    # Situational awareness for controllers
+│   │   ├── scenarios.py             # Loading scenarios from JSONs
+├── scripts/                         # Scripts to run from the terminal
 ├── assets/
-│   ├── scenarios/          # JSONs containing lists of scenarios
-├── tests/                  # Unit and integration tests
-├── typings/                # Type stubs for basedpyright
-├── pyproject.toml          # Dependencies, build settings, and tool config
-├── LICENSE                 # MIT License
+│   ├── scenarios/                   # JSONs containing lists of scenarios
+├── tests/                           # Unit and integration tests
+├── typings/                         # Type stubs for basedpyright
+├── pyproject.toml                   # Dependencies, build settings, and tool config
+├── LICENSE                          # MIT License
 └── README.md
 ```
 
