@@ -24,7 +24,7 @@ This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
    git clone https://github.com/RuthlessParadox/Asian-Asteroid-Destroyers
    # Move your terminal into the project folder.
    cd Asian-Asteroid-Destroyers
-   # Create a virtual environment if necessary, and, install dependencies.
+   # Create a virtual environment if necessary, and install dependencies.
    uv sync
    ```
 
