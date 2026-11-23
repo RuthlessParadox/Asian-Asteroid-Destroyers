@@ -68,11 +68,11 @@ Asian-Asteroid-Destroyers/
 │   │   ├── analysis/       # Training data analysis
 │   │   ├── config/         # Argument parsing
 │   │   ├── geometry/       # Geometric utilities
-│   ├── evaluation.py       # Evaluator for evolutionary training
-│   ├── chromosomes.py      # Fuzzy chromosome and related functionality
-│   ├── fuzzy.py            # Fuzzy library
-│   ├── sa.py               # Situational awareness for controllers
-│   ├── scenarios.py        # Loading scenarios from JSONs
+│   │   ├── evaluation.py   # Evaluator for evolutionary training
+│   │   ├── chromosomes.py  # Fuzzy chromosome and related functionality
+│   │   ├── fuzzy.py        # Fuzzy library
+│   │   ├── sa.py           # Situational awareness for controllers
+│   │   ├── scenarios.py    # Loading scenarios from JSONs
 ├── scripts/                # Scripts to run from the terminal
 ├── assets/
 │   ├── scenarios/          # JSONs containing lists of scenarios
