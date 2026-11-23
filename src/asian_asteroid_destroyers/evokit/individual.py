@@ -15,6 +15,7 @@ Gene = float
 
 
 class Individual(list[Gene]):
+    __slots__: tuple[str, ...] = ("fitness", "fitness_type")
     fitness: Fitness
     fitness_type: type[Fitness]
 

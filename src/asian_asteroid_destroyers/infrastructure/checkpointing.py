@@ -15,6 +15,7 @@ from .workspace import (
 )
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Mapping
     from types import FrameType
 
@@ -48,6 +49,14 @@ class CheckpointPayload(TypedDict):
 
 
 class EmergencySaver:
+    __slots__: tuple[str, ...] = (
+        "output_directory",
+        "_last_known_state",
+        "_last_known_generation",
+        "_rng",
+        "_algorithm_path",
+    )
+
     output_directory: Path
     _last_known_state: TrainingResult | None
     _last_known_generation: int
@@ -56,7 +65,7 @@ class EmergencySaver:
 
     def __init__(
         self,
-        output_directory: str | Path,
+        output_directory: str | os.PathLike[str],
         rng: np.random.Generator,
         algorithm: EvolutionAlgorithm[TrainingResult],
     ) -> None:
@@ -122,7 +131,7 @@ class EmergencySaver:
 
 
 def make_checkpoint_saver(
-    output_directory: str | Path,
+    output_directory: str | os.PathLike[str],
     rng: np.random.Generator,
     algorithm: EvolutionAlgorithm[TrainingResult],
     save_interval: int = 10,

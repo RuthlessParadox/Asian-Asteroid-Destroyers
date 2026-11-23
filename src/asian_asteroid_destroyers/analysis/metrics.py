@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 import numpy as np
 import polars as pl
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    import os
+    from collections.abc import Sequence
 
     import numpy.typing as npt
 
@@ -19,11 +21,15 @@ class EvolutionMetrics:
 
     def __init__(
         self,
-        logbook_path: str | Path,
-        history_path: str | Path,
+        logbook_path: str | os.PathLike[str],
+        history_path: str | os.PathLike[str],
     ) -> None:
-        self._logbook_lazyframe = pl.scan_parquet(logbook_path)  # type: ignore[arg-type]
-        self._history_lazyframe = pl.scan_parquet(history_path)  # type: ignore[arg-type]
+        self._logbook_lazyframe = pl.scan_parquet(
+            Path(logbook_path)  # type: ignore[arg-type]
+        )
+        self._history_lazyframe = pl.scan_parquet(
+            Path(history_path)  # type: ignore[arg-type]
+        )
 
     def extract_pareto_front_genomes(
         self,
@@ -40,7 +46,9 @@ class EvolutionMetrics:
             pl.col("hall_of_fame").struct.field("genome").alias("genome"),
         )
 
-        result_dataframe = processed_query.collect()  # type: ignore[arg-type]
+        result_dataframe = (
+            processed_query.collect()  # type: ignore[arg-type]
+        )
 
         if result_dataframe.is_empty():
             raise ValueError(
@@ -70,7 +78,13 @@ class EvolutionMetrics:
         ).collect()
 
     def compute_hall_of_fame_turnover(self) -> pl.DataFrame:
-        sorted_history = self._history_lazyframe.sort("generation").collect()  # type: ignore[arg-type]
+        sorted_history = (
+            (  # type: ignore[arg-type]
+                self._history_lazyframe
+            )
+            .sort("generation")
+            .collect()
+        )
 
         if sorted_history.is_empty():
             return pl.DataFrame(
@@ -117,7 +131,10 @@ class EvolutionMetrics:
             schema={"generation": pl.Int64(), "turnover_rate": pl.Float64()},
         )
 
-    def collect_geometry_drift(self, gene_indices: list[int]) -> pl.DataFrame:
+    def collect_geometry_drift(
+        self,
+        gene_indices: Sequence[int],
+    ) -> pl.DataFrame:
         flattened_query = self._history_lazyframe.explode(
             "hall_of_fame"
         ).select(
@@ -146,7 +163,10 @@ class EvolutionMetrics:
 
     def collect_param_volatility(self) -> pl.DataFrame:
         return (
-            self._history_lazyframe.explode("hall_of_fame")  # type: ignore[arg-type]
+            (  # type: ignore[arg-type]
+                self._history_lazyframe
+            )
+            .explode("hall_of_fame")
             .select(
                 pl.col("generation"),
                 pl.col("hall_of_fame").struct.field("genome").alias("genome"),
@@ -160,7 +180,7 @@ class EvolutionMetrics:
 
     def extract_weighted_best_genome(
         self,
-        weights: list[float] | npt.NDArray[np.float64] | None = None,
+        weights: Sequence[float] | npt.NDArray[np.float64] | None = None,
         generation: int | None = None,
     ) -> FlatGenome:
         query = self._history_lazyframe
@@ -207,7 +227,9 @@ class EvolutionMetrics:
             dtype=np.float64,
         )
 
-        min_bounds: npt.NDArray[np.float64] = np.min(fitness_matrix, axis=0)  # pyright: ignore[reportAny]
+        min_bounds: npt.NDArray[np.float64] = (  # pyright: ignore[reportAny]
+            np.min(fitness_matrix, axis=0)
+        )
         ranges = ideal_target - min_bounds
         ranges[ranges == 0.0] = 1.0
 
@@ -224,9 +246,8 @@ class EvolutionMetrics:
         else:
             weighted_deltas = normalized_deltas
 
-        distances: npt.NDArray[np.float64] = np.linalg.norm(  # pyright: ignore[reportAny]
-            weighted_deltas,
-            axis=1,
+        distances: npt.NDArray[np.float64] = (  # pyright: ignore[reportAny]
+            np.linalg.norm(weighted_deltas, axis=1)
         )
         best_index = int(np.argmin(distances))
 

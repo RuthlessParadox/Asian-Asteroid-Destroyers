@@ -21,6 +21,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "basedpyright>=1.40.1",
+    "hypothesis>=6.168.5",
     "pytest>=9.1.1",
     "ruff>=0.17.0",
 ]
@@ -57,7 +58,7 @@ pythonpath = ["src"]
 testpaths = ["tests"]
 
 [tool.evolution]
-generations = 500
+generations = 1000
 population_size = 80
 save_interval = 10
 cx_pb = 0.65

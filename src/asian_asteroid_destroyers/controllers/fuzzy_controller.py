@@ -108,7 +108,9 @@ class _TacticalFeatureExtractor:
             dtype=np.float64,
         )
 
-        dist: float = np.maximum(np.linalg.norm(delta_p), 1.0)  # pyright: ignore[reportAny]
+        dist: float = (  # pyright: ignore[reportAny]
+            np.maximum(np.linalg.norm(delta_p), 1.0)
+        )
 
         # Cross product evaluates if threat is tracking center-mass or passing
         cross_prod = float(np.cross(rel_vel, delta_p) / dist)

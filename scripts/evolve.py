@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import pathlib
 import signal
 import sys
 from typing import TYPE_CHECKING
@@ -15,6 +14,7 @@ from asian_asteroid_destroyers.chromosomes import (
     get_default_controller_template,
     repair_geometry_invariants,
 )
+from asian_asteroid_destroyers.config import get_trainer_config
 from asian_asteroid_destroyers.evaluation import FuzzyFitnessEvaluator
 from asian_asteroid_destroyers.evokit import (
     HallOfFame,
@@ -31,7 +31,6 @@ from asian_asteroid_destroyers.evokit import (
 from asian_asteroid_destroyers.infrastructure import (
     EmergencySaver,
     create_experiment_directory,
-    get_trainer_config,
     load_resumption_workspace,
     make_checkpoint_saver,
 )
@@ -62,7 +61,7 @@ def main() -> None:
     weights = (1.0, 1.0, 1.0, -1.0, -1.0)
 
     if args.resume is not None:
-        data_directory = pathlib.Path(args.resume)
+        data_directory = args.resume
         print(f"Resuming evolution context from: {data_directory.name}")
 
         workspace = load_resumption_workspace(data_directory)
@@ -160,8 +159,6 @@ def main() -> None:
 
     _ = signal.signal(signal.SIGINT, emergency_saver.handle_interrupt)
 
-    metrics = BenchMarkMetrics()
-
     def combined_callback(generation: int, state: TrainingResult) -> None:
         emergency_saver.update_state(generation, state)
         periodic_saver(generation, state)
@@ -184,7 +181,6 @@ def main() -> None:
         checkpoint_callback=combined_callback,
         initial_population=population,
         start_generation=start_generation,
-        benchmark_metrics=metrics,
     )
 
     print("\nEvolutionary horizon run successfully finished.")

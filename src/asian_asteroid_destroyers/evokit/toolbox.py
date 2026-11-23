@@ -44,7 +44,9 @@ class Toolbox(base.Toolbox):
     def __init__(self) -> None:
         super().__init__()
 
-        base_register: Callable[..., None] = getattr(base.Toolbox, "register")  # pyright: ignore[reportAny]
+        base_register: Callable[..., None] = (  # pyright: ignore[reportAny]
+            getattr(base.Toolbox, "register")
+        )
         base_register(self, "clone", copy.deepcopy)
         self.clone = getattr(self, "clone")
         base_register(self, "map", map)
@@ -69,17 +71,18 @@ class Toolbox(base.Toolbox):
         *args: object,
         **kwargs: object,
     ) -> None:
-        base_register: Callable[..., None] = getattr(base.Toolbox, "register")  # pyright: ignore[reportAny]
+        base_register: Callable[..., None] = (  # pyright: ignore[reportAny]
+            getattr(base.Toolbox, "register")
+        )
         base_register(self, alias, function, *args, **kwargs)
         if hasattr(self, alias):
             setattr(self, alias, getattr(self, alias))
 
     @override
     def unregister(self, alias: str) -> None:
-        base_unregister: Callable[[object, str], None] = getattr(  # pyright: ignore[reportAny]
-            base.Toolbox,
-            "unregister",
-        )
+        base_unregister: Callable[  # pyright: ignore[reportAny]
+            [object, str], None
+        ] = getattr(base.Toolbox, "unregister")
         base_unregister(self, alias)
         if hasattr(self, alias):
             delattr(self, alias)

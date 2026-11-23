@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import signal
 import sys
-from tracemalloc import start
 from typing import TYPE_CHECKING, NamedTuple, Protocol, TypeVar
 
 import numpy as np
@@ -10,9 +9,6 @@ from pathos.multiprocessing import ProcessPool
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableSequence
-
-    # from asian_asteroid_destroyers.benchmarks.metrics import BenchMarkMetrics
-    from asian_asteroid_destroyers.benchmarks.metrics1 import BenchMarkMetrics
 
     from .hall_of_fame import HallOfFame
     from .history_logger import HistoryLogger
@@ -53,7 +49,6 @@ class EvolutionAlgorithm(Protocol[R_co]):
         checkpoint_callback: Callable[[int, R_co], None] | None = None,
         initial_population: Population | None = None,
         start_generation: int = 1,
-        benchmark_metrics: BenchMarkMetrics | None = None,
     ) -> R_co: ...
 
 
@@ -72,7 +67,6 @@ def run_simple_evolution(
     checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
     initial_population: Population | None = None,
     start_generation: int = 1,
-    benchmark_metrics: BenchMarkMetrics | None = None,
 ) -> TrainingResult:
     _validate_parameters(
         cx_pb,
@@ -138,7 +132,6 @@ def run_nsga_evolution(
     mut_pb: float,
     generations: int,
     population_size: int,
-    # benchmark_metrics: BenchMarkMetrics | None,
     *,
     seed: int | np.random.Generator | None = None,
     hall_of_fame: HallOfFame | None = None,
@@ -148,7 +141,6 @@ def run_nsga_evolution(
     checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
     initial_population: Population | None = None,
     start_generation: int = 1,
-    benchmark_metrics: BenchMarkMetrics | None = None,
 ) -> TrainingResult:
     _validate_parameters(
         cx_pb,
@@ -204,24 +196,11 @@ def run_nsga_evolution(
             )
 
         for generation in range(start_generation, generations + 1):
-            if benchmark_metrics is not None:
-                benchmark_metrics.start_generation()
             parents = toolbox.select(population, population_size)
             offspring = [toolbox.clone(individual) for individual in parents]
 
-            for i in range(1, len(offspring), 2):
-                if rng.random() < cx_pb:
-                    offspring[i - 1], offspring[i] = toolbox.mate(
-                        offspring[i - 1],
-                        offspring[i],
-                    )
-                    del offspring[i - 1].fitness.values
-                    del offspring[i].fitness.values
-
-            for i in range(len(offspring)):
-                if rng.random() < mut_pb:
-                    (offspring[i],) = toolbox.mutate(offspring[i])
-                    del offspring[i].fitness.values
+            _apply_crossover(toolbox, offspring, cx_pb, rng)
+            _apply_mutation(toolbox, offspring, mut_pb, rng)
 
             invalid_individuals = [
                 individual
@@ -245,16 +224,6 @@ def run_nsga_evolution(
                 population_size,
             )
 
-            if benchmark_metrics is not None:
-                fitness_values = [
-                    individual.fitness.values[0]
-                    for individual in population
-                    if individual.fitness.valid
-                ]
-                benchmark_metrics.record_generation(
-                    generation,
-                    fitness_values,
-                )
             _record_generation_metrics(
                 generation=generation,
                 population=population,

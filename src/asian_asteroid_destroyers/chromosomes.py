@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 
 from asian_asteroid_destroyers.fuzzy import TSKInferenceEngine
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import numpy.typing as npt
 
 __all__ = [
@@ -166,7 +168,7 @@ def flatten_chromosome(chromosome: ControllerChromosome) -> FlatGenome:
 
 
 def _hydrate_subsystem(
-    flat_genes: FlatGenome,
+    flat_genes: Sequence[float],
     start_index: int,
     template: SubsystemChromosome,
 ) -> tuple[SubsystemChromosome, int]:
@@ -236,7 +238,7 @@ def _hydrate_subsystem(
 
 
 def hydrate_chromosome_blueprint(
-    flat_genes: FlatGenome,
+    flat_genes: Sequence[float],
     template: ControllerChromosome,
 ) -> ControllerChromosome:
     """Hydrates a flat sequence of float genes into a structured chromosome object.
@@ -329,38 +331,25 @@ def create_geometry_repair_maps(
 
 
 def repair_geometry_invariants(
-    flat_genes: FlatGenome,
+    flat_genes: Sequence[float],
     triangular_array: npt.NDArray[np.intp],
     trapezoidal_array: npt.NDArray[np.intp],
     min_width: float = 0.05,
 ) -> FlatGenome:
     genes = np.array(flat_genes, dtype=np.float64)
 
-    if triangular_array.size > 0:
-        genes[triangular_array[:, 1]] = np.maximum(
-            genes[triangular_array[:, 1]],
-            genes[triangular_array[:, 0]] + min_width,
-        )
-        genes[triangular_array[:, 2]] = np.maximum(
-            genes[triangular_array[:, 2]],
-            genes[triangular_array[:, 1]] + min_width,
-        )
+    def _enforce_increasing(array: npt.NDArray[np.intp]) -> None:
+        if array.size > 0:
+            for i in range(array.shape[1] - 1):
+                genes[array[:, i + 1]] = np.maximum(
+                    genes[array[:, i + 1]],
+                    genes[array[:, i]] + min_width,
+                )
 
-    if trapezoidal_array.size > 0:
-        genes[trapezoidal_array[:, 1]] = np.maximum(
-            genes[trapezoidal_array[:, 1]],
-            genes[trapezoidal_array[:, 0]] + min_width,
-        )
-        genes[trapezoidal_array[:, 2]] = np.maximum(
-            genes[trapezoidal_array[:, 2]],
-            genes[trapezoidal_array[:, 1]] + min_width,
-        )
-        genes[trapezoidal_array[:, 3]] = np.maximum(
-            genes[trapezoidal_array[:, 3]],
-            genes[trapezoidal_array[:, 2]] + min_width,
-        )
+    _enforce_increasing(triangular_array)
+    _enforce_increasing(trapezoidal_array)
 
-    return cast(FlatGenome, genes.tolist())
+    return genes.tolist()  # pyright: ignore[reportAny]
 
 
 def get_default_controller_template() -> ControllerChromosome:
