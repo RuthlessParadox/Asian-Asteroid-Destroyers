@@ -2,7 +2,7 @@
 
 # Asian-Asteroid-Destroyers
 
-#### This project uses evolutionary training to evolve fuzzy systems for a Kessler game controller in preparation for the Explainable Fuzzy Challenge. Built for CSP 200 at DigiPen Institute of Technology.
+> This project uses evolutionary training to evolve fuzzy systems for a Kessler game controller in preparation for the Explainable Fuzzy Challenge. Built for CSP 200 at DigiPen Institute of Technology.
 
 ## Installation
 
