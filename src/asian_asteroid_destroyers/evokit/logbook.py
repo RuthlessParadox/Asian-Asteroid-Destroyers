@@ -23,6 +23,7 @@ _TYPE_MAPPING: dict[type, pl.DataType] = {
 
 
 class Logbook:
+    __slots__: tuple[str, ...] = ("_buffer", "_dataframes", "_flush_interval")
     _buffer: list[LogRow]
     _dataframes: list[pl.DataFrame]
     _flush_interval: int

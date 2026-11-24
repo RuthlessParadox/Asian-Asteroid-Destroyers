@@ -24,7 +24,10 @@ class _DEAPHallOfFame(Protocol):
 
 class IndividualSimilarityChecker(Protocol):
     def __call__(
-        self, individual1: Individual, individual2: Individual, /
+        self,
+        individual1: Individual,
+        individual2: Individual,
+        /,
     ) -> bool: ...
 
 

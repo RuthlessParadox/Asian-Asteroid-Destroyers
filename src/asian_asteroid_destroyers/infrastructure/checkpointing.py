@@ -49,6 +49,14 @@ class CheckpointPayload(TypedDict):
 
 
 class EmergencySaver:
+    __slots__: tuple[str, ...] = (
+        "output_directory",
+        "_last_known_state",
+        "_last_known_generation",
+        "_rng",
+        "_algorithm_path",
+    )
+
     output_directory: Path
     _last_known_state: TrainingResult | None
     _last_known_generation: int

@@ -25,6 +25,7 @@ class _HistoryRow(TypedDict):
 
 
 class HistoryLogger:
+    __slots__: tuple[str, ...] = ("_buffer", "_dataframes", "_flush_interval")
     _buffer: list[_HistoryRow]
     _dataframes: list[pl.DataFrame]
     _flush_interval: int
