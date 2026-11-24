@@ -15,7 +15,9 @@ if TYPE_CHECKING:
     from .individual import Individual
     from .logbook import Logbook
     from .statistics import Statistics
+    from .time_saver import TimeSaver
     from .toolbox import Toolbox
+    from .training_timer import TrainingTimer
     from .types import Population
 
 
@@ -44,8 +46,10 @@ class EvolutionAlgorithm(Protocol[R_co]):
         seed: int | np.random.Generator | None = None,
         hall_of_fame: HallOfFame | None = None,
         statistics: Statistics | None = None,
+        training_timer: TrainingTimer | None = None,
         logbook: Logbook | None = None,
         history_logger: HistoryLogger | None = None,
+        time_saver: TimeSaver | None = None,
         checkpoint_callback: Callable[[int, R_co], None] | None = None,
         initial_population: Population | None = None,
         start_generation: int = 1,
@@ -62,8 +66,10 @@ def run_simple_evolution(
     seed: int | np.random.Generator | None = None,
     hall_of_fame: HallOfFame | None = None,
     statistics: Statistics | None = None,
+    training_timer: TrainingTimer | None = None,
     logbook: Logbook | None = None,
     history_logger: HistoryLogger | None = None,
+    time_saver: TimeSaver | None = None,
     checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
     initial_population: Population | None = None,
     start_generation: int = 1,
@@ -76,7 +82,10 @@ def run_simple_evolution(
         initial_population,
         start_generation,
     )
-
+    if training_timer is None:
+        training_timer = TrainingTimer()
+    if time_saver is None:
+        time_saver = TimeSaver()
     rng = (
         seed
         if isinstance(seed, np.random.Generator)
@@ -136,8 +145,10 @@ def run_nsga_evolution(
     seed: int | np.random.Generator | None = None,
     hall_of_fame: HallOfFame | None = None,
     statistics: Statistics | None = None,
+    training_timer: TrainingTimer | None = None,
     logbook: Logbook | None = None,
     history_logger: HistoryLogger | None = None,
+    time_saver: TimeSaver | None = None,
     checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
     initial_population: Population | None = None,
     start_generation: int = 1,
@@ -150,7 +161,10 @@ def run_nsga_evolution(
         initial_population,
         start_generation,
     )
-
+    if training_timer is None:
+        training_timer = TrainingTimer()
+    if time_saver is None:
+        time_saver = TimeSaver()
     rng = (
         seed
         if isinstance(seed, np.random.Generator)
