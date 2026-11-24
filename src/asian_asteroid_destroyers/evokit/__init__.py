@@ -71,6 +71,7 @@ from .selection import (
 from .statistics import Statistics as Statistics
 from .toolbox import Toolbox as Toolbox, build_toolbox as build_toolbox
 from .types import (
+    BoolMatrix as BoolMatrix,
     BoolVector as BoolVector,
     CloneMethod as CloneMethod,
     CrossoverOperator as CrossoverOperator,
@@ -80,6 +81,7 @@ from .types import (
     Gene as Gene,
     GenerationStats as GenerationStats,
     IndividualGenerator as IndividualGenerator,
+    IntMatrix as IntMatrix,
     IntVector as IntVector,
     MapMethod as MapMethod,
     MutationOperator as MutationOperator,

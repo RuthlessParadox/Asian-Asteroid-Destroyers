@@ -11,9 +11,11 @@ __all__ = [
     "Population",
     "GenerationStats",
     "IntVector",
+    "IntMatrix",
     "FloatVector",
     "FloatMatrix",
     "BoolVector",
+    "BoolMatrix",
     "IndividualGenerator",
     "PopulationGenerator",
     "CloneMethod",
@@ -36,9 +38,11 @@ class GenerationStats(TypedDict):
 
 
 IntVector = np.ndarray[tuple[int], np.dtype[np.int64]]
+IntMatrix = np.ndarray[tuple[int, int], np.dtype[np.int64]]
 FloatVector = np.ndarray[tuple[int], np.dtype[np.float64]]
 FloatMatrix = np.ndarray[tuple[int, int], np.dtype[np.float64]]
 BoolVector = np.ndarray[tuple[int], np.dtype[np.bool]]
+BoolMatrix = np.ndarray[tuple[int, int], np.dtype[np.bool]]
 
 IndividualGenerator = Callable[[], Individual]
 PopulationGenerator = Callable[[int], Population]
