@@ -79,6 +79,7 @@ from .types import (
     Gene as Gene,
     GenerationStats as GenerationStats,
     IndividualGenerator as IndividualGenerator,
+    IntVector as IntVector,
     MapMethod as MapMethod,
     MutationOperator as MutationOperator,
     Population as Population,

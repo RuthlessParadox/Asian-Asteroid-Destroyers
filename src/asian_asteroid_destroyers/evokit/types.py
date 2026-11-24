@@ -10,6 +10,7 @@ __all__ = [
     "Individual",
     "Population",
     "GenerationStats",
+    "IntVector",
     "FloatVector",
     "FloatMatrix",
     "IndividualGenerator",
@@ -33,6 +34,7 @@ class GenerationStats(TypedDict):
     std_fitness: float
 
 
+IntVector = np.ndarray[tuple[int], np.dtype[np.int64]]
 FloatVector = np.ndarray[tuple[int], np.dtype[np.float64]]
 FloatMatrix = np.ndarray[tuple[int, int], np.dtype[np.float64]]
 
