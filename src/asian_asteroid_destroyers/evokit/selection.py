@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import itertools
 import math
-from typing import TYPE_CHECKING, Callable, cast
+from collections.abc import Callable
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 from deap import tools
