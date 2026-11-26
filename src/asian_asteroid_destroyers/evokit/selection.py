@@ -115,8 +115,12 @@ def sel_nsga_3(
         if isinstance(seed, np.random.Generator)
         else np.random.default_rng(seed)
     )
+    cached_weights: tuple[float, ...] | None = None
+    cached_min_sign: FloatVector | None = None
 
     def sel_nsga_3_wrapper(population: Population, k: int) -> Population:
+        nonlocal cached_weights, cached_min_sign
+
         if not population:
             raise ValueError("'population' must not be empty.")
         if k <= 0 or k > len(population):
@@ -124,11 +128,15 @@ def sel_nsga_3(
                 f"'k' must be in [1, {len(population)}]. Got: {k}"
             )
 
-        objectives = _extract_minimization_objectives(
-            population,
-            expected_objectives=num_objectives,
+        objectives, cached_weights, cached_min_sign = (
+            _extract_minimization_objectives(
+                population,
+                expected_objectives=num_objectives,
+                cached_weights=cached_weights,
+                cached_min_sign=cached_min_sign,
+            )
         )
-        fronts = _non_dominated_sort(objectives)
+        fronts = _non_dominated_sort(objectives, max_selected=k)
 
         selected_indices: list[int] = []
         front_idx = 0
@@ -223,9 +231,11 @@ def _normalize_ref_directions(ref_points: FloatMatrix) -> FloatMatrix:
 def _extract_minimization_objectives(
     population: Population,
     expected_objectives: int,
-) -> FloatMatrix:
+    cached_weights: tuple[float, ...] | None,
+    cached_min_sign: FloatVector | None,
+) -> tuple[FloatMatrix, tuple[float, ...], FloatVector]:
     raw_rows: list[tuple[float, ...]] = []
-    weights_tuple: tuple[float, ...] | None = None
+    weights_tuple: tuple[float, ...] | None = cached_weights
 
     for ind in population:
         fitness = ind.fitness
@@ -250,19 +260,30 @@ def _extract_minimization_objectives(
         raw_rows.append(vals)
 
     assert weights_tuple is not None
-    weights_arr = np.asarray(weights_tuple, dtype=np.float64)
-    if np.any(weights_arr == 0.0):  # pyright: ignore[reportAny]
-        raise ValueError("Fitness weights must be non-zero.")
+    if cached_min_sign is None or cached_weights != weights_tuple:
+        weights_arr = np.asarray(weights_tuple, dtype=np.float64)
+        if bool(np.any(weights_arr == 0.0)):  # pyright: ignore[reportAny]
+            raise ValueError("Fitness weights must be non-zero.")
+        # noinspection PyTypeChecker
+        min_sign: FloatVector = (  # pyright: ignore[reportAssignmentType]
+            np.where(weights_arr > 0.0, -1.0, 1.0)
+        )
+    else:
+        min_sign = cached_min_sign
 
-    # Convert to minimization space: maximize (+w) -> -val, minimize (-w) -> +val.
-    min_sign = np.where(weights_arr > 0.0, -1.0, 1.0)
+    raw_matrix = np.asarray(raw_rows, dtype=np.float64)
+    # Maximize (+w) -> -val, minimize (-w) -> +val.
     # noinspection PyTypeChecker
-    return (  # pyright: ignore[reportReturnType]
-        np.asarray(raw_rows, dtype=np.float64) * min_sign
+    minimized: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
+        raw_matrix * min_sign
     )
+    return minimized, weights_tuple, min_sign
 
 
-def _non_dominated_sort(objectives: FloatMatrix) -> list[list[int]]:
+def _non_dominated_sort(
+    objectives: FloatMatrix,
+    max_selected: int | None = None,
+) -> list[list[int]]:
     n = objectives.shape[0]
     if n == 0:
         return []
@@ -282,8 +303,10 @@ def _non_dominated_sort(objectives: FloatMatrix) -> list[list[int]]:
     )
     dominated_lists: list[list[int]] = [[] for _ in range(n)]
     for p in range(n):
-        for q in np.flatnonzero(dominates[p]):  # pyright: ignore[reportAny]
-            dominated_lists[p].append(int(q))  # pyright: ignore[reportAny]
+        dominated_lists[p] = [
+            int(q)  # pyright: ignore[reportAny]
+            for q in np.flatnonzero(dominates[p])  # pyright: ignore[reportAny]
+        ]
 
     fronts: list[list[int]] = []
     current_front = [
@@ -292,9 +315,14 @@ def _non_dominated_sort(objectives: FloatMatrix) -> list[list[int]]:
             domination_count == 0,  # pyright: ignore[reportAny]
         )
     ]
+    selected_so_far = 0
 
     while current_front:
         fronts.append(current_front)
+        selected_so_far += len(current_front)
+        if max_selected is not None and selected_so_far >= max_selected:
+            break
+
         next_front: list[int] = []
         for p in current_front:
             for q in dominated_lists[p]:
@@ -312,7 +340,6 @@ def _normalize_objectives(
     front_limit: int,
     active_indices: list[int],
 ) -> FloatMatrix:
-    # Ideal point z_min is computed across fronts F_1 .. F_l (0 .. front_limit).
     ideal_pool_list: list[int] = []
     for f_idx in range(front_limit + 1):
         ideal_pool_list.extend(fronts[f_idx])
@@ -392,16 +419,13 @@ def _assign_nearest_reference_points(
 ) -> IntVector:
     # For unit direction u, perpendicular distance squared is ||s||^2 - (s . u)^2.
     obj_norm_sq: FloatVector = (  # pyright: ignore[reportAny]
-        np.sum(normalized_objectives * normalized_objectives, axis=1)
+        np.einsum("ij,ij->i", normalized_objectives, normalized_objectives)
     )
     # noinspection PyTypeChecker
     proj_len: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
         normalized_objectives @ unit_ref_points.T
     )
-    # noinspection PyTypeChecker
-    dist_sq: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
-        np.maximum(obj_norm_sq[:, None] - proj_len * proj_len, 0.0)
-    )
+    dist_sq = np.maximum(obj_norm_sq[:, None] - proj_len * proj_len, 0.0)
     return np.argmin(  # pyright: ignore[reportAny]
         dist_sq,
         axis=1,
@@ -444,30 +468,30 @@ def _niching_selection(
 
     # Group critical front local positions by associated reference point.
     candidates_by_ref: list[list[int]] = [[] for _ in range(num_ref)]
-    for (
-        local_pos,
-        ref_idx,  # pyright: ignore[reportAny]
-    ) in enumerate(critical_ref.tolist()):  # pyright: ignore[reportAny]
-        ref_idx: int
+    for local_pos in range(critical_ref.shape[0]):
+        ref_idx = int(
+            critical_ref[local_pos]  # pyright: ignore[reportAny]
+        )
         candidates_by_ref[ref_idx].append(local_pos)
 
-    # Only reference points with at least one critical-front candidate can contribute.
     candidate_refs = [
         ref_idx for ref_idx, pool in enumerate(candidates_by_ref) if pool
+    ]
+    if not candidate_refs:
+        return []
+
+    min_rho = min(
+        int(niche_counts[r])  # pyright: ignore[reportAny]
+        for r in candidate_refs
+    )
+    min_rho_refs: list[int] = [
+        r
+        for r in candidate_refs
+        if int(niche_counts[r]) == min_rho  # pyright: ignore[reportAny]
     ]
 
     chosen_global_indices: list[int] = []
     while len(chosen_global_indices) < num_to_select and candidate_refs:
-        min_rho = min(
-            int(niche_counts[r])  # pyright: ignore[reportAny]
-            for r in candidate_refs
-        )
-        min_rho_refs = [
-            r
-            for r in candidate_refs
-            if int(niche_counts[r]) == min_rho  # pyright: ignore[reportAny]
-        ]
-
         chosen_ref = min_rho_refs[int(rng.integers(0, len(min_rho_refs)))]
         pool = candidates_by_ref[chosen_ref]
 
@@ -476,30 +500,51 @@ def _niching_selection(
             candidate_rows: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
                 critical_norm_obj[pool]
             )
-            dists = _perpendicular_distances_to_ref(
-                candidate_rows,
-                unit_ref_points[  # pyright: ignore[reportAny]
-                    chosen_ref
-                ],
+            ref_vec: FloatVector = (  # pyright: ignore[reportAny]
+                unit_ref_points[chosen_ref]
             )
+            dists = _perpendicular_distances_to_ref(candidate_rows, ref_vec)
             min_d = float(np.min(dists))
             ties = [
                 pool[i]
-                for i, d in enumerate(dists.tolist())
-                if math.isclose(d, min_d, rel_tol=1e-12, abs_tol=1e-12)
+                for i in range(dists.shape[0])
+                if math.isclose(
+                    float(dists[i]),  # pyright: ignore[reportAny]
+                    min_d,
+                    rel_tol=1e-12,
+                    abs_tol=1e-12,
+                )
             ]
             if not ties:
                 ties = [pool[int(np.argmin(dists))]]
             picked_local = ties[int(rng.integers(0, len(ties)))]
+            pool.remove(picked_local)
         else:
-            picked_local = pool[int(rng.integers(0, len(pool)))]
-
-        pool.remove(picked_local)
-        if not pool:
-            candidate_refs.remove(chosen_ref)
+            picked_pos = int(rng.integers(0, len(pool)))
+            picked_local = pool.pop(picked_pos)
 
         niche_counts[chosen_ref] += 1
         chosen_global_indices.append(critical_front[picked_local])
+
+        if not pool:
+            candidate_refs.remove(chosen_ref)
+            min_rho_refs = [r for r in min_rho_refs if r != chosen_ref]
+        else:
+            min_rho_refs = [r for r in min_rho_refs if r != chosen_ref]
+
+        if not min_rho_refs and candidate_refs:
+            min_rho = min(
+                int(niche_counts[r])  # pyright: ignore[reportAny]
+                for r in candidate_refs
+            )
+            min_rho_refs = [
+                r
+                for r in candidate_refs
+                if int(
+                    niche_counts[r]  # pyright: ignore[reportAny]
+                )
+                == min_rho
+            ]
 
     return chosen_global_indices
 
