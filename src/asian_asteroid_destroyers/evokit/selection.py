@@ -108,6 +108,7 @@ def sel_nsga_3(
         inner_subdivisions=inner_subdivisions,
         inner_scale=inner_scale,
     )
+    unit_ref_points = _normalize_ref_directions(ref_points)
     rng = (
         seed
         if isinstance(seed, np.random.Generator)
@@ -139,25 +140,26 @@ def sel_nsga_3(
                 break
 
         remaining = k - len(selected_indices)
-        if remaining > 0:
-            critical_front = fronts[front_idx]
-            combined_indices = selected_indices + critical_front
-            normalized = _normalize_objectives(
-                objectives=objectives,
-                fronts=fronts,
-                front_limit=front_idx,
-                active_indices=combined_indices,
-            )
-            chosen_from_critical = _niching_selection(
-                normalized_objectives=normalized,
-                selected_indices=selected_indices,
-                critical_front=critical_front,
-                ref_points=ref_points,
-                num_to_select=remaining,
-                rng=rng,
-            )
-            selected_indices.extend(chosen_from_critical)
+        if remaining == 0:
+            return [population[idx] for idx in selected_indices]
 
+        critical_front = fronts[front_idx]
+        combined_indices = selected_indices + critical_front
+        normalized = _normalize_objectives(
+            objectives=objectives,
+            fronts=fronts,
+            front_limit=front_idx,
+            active_indices=combined_indices,
+        )
+        chosen_from_critical = _niching_selection(
+            normalized_objectives=normalized,
+            num_selected=len(selected_indices),
+            critical_front=critical_front,
+            unit_ref_points=unit_ref_points,
+            num_to_select=remaining,
+            rng=rng,
+        )
+        selected_indices.extend(chosen_from_critical)
         return [population[idx] for idx in selected_indices]
 
     return sel_nsga_3_wrapper
@@ -208,6 +210,15 @@ def _build_reference_points(
     )
 
 
+def _normalize_ref_directions(ref_points: FloatMatrix) -> FloatMatrix:
+    norms: FloatMatrix = (  # pyright: ignore[reportAny]
+        np.linalg.norm(ref_points, axis=1, keepdims=True)
+    )
+    safe_norms = np.where(norms > 1e-18, norms, 1.0)
+    # noinspection PyTypeChecker
+    return ref_points / safe_norms  # pyright: ignore[reportReturnType]
+
+
 def _extract_minimization_objectives(
     population: Population,
     expected_objectives: int,
@@ -232,7 +243,8 @@ def _extract_minimization_objectives(
             weights_tuple = w
         elif w != weights_tuple:
             raise ValueError(
-                "All individuals in population must share identical fitness weights."
+                "All individuals in population must share identical "
+                + "fitness weights."
             )
         raw_rows.append(vals)
 
@@ -373,60 +385,56 @@ def _compute_intercepts(
     return intercepts
 
 
-def _associate_to_reference_points(
+def _assign_nearest_reference_points(
     normalized_objectives: FloatMatrix,
-    ref_points: FloatMatrix,
-) -> tuple[IntVector, FloatVector]:
-    # Perpendicular distance d_perp(s, w) = ||s - ((s . w) / ||w||^2) * w||_2
-    ref_norms_sq: FloatVector = (  # pyright: ignore[reportAny]
-        np.sum(ref_points * ref_points, axis=1)
-    )
-    safe_norms_sq = np.where(ref_norms_sq > 1e-18, ref_norms_sq, 1.0)
-
-    # normalized_objectives: (N, M), ref_points: (R, M)
-    # dot_prod: (N, R)
-    dot_prod = normalized_objectives @ ref_points.T
-    proj_scale = dot_prod / safe_norms_sq[None, :]  # (N, R)
-
-    # projections: (N, R, M)
-    projections = proj_scale[:, :, None] * ref_points[None, :, :]
-    diffs = normalized_objectives[:, None, :] - projections
-    distances: FloatMatrix = (  # pyright: ignore[reportAny]
-        np.linalg.norm(diffs, axis=2)
-    )  # (N, R)
-
-    nearest_ref: IntVector = (  # pyright: ignore[reportAny]
-        np.argmin(  # pyright: ignore[reportAny]
-            distances,
-            axis=1,
-        ).astype(np.int64)
+    unit_ref_points: FloatMatrix,
+) -> IntVector:
+    # For unit direction u, perpendicular distance squared is ||s||^2 - (s . u)^2.
+    obj_norm_sq: FloatVector = (  # pyright: ignore[reportAny]
+        np.sum(normalized_objectives * normalized_objectives, axis=1)
     )
     # noinspection PyTypeChecker
-    nearest_dist: FloatVector = (  # pyright: ignore[reportAssignmentType]
-        distances[np.arange(len(nearest_ref)), nearest_ref].astype(np.float64)
+    proj_len: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
+        normalized_objectives @ unit_ref_points.T
     )
-    return nearest_ref, nearest_dist
+    # noinspection PyTypeChecker
+    dist_sq: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
+        np.maximum(obj_norm_sq[:, None] - proj_len * proj_len, 0.0)
+    )
+    return np.argmin(  # pyright: ignore[reportAny]
+        dist_sq,
+        axis=1,
+    ).astype(np.int64)
+
+
+def _perpendicular_distances_to_ref(
+    candidates: FloatMatrix,
+    unit_ref: FloatVector,
+) -> FloatVector:
+    # Exact perpendicular norm ||c - (c . u) * u||_2 on the critical front subset.
+    proj_len = candidates @ unit_ref
+    projections = proj_len[:, None] * unit_ref[None, :]
+    diffs = candidates - projections
+    return np.linalg.norm(diffs, axis=1)  # pyright: ignore[reportAny]
 
 
 def _niching_selection(
     normalized_objectives: FloatMatrix,
-    selected_indices: list[int],
+    num_selected: int,
     critical_front: list[int],
-    ref_points: FloatMatrix,
+    unit_ref_points: FloatMatrix,
     num_to_select: int,
     rng: np.random.Generator,
 ) -> list[int]:
-    num_selected = len(selected_indices)
-    num_ref = ref_points.shape[0]
-
-    nearest_ref, nearest_dist = _associate_to_reference_points(
+    num_ref = unit_ref_points.shape[0]
+    nearest_ref = _assign_nearest_reference_points(
         normalized_objectives,
-        ref_points,
+        unit_ref_points,
     )
 
     selected_ref = nearest_ref[:num_selected]
     critical_ref = nearest_ref[num_selected:]
-    critical_dist = nearest_dist[num_selected:]
+    critical_norm_obj = normalized_objectives[num_selected:]
 
     # Niche count rho_j: number of already-selected individuals associated with ref point j.
     niche_counts = np.bincount(selected_ref, minlength=num_ref).astype(
@@ -438,61 +446,56 @@ def _niching_selection(
     for (
         local_pos,
         ref_idx,  # pyright: ignore[reportAny]
-    ) in enumerate(critical_ref):
-        candidates_by_ref[
-            int(ref_idx)  # pyright: ignore[reportAny]
-        ].append(local_pos)
+    ) in enumerate(critical_ref.tolist()):  # pyright: ignore[reportAny]
+        ref_idx: int
+        candidates_by_ref[ref_idx].append(local_pos)
+
+    # Only reference points with at least one critical-front candidate can contribute.
+    candidate_refs = [
+        ref_idx for ref_idx, pool in enumerate(candidates_by_ref) if pool
+    ]
 
     chosen_global_indices: list[int] = []
-    active_refs = set(range(num_ref))
-
-    while len(chosen_global_indices) < num_to_select and active_refs:
+    while len(chosen_global_indices) < num_to_select and candidate_refs:
         min_rho = min(
             int(niche_counts[r])  # pyright: ignore[reportAny]
-            for r in active_refs
+            for r in candidate_refs
         )
         min_rho_refs = [
             r
-            for r in active_refs
+            for r in candidate_refs
             if int(niche_counts[r]) == min_rho  # pyright: ignore[reportAny]
         ]
 
-        chosen_ref = int(min_rho_refs[int(rng.integers(0, len(min_rho_refs)))])
+        chosen_ref = min_rho_refs[int(rng.integers(0, len(min_rho_refs)))]
         pool = candidates_by_ref[chosen_ref]
 
-        if not pool:
-            active_refs.remove(chosen_ref)
-            continue
-
         if int(niche_counts[chosen_ref]) == 0:  # pyright: ignore[reportAny]
-            # Pick candidate with minimum perpendicular distance to this reference line.
-            # Duplicate/coincident individuals (e.g. distance == 0.0) are collected as ties
-            # and broken reproducibly via rng.
-            dists = critical_dist[pool]
+            # noinspection PyTypeChecker
+            candidate_rows: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
+                critical_norm_obj[pool]
+            )
+            dists = _perpendicular_distances_to_ref(
+                candidate_rows,
+                unit_ref_points[  # pyright: ignore[reportAny]
+                    chosen_ref
+                ],
+            )
             min_d = float(np.min(dists))
             ties = [
                 pool[i]
-                for (
-                    i,
-                    d,  # pyright: ignore[reportAny]
-                ) in enumerate(dists)
-                if math.isclose(
-                    float(d),  # pyright: ignore[reportAny]
-                    min_d,
-                    rel_tol=1e-12,
-                    abs_tol=1e-12,
-                )
+                for i, d in enumerate(dists.tolist())
+                if math.isclose(d, min_d, rel_tol=1e-12, abs_tol=1e-12)
             ]
             if not ties:
                 ties = [pool[int(np.argmin(dists))]]
             picked_local = ties[int(rng.integers(0, len(ties)))]
         else:
-            # Randomly pick one candidate associated with this reference point.
             picked_local = pool[int(rng.integers(0, len(pool)))]
 
         pool.remove(picked_local)
         if not pool:
-            active_refs.remove(chosen_ref)
+            candidate_refs.remove(chosen_ref)
 
         niche_counts[chosen_ref] += 1
         chosen_global_indices.append(critical_front[picked_local])
