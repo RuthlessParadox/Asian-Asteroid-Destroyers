@@ -129,8 +129,12 @@ def main() -> None:
         independent_probability=0.08,
     )
 
-    select_parents_operator = sel_random()
-    select_survivors_operator = sel_nsga_3(num_objectives=5, subdivisions=4)
+    select_parents_operator = sel_random(seed=rng)
+    select_survivors_operator = sel_nsga_3(
+        objective_count=5,
+        subdivisions=4,
+        seed=rng,
+    )
 
     statistics = Statistics()
 

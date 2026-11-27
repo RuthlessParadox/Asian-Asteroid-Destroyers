@@ -621,14 +621,39 @@ def sel_spea_2() -> SelectionOperator:
     return sel_spea_2_wrapper
 
 
-def sel_random() -> SelectionOperator:
-    typed_sel_random = cast(
-        Callable[[Population, int], Population],
-        tools.selRandom,
+def sel_random(
+    seed: int | np.random.Generator | None = None,
+    *,
+    replace: bool = True,
+) -> SelectionOperator:
+    rng = (
+        seed
+        if isinstance(seed, np.random.Generator)
+        else np.random.default_rng(seed)
     )
 
     def sel_random_wrapper(population: Population, k: int) -> Population:
-        return typed_sel_random(population, k)
+        population_size = len(population)
+        if population_size == 0:
+            raise ValueError("'population' must not be empty.")
+        if k <= 0:
+            raise ValueError(f"'k' must be positive. Got: {k}")
+        if not replace and k > population_size:
+            raise ValueError(
+                f"'k' ({k}) cannot exceed population size ({population_size}) "
+                + "when sampling without replacement."
+            )
+
+        if replace:
+            indices = rng.integers(0, population_size, size=k, dtype=np.int64)
+        else:
+            indices = rng.choice(
+                population_size,
+                size=k,
+                replace=False,
+            ).astype(np.int64)
+
+        return [population[int(index)] for index in indices.tolist()]
 
     return sel_random_wrapper
 
