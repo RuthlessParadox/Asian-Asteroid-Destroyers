@@ -79,22 +79,22 @@ def sel_nsga_2(
 
 _DOMINANCE_CHUNK_SIZE = 64
 _ASF_PENALTY_SCALE = 1e6
-_NORM_EPS = 1e-18
-_INTERCEPT_EPS = 1e-12
-_TIE_EPS = 1e-15
+_NORM_EPSILON = 1e-18
+_INTERCEPT_EPSILON = 1e-12
+_TIE_EPSILON = 1e-15
 
 
 def sel_nsga_3(
-    num_objectives: int = 5,
+    objective_count: int = 5,
     subdivisions: int = 4,
     *,
     inner_subdivisions: int | None = None,
     inner_scale: float = 0.5,
     seed: int | np.random.Generator | None = None,
 ) -> SelectionOperator:
-    if num_objectives < 2:
+    if objective_count < 2:
         raise ValueError(
-            f"'num_objectives' must be at least 2. Got: {num_objectives}"
+            f"'objective_count' must be at least 2. Got: {objective_count}"
         )
     if subdivisions < 1:
         raise ValueError(
@@ -110,14 +110,14 @@ def sel_nsga_3(
             f"'inner_scale' must be between 0.0 and 1.0. Got: {inner_scale}"
         )
 
-    ref_points = _build_reference_points(
-        num_objectives=num_objectives,
+    reference_points = _build_reference_points(
+        objective_count=objective_count,
         subdivisions=subdivisions,
         inner_subdivisions=inner_subdivisions,
         inner_scale=inner_scale,
     )
-    unit_ref_points = _normalize_ref_directions(ref_points)
-    other_axis_indices = _build_other_axis_indices(num_objectives)
+    unit_reference_points = _normalize_reference_directions(reference_points)
+    other_axis_indices = _build_other_axis_indices(objective_count)
     rng = (
         seed
         if isinstance(seed, np.random.Generator)
@@ -129,16 +129,18 @@ def sel_nsga_3(
     def sel_nsga_3_wrapper(population: Population, k: int) -> Population:
         nonlocal cached_weights, cached_min_sign
 
-        pop_len = len(population)
-        if pop_len == 0:
+        population_size = len(population)
+        if population_size == 0:
             raise ValueError("'population' must not be empty.")
-        if k <= 0 or k > pop_len:
-            raise ValueError(f"'k' must be in [1, {pop_len}]. Got: {k}")
+        if k <= 0 or k > population_size:
+            raise ValueError(
+                f"'k' must be in [1, {population_size}]. Got: {k}"
+            )
 
         objectives, cached_weights, cached_min_sign = (
             _extract_minimization_objectives(
-                population,
-                expected_objectives=num_objectives,
+                population=population,
+                expected_objectives=objective_count,
                 cached_weights=cached_weights,
                 cached_min_sign=cached_min_sign,
             )
@@ -146,48 +148,48 @@ def sel_nsga_3(
         fronts = _non_dominated_sort(objectives, max_selected=k)
 
         selected_indices: list[int] = []
-        front_idx = 0
-        num_fronts = len(fronts)
-        while front_idx < num_fronts:
-            current_front = fronts[front_idx]
+        front_index = 0
+        front_count = len(fronts)
+        while front_index < front_count:
+            current_front = fronts[front_index]
             if len(selected_indices) + len(current_front) <= k:
                 selected_indices.extend(current_front)
-                front_idx += 1
+                front_index += 1
             else:
                 break
 
-        remaining = k - len(selected_indices)
-        if remaining == 0:
-            return [population[idx] for idx in selected_indices]
+        remaining_to_select_count = k - len(selected_indices)
+        if remaining_to_select_count == 0:
+            return [population[index] for index in selected_indices]
 
-        critical_front = fronts[front_idx]
+        critical_front = fronts[front_index]
         combined_indices = selected_indices + critical_front
         # noinspection PyTypeChecker
         normalized = _normalize_objectives(
             objectives=(  # pyright: ignore[reportArgumentType]
                 objectives[combined_indices]
             ),
-            num_objs=num_objectives,
+            objective_count=objective_count,
             other_axis_indices=other_axis_indices,
         )
         chosen_from_critical = _niching_selection(
             normalized_objectives=normalized,
-            num_selected=len(selected_indices),
+            selected_count=len(selected_indices),
             critical_front=critical_front,
-            unit_ref_points=unit_ref_points,
-            num_to_select=remaining,
+            unit_reference_points=unit_reference_points,
+            remaining_to_select_count=remaining_to_select_count,
             rng=rng,
         )
         selected_indices.extend(chosen_from_critical)
-        return [population[idx] for idx in selected_indices]
+        return [population[index] for index in selected_indices]
 
     return sel_nsga_3_wrapper
 
 
-def _build_other_axis_indices(num_objectives: int) -> IntMatrix:
+def _build_other_axis_indices(objective_count: int) -> IntMatrix:
     rows: list[list[int]] = [
-        [col for col in range(num_objectives) if col != axis]
-        for axis in range(num_objectives)
+        [column for column in range(objective_count) if column != axis]
+        for axis in range(objective_count)
     ]
     # noinspection PyTypeChecker
     return (  # pyright: ignore[reportReturnType]
@@ -196,23 +198,22 @@ def _build_other_axis_indices(num_objectives: int) -> IntMatrix:
 
 
 def _generate_reference_points(
-    num_objectives: int,
+    objective_count: int,
     subdivisions: int,
 ) -> FloatMatrix:
-    comb = itertools.combinations(
-        range(subdivisions + num_objectives - 1),
-        num_objectives - 1,
+    divider_combinations = itertools.combinations(
+        range(subdivisions + objective_count - 1),
+        objective_count - 1,
     )
     dividers = np.fromiter(
-        itertools.chain.from_iterable(comb),
+        itertools.chain.from_iterable(divider_combinations),
         dtype=np.int64,
-    ).reshape(-1, num_objectives - 1)
+    ).reshape(-1, objective_count - 1)
 
-    n_points = dividers.shape[0]
-    padded = np.empty((n_points, num_objectives + 1), dtype=np.int64)
+    padded = np.empty((dividers.shape[0], objective_count + 1), dtype=np.int64)
     padded[:, 0] = -1
     padded[:, 1:-1] = dividers
-    padded[:, -1] = subdivisions + num_objectives - 1
+    padded[:, -1] = subdivisions + objective_count - 1
 
     # noinspection PyTypeChecker
     return (  # pyright: ignore[reportReturnType]
@@ -221,17 +222,17 @@ def _generate_reference_points(
 
 
 def _build_reference_points(
-    num_objectives: int,
+    objective_count: int,
     subdivisions: int,
     inner_subdivisions: int | None,
     inner_scale: float,
 ) -> FloatMatrix:
-    outer_points = _generate_reference_points(num_objectives, subdivisions)
+    outer_points = _generate_reference_points(objective_count, subdivisions)
     if inner_subdivisions is None:
         return outer_points
 
-    inner_raw = _generate_reference_points(num_objectives, inner_subdivisions)
-    center = 1.0 / num_objectives
+    inner_raw = _generate_reference_points(objective_count, inner_subdivisions)
+    center = 1.0 / objective_count
     inner_points = center + inner_scale * (inner_raw - center)
     # noinspection PyTypeChecker
     return (  # pyright: ignore[reportReturnType]
@@ -239,11 +240,11 @@ def _build_reference_points(
     )
 
 
-def _normalize_ref_directions(ref_points: FloatMatrix) -> FloatMatrix:
+def _normalize_reference_directions(ref_points: FloatMatrix) -> FloatMatrix:
     norms: FloatMatrix = (  # pyright: ignore[reportAny]
         np.linalg.norm(ref_points, axis=1, keepdims=True)
     )
-    safe_norms = np.where(norms > _NORM_EPS, norms, 1.0)
+    safe_norms = np.where(norms > _NORM_EPSILON, norms, 1.0)
     # noinspection PyTypeChecker
     return ref_points / safe_norms  # pyright: ignore[reportReturnType]
 
@@ -255,40 +256,46 @@ def _extract_minimization_objectives(
     cached_min_sign: FloatVector | None,
 ) -> tuple[FloatMatrix, tuple[float, ...], FloatVector]:
     weights_tuple: tuple[float, ...] | None = cached_weights
-    n_pop = len(population)
-    raw_matrix = np.empty((n_pop, expected_objectives), dtype=np.float64)
+    population_size = len(population)
+    raw_matrix = np.empty(
+        (population_size, expected_objectives),
+        dtype=np.float64,
+    )
 
-    for row_idx, ind in enumerate(population):
-        fitness = ind.fitness
+    for row_index, individual in enumerate(population):
+        fitness = individual.fitness
         if not fitness.valid:
             raise ValueError(
                 "All individuals in population must have valid fitness values."
             )
-        vals = fitness.values
-        w = fitness.weights
-        if len(vals) != expected_objectives or len(w) != expected_objectives:
+        values = fitness.values
+        weights = fitness.weights
+        if (
+            len(values) != expected_objectives
+            or len(weights) != expected_objectives
+        ):
             raise ValueError(
                 f"Expected {expected_objectives} objectives/weights, "
-                + f"got {len(vals)} values and {len(w)} weights."
+                + f"got {len(values)} values and {len(weights)} weights."
             )
         if weights_tuple is None:
-            weights_tuple = w
-        elif w != weights_tuple:
+            weights_tuple = weights
+        elif weights != weights_tuple:
             raise ValueError(
                 "All individuals in population must share identical "
                 + "fitness weights."
             )
-        raw_matrix[row_idx] = vals
+        raw_matrix[row_index] = values
 
     assert weights_tuple is not None
 
     if cached_min_sign is None or cached_weights != weights_tuple:
-        weights_arr = np.asarray(weights_tuple, dtype=np.float64)
-        if np.any(weights_arr == 0.0):  # pyright: ignore[reportAny]
+        weights_array = np.asarray(weights_tuple, dtype=np.float64)
+        if np.any(weights_array == 0.0):  # pyright: ignore[reportAny]
             raise ValueError("Fitness weights must be non-zero.")
         # noinspection PyTypeChecker
         min_sign: FloatVector = (  # pyright: ignore[reportAssignmentType]
-            np.where(weights_arr > 0.0, -1.0, 1.0)
+            np.where(weights_array > 0.0, -1.0, 1.0)
         )
     else:
         min_sign = cached_min_sign
@@ -304,16 +311,20 @@ def _compute_dominance_matrix(
     objectives: FloatMatrix,
     chunk_size: int = _DOMINANCE_CHUNK_SIZE,
 ) -> BoolMatrix:
-    n = objectives.shape[0]
-    dominates: BoolMatrix = np.zeros((n, n), dtype=np.bool_)
+    objective_count = objectives.shape[0]
+    dominates: BoolMatrix = np.zeros(
+        (objective_count, objective_count),
+        dtype=np.bool,
+    )
 
-    for start in range(0, n, chunk_size):
-        end = min(start + chunk_size, n)
-        diffs = objectives[start:end, None, :] - objectives[None, :, :]
-        chunk_dom: BoolMatrix = (  # pyright: ignore[reportAny]
-            np.all(diffs <= 0.0, axis=2) & np.any(diffs < 0.0, axis=2)
+    for start in range(0, objective_count, chunk_size):
+        end = min(start + chunk_size, objective_count)
+        differences = objectives[start:end, None, :] - objectives[None, :, :]
+        dominates_chunk: BoolMatrix = (  # pyright: ignore[reportAny]
+            np.all(differences <= 0.0, axis=2)
+            & np.any(differences < 0.0, axis=2)
         )
-        dominates[start:end] = chunk_dom
+        dominates[start:end] = dominates_chunk
 
     np.fill_diagonal(dominates, False)
     return dominates
@@ -323,12 +334,12 @@ def _non_dominated_sort(
     objectives: FloatMatrix,
     max_selected: int | None = None,
 ) -> list[list[int]]:
-    n = objectives.shape[0]
-    if n == 0:
+    objective_count = objectives.shape[0]
+    if objective_count == 0:
         return []
 
     dominates = _compute_dominance_matrix(objectives)
-    domination_count: IntVector = (  # pyright: ignore[reportAny]
+    domination_counts: IntVector = (  # pyright: ignore[reportAny]
         np.sum(  # pyright: ignore[reportAny]
             dominates,
             axis=0,
@@ -341,13 +352,13 @@ def _non_dominated_sort(
         )
         .astype(np.int64)
         .tolist()
-        for i in range(n)
+        for i in range(objective_count)
     ]
 
     fronts: list[list[int]] = []
     current_front: list[int] = (  # pyright: ignore[reportAny]
         np.flatnonzero(
-            domination_count == 0,  # pyright: ignore[reportAny]
+            domination_counts == 0,  # pyright: ignore[reportAny]
         )
         .astype(np.int64)
         .tolist()
@@ -361,14 +372,19 @@ def _non_dominated_sort(
             break
 
         next_front: list[int] = []
-        for p in current_front:
-            for q in dominated_lists[p]:
+        for dominator_index in current_front:
+            for dominated_index in dominated_lists[dominator_index]:
                 updated_count = (
-                    int(domination_count[q]) - 1  # pyright: ignore[reportAny]
+                    int(
+                        domination_counts[  # pyright: ignore[reportAny]
+                            dominated_index
+                        ]
+                    )
+                    - 1
                 )
-                domination_count[q] = updated_count
+                domination_counts[dominated_index] = updated_count
                 if updated_count == 0:
-                    next_front.append(q)
+                    next_front.append(dominated_index)
         current_front = next_front
 
     return fronts
@@ -376,32 +392,37 @@ def _non_dominated_sort(
 
 def _normalize_objectives(
     objectives: FloatMatrix,
-    num_objs: int,
+    objective_count: int,
     other_axis_indices: IntMatrix,
 ) -> FloatMatrix:
-    z_min: FloatVector = (  # pyright: ignore[reportAny]
+    min_objective_vector: FloatVector = (  # pyright: ignore[reportAny]
         np.min(objectives, axis=0)
     )
     # noinspection PyTypeChecker
     translated: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
-        objectives - z_min
+        objectives - min_objective_vector
     )
 
     scaled = translated * _ASF_PENALTY_SCALE
-    extreme_points = np.zeros((num_objs, num_objs), dtype=np.float64)
+    extreme_points = np.zeros(
+        (objective_count, objective_count),
+        dtype=np.float64,
+    )
 
-    for obj_idx in range(num_objs):
-        other_cols = scaled[:, other_axis_indices[obj_idx]]
+    for objective_index in range(objective_count):
+        other_columns = scaled[:, other_axis_indices[objective_index]]
         other_max: FloatVector = (  # pyright: ignore[reportAny]
-            np.max(other_cols, axis=1)
+            np.max(other_columns, axis=1)
         )
-        asf_vals = np.maximum(translated[:, obj_idx], other_max)
-        extreme_points[obj_idx] = translated[int(np.argmin(asf_vals))]
+        asf_values = np.maximum(translated[:, objective_index], other_max)
+        extreme_points[objective_index] = translated[
+            int(np.argmin(asf_values))
+        ]
 
     intercepts = _compute_intercepts(
         extreme_points=extreme_points,
         translated_active=translated,
-        num_objs=num_objs,
+        objective_count=objective_count,
     )
     # noinspection PyTypeChecker
     return translated / intercepts  # pyright: ignore[reportReturnType]
@@ -410,7 +431,7 @@ def _normalize_objectives(
 def _compute_intercepts(
     extreme_points: FloatMatrix,
     translated_active: FloatMatrix,
-    num_objs: int,
+    objective_count: int,
 ) -> FloatVector:
     extreme_max: FloatVector = (  # pyright: ignore[reportAny]
         np.max(extreme_points, axis=0)
@@ -421,19 +442,19 @@ def _compute_intercepts(
     # noinspection PyTypeChecker
     fallback: FloatVector = (  # pyright: ignore[reportAssignmentType]
         np.where(
-            extreme_max > _INTERCEPT_EPS,
+            extreme_max > _INTERCEPT_EPSILON,
             extreme_max,
-            np.where(active_max > _INTERCEPT_EPS, active_max, 1.0),
+            np.where(active_max > _INTERCEPT_EPSILON, active_max, 1.0),
         )
     )
 
-    ones = np.ones(num_objs, dtype=np.float64)
+    ones = np.ones(objective_count, dtype=np.float64)
     try:
         solved = np.linalg.solve(extreme_points, ones)
     except np.linalg.LinAlgError:
         return fallback
 
-    if not np.all(np.isfinite(solved)) or np.any(solved <= _INTERCEPT_EPS):
+    if not np.all(np.isfinite(solved)) or np.any(solved <= _INTERCEPT_EPSILON):
         return fallback
 
     # noinspection PyTypeChecker
@@ -441,7 +462,7 @@ def _compute_intercepts(
         1.0 / solved
     )
     if not np.all(np.isfinite(intercepts)) or np.any(
-        intercepts <= _INTERCEPT_EPS
+        intercepts <= _INTERCEPT_EPSILON
     ):
         return fallback
 
@@ -450,118 +471,137 @@ def _compute_intercepts(
 
 def _niching_selection(
     normalized_objectives: FloatMatrix,
-    num_selected: int,
+    selected_count: int,
     critical_front: list[int],
-    unit_ref_points: FloatMatrix,
-    num_to_select: int,
+    unit_reference_points: FloatMatrix,
+    remaining_to_select_count: int,
     rng: np.random.Generator,
 ) -> list[int]:
-    num_ref = unit_ref_points.shape[0]
-    obj_norm_sq: FloatVector = (  # pyright: ignore[reportAny]
+    reference_count = unit_reference_points.shape[0]
+    objective_norm_squared: FloatVector = (  # pyright: ignore[reportAny]
         np.einsum("ij,ij->i", normalized_objectives, normalized_objectives)
     )
-    proj_len = normalized_objectives @ unit_ref_points.T
-    dist_sq = np.maximum(obj_norm_sq[:, None] - proj_len * proj_len, 0.0)
-    nearest_ref: IntVector = (  # pyright: ignore[reportAny]
+    projection_length = normalized_objectives @ unit_reference_points.T
+    distances_squared = np.maximum(
+        objective_norm_squared[:, None]
+        - projection_length * projection_length,
+        0.0,
+    )
+    nearest_reference: IntVector = (  # pyright: ignore[reportAny]
         np.argmin(  # pyright: ignore[reportAny]
-            dist_sq,
+            distances_squared,
             axis=1,
         ).astype(np.int64)
     )
 
-    selected_ref = nearest_ref[:num_selected]
-    critical_ref = nearest_ref[num_selected:]
+    selected_reference = nearest_reference[:selected_count]
+    critical_reference = nearest_reference[selected_count:]
 
-    niche_counts = np.bincount(selected_ref, minlength=num_ref).astype(
-        np.int64
-    )
+    niche_counts = np.bincount(
+        selected_reference,
+        minlength=reference_count,
+    ).astype(np.int64)
 
-    candidates_by_ref: list[list[int]] = [[] for _ in range(num_ref)]
+    candidates_by_reference: list[list[int]] = [
+        [] for _ in range(reference_count)
+    ]
     for (
-        local_pos,
-        ref_raw,  # pyright: ignore[reportAny]
-    ) in enumerate(critical_ref.tolist()):  # pyright: ignore[reportAny]
-        candidates_by_ref[
-            int(ref_raw)  # pyright: ignore[reportAny]
-        ].append(local_pos)
+        local_position,
+        reference_raw,  # pyright: ignore[reportAny]
+    ) in enumerate(critical_reference.tolist()):  # pyright: ignore[reportAny]
+        candidates_by_reference[
+            int(reference_raw)  # pyright: ignore[reportAny]
+        ].append(local_position)
 
-    active_refs: list[int] = []
-    active_pos: dict[int, int] = {}
-    for r_idx, pool in enumerate(candidates_by_ref):
+    active_references: list[int] = []
+    active_positions: dict[int, int] = {}
+    for reference_index, pool in enumerate(candidates_by_reference):
         if pool:
-            active_pos[r_idx] = len(active_refs)
-            active_refs.append(r_idx)
+            active_positions[reference_index] = len(active_references)
+            active_references.append(reference_index)
 
-    if not active_refs:
+    if not active_references:
         return []
 
-    def _collect_min_rho_refs() -> tuple[int, list[int]]:
-        min_val = min(
-            int(niche_counts[r])  # pyright: ignore[reportAny]
-            for r in active_refs
+    def _collect_min_rho_references() -> tuple[int, list[int]]:
+        min_value = min(
+            int(niche_counts[reference])  # pyright: ignore[reportAny]
+            for reference in active_references
         )
-        tied_refs = [
-            r
-            for r in active_refs
-            if int(niche_counts[r]) == min_val  # pyright: ignore[reportAny]
-        ]
-        return min_val, tied_refs
-
-    current_min_rho, min_rho_refs = _collect_min_rho_refs()
-    chosen_global_indices: list[int] = []
-
-    while len(chosen_global_indices) < num_to_select and active_refs:
-        if not min_rho_refs:
-            current_min_rho, min_rho_refs = _collect_min_rho_refs()
-
-        ref_slot = int(rng.integers(0, len(min_rho_refs)))
-        chosen_ref = min_rho_refs[ref_slot]
-        pool = candidates_by_ref[chosen_ref]
-
-        if current_min_rho == 0:
-            best_idx = 0
-            best_d_sq = float(
-                dist_sq[  # pyright: ignore[reportAny]
-                    num_selected + pool[0], chosen_ref
+        tied_references = [
+            reference
+            for reference in active_references
+            if int(
+                niche_counts[  # pyright: ignore[reportAny]
+                    reference
                 ]
             )
-            for idx in range(1, len(pool)):
-                d_sq = float(
-                    dist_sq[  # pyright: ignore[reportAny]
-                        num_selected + pool[idx], chosen_ref
+            == min_value
+        ]
+        return min_value, tied_references
+
+    current_min_rho, min_rho_references = _collect_min_rho_references()
+    chosen_global_indices: list[int] = []
+
+    while (
+        len(chosen_global_indices) < remaining_to_select_count
+        and active_references
+    ):
+        if not min_rho_references:
+            current_min_rho, min_rho_references = _collect_min_rho_references()
+
+        reference_slot = int(rng.integers(0, len(min_rho_references)))
+        chosen_reference = min_rho_references[reference_slot]
+        pool = candidates_by_reference[chosen_reference]
+
+        if current_min_rho == 0:
+            best_index = 0
+            best_distance_squared = float(
+                distances_squared[  # pyright: ignore[reportAny]
+                    selected_count + pool[0], chosen_reference
+                ]
+            )
+            for index in range(1, len(pool)):
+                distance_squared = float(
+                    distances_squared[  # pyright: ignore[reportAny]
+                        selected_count + pool[index], chosen_reference
                     ]
                 )
-                if d_sq < best_d_sq - _TIE_EPS:
-                    best_d_sq = d_sq
-                    best_idx = idx
-                elif abs(d_sq - best_d_sq) <= _TIE_EPS and rng.random() < 0.5:
-                    best_idx = idx
-            pick_idx = best_idx
+                if distance_squared < best_distance_squared - _TIE_EPSILON:
+                    best_distance_squared = distance_squared
+                    best_index = index
+                elif (
+                    abs(distance_squared - best_distance_squared)
+                    <= _TIE_EPSILON
+                    and rng.random() < 0.5
+                ):
+                    best_index = index
+            pick_index = best_index
         else:
-            pick_idx = int(rng.integers(0, len(pool)))
+            pick_index = int(rng.integers(0, len(pool)))
 
-        picked_local = pool[pick_idx]
-        last_pool_idx = len(pool) - 1
-        if pick_idx != last_pool_idx:
-            pool[pick_idx] = pool[last_pool_idx]
+        picked_local = pool[pick_index]
+        last_pool_index = len(pool) - 1
+        if pick_index != last_pool_index:
+            pool[pick_index] = pool[last_pool_index]
         _ = pool.pop()
 
-        niche_counts[chosen_ref] = (
+        niche_counts[chosen_reference] = (
             int(
-                niche_counts[chosen_ref]  # pyright: ignore[reportAny]
+                niche_counts[chosen_reference]  # pyright: ignore[reportAny]
             )
             + 1
         )
         chosen_global_indices.append(critical_front[picked_local])
 
         if not pool:
-            removed_pos = active_pos.pop(chosen_ref)
-            last_active_ref = active_refs.pop()
-            if removed_pos < len(active_refs):
-                active_refs[removed_pos] = last_active_ref
-                active_pos[last_active_ref] = removed_pos
+            removed_position = active_positions.pop(chosen_reference)
+            last_active_reference = active_references.pop()
+            if removed_position < len(active_references):
+                active_references[removed_position] = last_active_reference
+                active_positions[last_active_reference] = removed_position
 
-        _ = min_rho_refs.pop(ref_slot)
+        _ = min_rho_references.pop(reference_slot)
 
     return chosen_global_indices
 
