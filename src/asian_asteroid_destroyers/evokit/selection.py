@@ -14,6 +14,7 @@ if TYPE_CHECKING:
         BoolMatrix,
         FloatMatrix,
         FloatVector,
+        IntMatrix,
         IntVector,
         SelectionOperator,
     )
@@ -76,6 +77,13 @@ def sel_nsga_2(
     return sel_nsga_2_wrapper
 
 
+_DOMINANCE_CHUNK_SIZE = 64
+_ASF_PENALTY_SCALE = 1e6
+_NORM_EPS = 1e-18
+_INTERCEPT_EPS = 1e-12
+_TIE_EPS = 1e-15
+
+
 def sel_nsga_3(
     num_objectives: int = 5,
     subdivisions: int = 4,
@@ -109,6 +117,7 @@ def sel_nsga_3(
         inner_scale=inner_scale,
     )
     unit_ref_points = _normalize_ref_directions(ref_points)
+    other_axis_indices = _build_other_axis_indices(num_objectives)
     rng = (
         seed
         if isinstance(seed, np.random.Generator)
@@ -159,6 +168,7 @@ def sel_nsga_3(
                 objectives[combined_indices]
             ),
             num_objs=num_objectives,
+            other_axis_indices=other_axis_indices,
         )
         chosen_from_critical = _niching_selection(
             normalized_objectives=normalized,
@@ -172,6 +182,17 @@ def sel_nsga_3(
         return [population[idx] for idx in selected_indices]
 
     return sel_nsga_3_wrapper
+
+
+def _build_other_axis_indices(num_objectives: int) -> IntMatrix:
+    rows: list[list[int]] = [
+        [col for col in range(num_objectives) if col != axis]
+        for axis in range(num_objectives)
+    ]
+    # noinspection PyTypeChecker
+    return (  # pyright: ignore[reportReturnType]
+        np.asarray(rows, dtype=np.int64)
+    )
 
 
 def _generate_reference_points(
@@ -222,7 +243,7 @@ def _normalize_ref_directions(ref_points: FloatMatrix) -> FloatMatrix:
     norms: FloatMatrix = (  # pyright: ignore[reportAny]
         np.linalg.norm(ref_points, axis=1, keepdims=True)
     )
-    safe_norms = np.where(norms > 1e-18, norms, 1.0)
+    safe_norms = np.where(norms > _NORM_EPS, norms, 1.0)
     # noinspection PyTypeChecker
     return ref_points / safe_norms  # pyright: ignore[reportReturnType]
 
@@ -234,9 +255,10 @@ def _extract_minimization_objectives(
     cached_min_sign: FloatVector | None,
 ) -> tuple[FloatMatrix, tuple[float, ...], FloatVector]:
     weights_tuple: tuple[float, ...] | None = cached_weights
-    raw_rows: list[tuple[float, ...]] = []
+    n_pop = len(population)
+    raw_matrix = np.empty((n_pop, expected_objectives), dtype=np.float64)
 
-    for ind in population:
+    for row_idx, ind in enumerate(population):
         fitness = ind.fitness
         if not fitness.valid:
             raise ValueError(
@@ -256,7 +278,7 @@ def _extract_minimization_objectives(
                 "All individuals in population must share identical "
                 + "fitness weights."
             )
-        raw_rows.append(vals)
+        raw_matrix[row_idx] = vals
 
     assert weights_tuple is not None
 
@@ -271,12 +293,30 @@ def _extract_minimization_objectives(
     else:
         min_sign = cached_min_sign
 
-    raw_matrix = np.asarray(raw_rows, dtype=np.float64)
     # noinspection PyTypeChecker
     minimized: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
         raw_matrix * min_sign
     )
     return minimized, weights_tuple, min_sign
+
+
+def _compute_dominance_matrix(
+    objectives: FloatMatrix,
+    chunk_size: int = _DOMINANCE_CHUNK_SIZE,
+) -> BoolMatrix:
+    n = objectives.shape[0]
+    dominates: BoolMatrix = np.zeros((n, n), dtype=np.bool_)
+
+    for start in range(0, n, chunk_size):
+        end = min(start + chunk_size, n)
+        diffs = objectives[start:end, None, :] - objectives[None, :, :]
+        chunk_dom: BoolMatrix = (  # pyright: ignore[reportAny]
+            np.all(diffs <= 0.0, axis=2) & np.any(diffs < 0.0, axis=2)
+        )
+        dominates[start:end] = chunk_dom
+
+    np.fill_diagonal(dominates, False)
+    return dominates
 
 
 def _non_dominated_sort(
@@ -287,18 +327,22 @@ def _non_dominated_sort(
     if n == 0:
         return []
 
-    diffs = objectives[:, None, :] - objectives[None, :, :]
-    dominates: BoolMatrix = (  # pyright: ignore[reportAny]
-        np.all(diffs <= 0.0, axis=2) & np.any(diffs < 0.0, axis=2)
-    )
-    np.fill_diagonal(dominates, False)
-
+    dominates = _compute_dominance_matrix(objectives)
     domination_count: IntVector = (  # pyright: ignore[reportAny]
         np.sum(  # pyright: ignore[reportAny]
             dominates,
             axis=0,
         ).astype(np.int64)
     )
+
+    dominated_lists: list[list[int]] = [
+        np.flatnonzero(
+            dominates[i],  # pyright: ignore[reportAny]
+        )
+        .astype(np.int64)
+        .tolist()
+        for i in range(n)
+    ]
 
     fronts: list[list[int]] = []
     current_front: list[int] = (  # pyright: ignore[reportAny]
@@ -318,19 +362,12 @@ def _non_dominated_sort(
 
         next_front: list[int] = []
         for p in current_front:
-            dominated_children: list[int] = (  # pyright: ignore[reportAny]
-                np.flatnonzero(
-                    dominates[p],  # pyright: ignore[reportAny]
-                )
-                .astype(np.int64)
-                .tolist()
-            )
-            for q in dominated_children:
-                new_count = (
+            for q in dominated_lists[p]:
+                updated_count = (
                     int(domination_count[q]) - 1  # pyright: ignore[reportAny]
                 )
-                domination_count[q] = new_count
-                if new_count == 0:
+                domination_count[q] = updated_count
+                if updated_count == 0:
                     next_front.append(q)
         current_front = next_front
 
@@ -340,6 +377,7 @@ def _non_dominated_sort(
 def _normalize_objectives(
     objectives: FloatMatrix,
     num_objs: int,
+    other_axis_indices: IntMatrix,
 ) -> FloatMatrix:
     z_min: FloatVector = (  # pyright: ignore[reportAny]
         np.min(objectives, axis=0)
@@ -349,21 +387,16 @@ def _normalize_objectives(
         objectives - z_min
     )
 
-    # ASF with weight 1.0 on axis j and 1e-6 elsewhere <=> min_i max(f'_i,j, 1e6 * max_{k != j} f'_i,k).
-    scaled = translated * 1e6
+    scaled = translated * _ASF_PENALTY_SCALE
     extreme_points = np.zeros((num_objs, num_objs), dtype=np.float64)
 
-    if num_objs == 1:
-        extreme_points[0] = translated[int(np.argmin(translated[:, 0]))]
-    else:
-        eye_mask = np.eye(num_objs, dtype=np.bool)
-        for obj_idx in range(num_objs):
-            other_cols = scaled[:, ~eye_mask[obj_idx]]
-            other_max: FloatVector = (  # pyright: ignore[reportAny]
-                np.max(other_cols, axis=1)
-            )
-            asf_vals = np.maximum(translated[:, obj_idx], other_max)
-            extreme_points[obj_idx] = translated[int(np.argmin(asf_vals))]
+    for obj_idx in range(num_objs):
+        other_cols = scaled[:, other_axis_indices[obj_idx]]
+        other_max: FloatVector = (  # pyright: ignore[reportAny]
+            np.max(other_cols, axis=1)
+        )
+        asf_vals = np.maximum(translated[:, obj_idx], other_max)
+        extreme_points[obj_idx] = translated[int(np.argmin(asf_vals))]
 
     intercepts = _compute_intercepts(
         extreme_points=extreme_points,
@@ -388,24 +421,28 @@ def _compute_intercepts(
     # noinspection PyTypeChecker
     fallback: FloatVector = (  # pyright: ignore[reportAssignmentType]
         np.where(
-            extreme_max > 1e-12,
+            extreme_max > _INTERCEPT_EPS,
             extreme_max,
-            np.where(active_max > 1e-12, active_max, 1.0),
+            np.where(active_max > _INTERCEPT_EPS, active_max, 1.0),
         )
     )
 
     ones = np.ones(num_objs, dtype=np.float64)
     try:
-        x = np.linalg.solve(extreme_points, ones)
+        solved = np.linalg.solve(extreme_points, ones)
     except np.linalg.LinAlgError:
         return fallback
 
-    if not np.all(np.isfinite(x)) or np.any(x <= 1e-12):
+    if not np.all(np.isfinite(solved)) or np.any(solved <= _INTERCEPT_EPS):
         return fallback
 
     # noinspection PyTypeChecker
-    intercepts: FloatVector = 1.0 / x  # pyright: ignore[reportAssignmentType]
-    if not np.all(np.isfinite(intercepts)) or np.any(intercepts <= 1e-12):
+    intercepts: FloatVector = (  # pyright: ignore[reportAssignmentType]
+        1.0 / solved
+    )
+    if not np.all(np.isfinite(intercepts)) or np.any(
+        intercepts <= _INTERCEPT_EPS
+    ):
         return fallback
 
     return intercepts
@@ -458,7 +495,7 @@ def _niching_selection(
     if not active_refs:
         return []
 
-    def _refresh_min_rho_refs() -> tuple[int, list[int]]:
+    def _collect_min_rho_refs() -> tuple[int, list[int]]:
         min_val = min(
             int(niche_counts[r])  # pyright: ignore[reportAny]
             for r in active_refs
@@ -470,12 +507,15 @@ def _niching_selection(
         ]
         return min_val, tied_refs
 
-    current_min_rho, min_rho_refs = _refresh_min_rho_refs()
+    current_min_rho, min_rho_refs = _collect_min_rho_refs()
     chosen_global_indices: list[int] = []
 
     while len(chosen_global_indices) < num_to_select and active_refs:
-        ref_pos = int(rng.integers(0, len(min_rho_refs)))
-        chosen_ref = min_rho_refs[ref_pos]
+        if not min_rho_refs:
+            current_min_rho, min_rho_refs = _collect_min_rho_refs()
+
+        ref_slot = int(rng.integers(0, len(min_rho_refs)))
+        chosen_ref = min_rho_refs[ref_slot]
         pool = candidates_by_ref[chosen_ref]
 
         if current_min_rho == 0:
@@ -491,10 +531,10 @@ def _niching_selection(
                         num_selected + pool[idx], chosen_ref
                     ]
                 )
-                if d_sq < best_d_sq - 1e-15:
+                if d_sq < best_d_sq - _TIE_EPS:
                     best_d_sq = d_sq
                     best_idx = idx
-                elif abs(d_sq - best_d_sq) <= 1e-15 and rng.random() < 0.5:
+                elif abs(d_sq - best_d_sq) <= _TIE_EPS and rng.random() < 0.5:
                     best_idx = idx
             pick_idx = best_idx
         else:
@@ -521,9 +561,7 @@ def _niching_selection(
                 active_refs[removed_pos] = last_active_ref
                 active_pos[last_active_ref] = removed_pos
 
-        _ = min_rho_refs.pop(ref_pos)
-        if not min_rho_refs and active_refs:
-            current_min_rho, min_rho_refs = _refresh_min_rho_refs()
+        _ = min_rho_refs.pop(ref_slot)
 
     return chosen_global_indices
 
