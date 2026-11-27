@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import itertools
-import math
 from collections.abc import Callable
 from typing import TYPE_CHECKING, cast
 
@@ -121,12 +120,11 @@ def sel_nsga_3(
     def sel_nsga_3_wrapper(population: Population, k: int) -> Population:
         nonlocal cached_weights, cached_min_sign
 
-        if not population:
+        pop_len = len(population)
+        if pop_len == 0:
             raise ValueError("'population' must not be empty.")
-        if k <= 0 or k > len(population):
-            raise ValueError(
-                f"'k' must be in [1, {len(population)}]. Got: {k}"
-            )
+        if k <= 0 or k > pop_len:
+            raise ValueError(f"'k' must be in [1, {pop_len}]. Got: {k}")
 
         objectives, cached_weights, cached_min_sign = (
             _extract_minimization_objectives(
@@ -140,7 +138,8 @@ def sel_nsga_3(
 
         selected_indices: list[int] = []
         front_idx = 0
-        while front_idx < len(fronts):
+        num_fronts = len(fronts)
+        while front_idx < num_fronts:
             current_front = fronts[front_idx]
             if len(selected_indices) + len(current_front) <= k:
                 selected_indices.extend(current_front)
@@ -154,11 +153,12 @@ def sel_nsga_3(
 
         critical_front = fronts[front_idx]
         combined_indices = selected_indices + critical_front
+        # noinspection PyTypeChecker
         normalized = _normalize_objectives(
-            objectives=objectives,
-            fronts=fronts,
-            front_limit=front_idx,
-            active_indices=combined_indices,
+            objectives=(  # pyright: ignore[reportArgumentType]
+                objectives[combined_indices]
+            ),
+            num_objs=num_objectives,
         )
         chosen_from_critical = _niching_selection(
             normalized_objectives=normalized,
@@ -182,7 +182,6 @@ def _generate_reference_points(
         range(subdivisions + num_objectives - 1),
         num_objectives - 1,
     )
-
     dividers = np.fromiter(
         itertools.chain.from_iterable(comb),
         dtype=np.int64,
@@ -263,7 +262,7 @@ def _extract_minimization_objectives(
 
     if cached_min_sign is None or cached_weights != weights_tuple:
         weights_arr = np.asarray(weights_tuple, dtype=np.float64)
-        if bool(np.any(weights_arr == 0.0)):  # pyright: ignore[reportAny]
+        if np.any(weights_arr == 0.0):  # pyright: ignore[reportAny]
             raise ValueError("Fitness weights must be non-zero.")
         # noinspection PyTypeChecker
         min_sign: FloatVector = (  # pyright: ignore[reportAssignmentType]
@@ -340,48 +339,39 @@ def _non_dominated_sort(
 
 def _normalize_objectives(
     objectives: FloatMatrix,
-    fronts: list[list[int]],
-    front_limit: int,
-    active_indices: list[int],
+    num_objs: int,
 ) -> FloatMatrix:
-    ideal_pool_indices: list[int] = []
-    for f_idx in range(front_limit + 1):
-        ideal_pool_indices.extend(fronts[f_idx])
-
     z_min: FloatVector = (  # pyright: ignore[reportAny]
-        np.min(objectives[ideal_pool_indices], axis=0)
+        np.min(objectives, axis=0)
     )
     # noinspection PyTypeChecker
-    translated_all: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
-        objectives[active_indices] - z_min
+    translated: FloatMatrix = (  # pyright: ignore[reportAssignmentType]
+        objectives - z_min
     )
-    num_objs = objectives.shape[1]
 
     # ASF with weight 1.0 on axis j and 1e-6 elsewhere <=> min_i max(f'_i,j, 1e6 * max_{k != j} f'_i,k).
-    scaled_all = translated_all * 1e6
+    scaled = translated * 1e6
     extreme_points = np.zeros((num_objs, num_objs), dtype=np.float64)
 
     if num_objs == 1:
-        best_local_idx = int(np.argmin(translated_all[:, 0]))
-        extreme_points[0] = translated_all[best_local_idx]
+        extreme_points[0] = translated[int(np.argmin(translated[:, 0]))]
     else:
-        other_mask = ~np.eye(num_objs, dtype=np.bool)
+        eye_mask = np.eye(num_objs, dtype=np.bool)
         for obj_idx in range(num_objs):
-            other_cols = scaled_all[:, other_mask[obj_idx]]
+            other_cols = scaled[:, ~eye_mask[obj_idx]]
             other_max: FloatVector = (  # pyright: ignore[reportAny]
                 np.max(other_cols, axis=1)
             )
-            asf_vals = np.maximum(translated_all[:, obj_idx], other_max)
-            best_local_idx = int(np.argmin(asf_vals))
-            extreme_points[obj_idx] = translated_all[best_local_idx]
+            asf_vals = np.maximum(translated[:, obj_idx], other_max)
+            extreme_points[obj_idx] = translated[int(np.argmin(asf_vals))]
 
     intercepts = _compute_intercepts(
         extreme_points=extreme_points,
-        translated_active=translated_all,
+        translated_active=translated,
         num_objs=num_objs,
     )
     # noinspection PyTypeChecker
-    return translated_all / intercepts  # pyright: ignore[reportReturnType]
+    return translated / intercepts  # pyright: ignore[reportReturnType]
 
 
 def _compute_intercepts(
@@ -458,9 +448,13 @@ def _niching_selection(
             int(ref_raw)  # pyright: ignore[reportAny]
         ].append(local_pos)
 
-    active_refs: list[int] = [
-        r_idx for r_idx, pool in enumerate(candidates_by_ref) if pool
-    ]
+    active_refs: list[int] = []
+    active_pos: dict[int, int] = {}
+    for r_idx, pool in enumerate(candidates_by_ref):
+        if pool:
+            active_pos[r_idx] = len(active_refs)
+            active_refs.append(r_idx)
+
     if not active_refs:
         return []
 
@@ -485,50 +479,47 @@ def _niching_selection(
         pool = candidates_by_ref[chosen_ref]
 
         if current_min_rho == 0:
-            pool_arr = np.asarray(pool, dtype=np.int64) + num_selected
-            dists: FloatVector = (  # pyright: ignore[reportAny]
-                np.sqrt(
+            best_idx = 0
+            best_d_sq = float(
+                dist_sq[  # pyright: ignore[reportAny]
+                    num_selected + pool[0], chosen_ref
+                ]
+            )
+            for idx in range(1, len(pool)):
+                d_sq = float(
                     dist_sq[  # pyright: ignore[reportAny]
-                        pool_arr, chosen_ref
+                        num_selected + pool[idx], chosen_ref
                     ]
                 )
-            )
-            min_d = float(np.min(dists))
-            tied_pool_indices = [
-                pool_idx
-                for pool_idx in range(dists.shape[0])
-                if math.isclose(
-                    float(dists[pool_idx]),  # pyright: ignore[reportAny]
-                    min_d,
-                    rel_tol=1e-12,
-                    abs_tol=1e-12,
-                )
-            ]
-            if not tied_pool_indices:
-                tied_pool_indices = [int(np.argmin(dists))]
-            pick_idx = tied_pool_indices[
-                int(rng.integers(0, len(tied_pool_indices)))
-            ]
+                if d_sq < best_d_sq - 1e-15:
+                    best_d_sq = d_sq
+                    best_idx = idx
+                elif abs(d_sq - best_d_sq) <= 1e-15 and rng.random() < 0.5:
+                    best_idx = idx
+            pick_idx = best_idx
         else:
             pick_idx = int(rng.integers(0, len(pool)))
 
         picked_local = pool[pick_idx]
-        last_idx = len(pool) - 1
-        if pick_idx != last_idx:
-            pool[pick_idx] = pool[last_idx]
+        last_pool_idx = len(pool) - 1
+        if pick_idx != last_pool_idx:
+            pool[pick_idx] = pool[last_pool_idx]
         _ = pool.pop()
 
-        new_rho = (
+        niche_counts[chosen_ref] = (
             int(
                 niche_counts[chosen_ref]  # pyright: ignore[reportAny]
             )
             + 1
         )
-        niche_counts[chosen_ref] = new_rho
         chosen_global_indices.append(critical_front[picked_local])
 
         if not pool:
-            active_refs.remove(chosen_ref)
+            removed_pos = active_pos.pop(chosen_ref)
+            last_active_ref = active_refs.pop()
+            if removed_pos < len(active_refs):
+                active_refs[removed_pos] = last_active_ref
+                active_pos[last_active_ref] = removed_pos
 
         _ = min_rho_refs.pop(ref_pos)
         if not min_rho_refs and active_refs:
