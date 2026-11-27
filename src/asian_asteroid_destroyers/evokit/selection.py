@@ -653,7 +653,10 @@ def sel_random(
                 replace=False,
             ).astype(np.int64)
 
-        return [population[int(index)] for index in indices.tolist()]
+        return [
+            population[int(index)]  # pyright: ignore[reportAny]
+            for index in indices.tolist()  # pyright: ignore[reportAny]
+        ]
 
     return sel_random_wrapper
 
