@@ -8,15 +8,17 @@ import polars as pl
 
 # needs to be a class
 class TrainingTimer:
+    __slots__: tuple[str, ...] = ("_start_time",)
+    _start_time: float | None
+
     def __init__(self) -> None:
-        self.training_start = None
-        self._training_runtime: float = 0.0
+        self._start_time = None
 
-    def start_training(self) -> None:
-        self.training_start = time.perf_counter()
+    def start_timer(self) -> None:
+        self._start_time = time.perf_counter()
 
-    def finish_training(self) -> None:
-        if self.training_start is None:
-            return
-        self._training_runtime = time.perf_counter() - self.training_start
-        self.training_start = None
+    def stop_timer(self) -> float:
+        if self._start_time is None:
+            raise ValueError("timer has not been started")
+
+        return time.perf_counter() - self._start_time

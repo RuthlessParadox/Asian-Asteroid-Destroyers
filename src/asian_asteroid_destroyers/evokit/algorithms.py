@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import signal
 import sys
-from typing import TYPE_CHECKING, NamedTuple, Protocol, TypeVar
+from typing import TYPE_CHECKING, NamedTuple, Protocol, TypeVar, cast
 
 import numpy as np
 from pathos.multiprocessing import ProcessPool
+
+from .time_saver import TimeSaver
+from .training_timer import TrainingTimer
 
 if TYPE_CHECKING:
     from collections.abc import Callable, MutableSequence
@@ -15,9 +18,7 @@ if TYPE_CHECKING:
     from .individual import Individual
     from .logbook import Logbook
     from .statistics import Statistics
-    from .time_saver import TimeSaver
     from .toolbox import Toolbox
-    from .training_timer import TrainingTimer
     from .types import Population
 
 
@@ -70,7 +71,7 @@ def run_simple_evolution(
     logbook: Logbook | None = None,
     history_logger: HistoryLogger | None = None,
     time_saver: TimeSaver | None = None,
-    checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
+    checkpoint_callback: Callable[[int, R_co], None] | None = None,
     initial_population: Population | None = None,
     start_generation: int = 1,
 ) -> TrainingResult:
@@ -161,10 +162,7 @@ def run_nsga_evolution(
         initial_population,
         start_generation,
     )
-    if training_timer is None:
-        training_timer = TrainingTimer()
-    if time_saver is None:
-        time_saver = TimeSaver()
+
     rng = (
         seed
         if isinstance(seed, np.random.Generator)
@@ -210,6 +208,8 @@ def run_nsga_evolution(
             )
 
         for generation in range(start_generation, generations + 1):
+            if training_timer is not None:
+                training_timer.start_timer()
             parents = toolbox.select(population, population_size)
             offspring = [toolbox.clone(individual) for individual in parents]
 
@@ -247,6 +247,8 @@ def run_nsga_evolution(
                 history_logger=history_logger,
                 checkpoint_callback=checkpoint_callback,
             )
+            if training_timer is not None:
+                training_timer.stop_timer()
 
     return TrainingResult(
         final_population=population,
@@ -384,7 +386,7 @@ def _record_generation_metrics(
     statistics: Statistics | None,
     logbook: Logbook | None,
     history_logger: HistoryLogger | None,
-    checkpoint_callback: Callable[[int, TrainingResult], None] | None,
+    checkpoint_callback: Callable[[int, R_co], None] | None,
 ) -> None:
     if hall_of_fame is not None:
         hall_of_fame.update(population)
@@ -396,12 +398,12 @@ def _record_generation_metrics(
         history_logger.record(generation, hall_of_fame)
 
     if checkpoint_callback is not None:
-        checkpoint_callback(
-            generation,
-            TrainingResult(
+
+            result = TrainingResult(
                 final_population=population,
                 logbook=logbook,
                 history_logger=history_logger,
                 hall_of_fame=hall_of_fame,
-            ),
+            )
+            checkpoint_callback(generation, cast(R_co, result)
         )
