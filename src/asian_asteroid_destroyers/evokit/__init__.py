@@ -69,7 +69,9 @@ from .selection import (
     sel_worst as sel_worst,
 )
 from .statistics import Statistics as Statistics
+from .time_saver import TimeSaver as TimeSaver
 from .toolbox import Toolbox as Toolbox, build_toolbox as build_toolbox
+from .training_timer import TrainingTimer as TrainingTimer
 from .types import (
     BoolMatrix as BoolMatrix,
     BoolVector as BoolVector,
