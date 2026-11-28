@@ -21,4 +21,6 @@ class TrainingTimer:
         if self._start_time is None:
             raise ValueError("timer has not been started")
 
-        return time.perf_counter() - self._start_time
+        elapsed_time = time.perf_counter() - self._start_time
+        self._start_time = None
+        return elapsed_time
