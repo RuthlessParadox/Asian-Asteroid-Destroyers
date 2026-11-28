@@ -211,6 +211,7 @@ def run_nsga_evolution(
             if training_timer is not None:
                 training_timer.start_timer()
             parents = toolbox.select(population, population_size)
+            parents = toolbox.select_parents(population, population_size)
             offspring = [toolbox.clone(individual) for individual in parents]
 
             _apply_crossover(toolbox, offspring, cx_pb, rng)
@@ -233,7 +234,7 @@ def run_nsga_evolution(
                 for individual, fitness in zip(invalid_individuals, fitnesses):
                     individual.fitness.values = fitness
 
-            population = toolbox.select(
+            population = toolbox.select_survivors(
                 [*population, *offspring],
                 population_size,
             )

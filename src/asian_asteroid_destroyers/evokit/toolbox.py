@@ -40,6 +40,8 @@ class Toolbox(base.Toolbox):
     mate: CrossoverOperator
     mutate: MutationOperator
     select: SelectionOperator
+    select_parents: SelectionOperator
+    select_survivors: SelectionOperator
 
     def __init__(self) -> None:
         super().__init__()
@@ -62,6 +64,14 @@ class Toolbox(base.Toolbox):
         self.mate = cast(CrossoverOperator, factory("mate"))
         self.mutate = cast(MutationOperator, factory("mutate"))
         self.select = cast(SelectionOperator, factory("select"))
+        self.select_parents = cast(
+            SelectionOperator,
+            factory("select_parents"),
+        )
+        self.select_survivors = cast(
+            SelectionOperator,
+            factory("select_survivors"),
+        )
 
     @override
     def register(
@@ -135,6 +145,8 @@ def build_toolbox(
     mate_operator: CrossoverOperator | None = None,
     mutate_operator: MutationOperator | None = None,
     select_operator: SelectionOperator | None = None,
+    select_parents_operator: SelectionOperator | None = None,
+    select_survivors_operator: SelectionOperator | None = None,
 ) -> Toolbox:
     individual_class = get_individual_class(weights)
     toolbox = Toolbox()
@@ -152,5 +164,13 @@ def build_toolbox(
     toolbox.register("mate", mate_operator or _default_mate())
     toolbox.register("mutate", mutate_operator or _default_mut())
     toolbox.register("select", select_operator or _default_sel())
+    toolbox.register(
+        "select_parents",
+        select_parents_operator or select_operator or _default_sel(),
+    )
+    toolbox.register(
+        "select_survivors",
+        select_survivors_operator or select_operator or _default_sel(),
+    )
 
     return toolbox
