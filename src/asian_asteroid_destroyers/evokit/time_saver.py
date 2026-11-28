@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING
 import polars as pl
 from typing_extensions import override
 
-from asian_asteroid_destroyers.evokit import TrainingTimer
-
 if TYPE_CHECKING:
     from pathlib import Path
 

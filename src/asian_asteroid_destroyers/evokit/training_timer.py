@@ -1,12 +1,8 @@
 from __future__ import annotations
 
-import statistics
 import time
 
-import polars as pl
 
-
-# needs to be a class
 class TrainingTimer:
     __slots__: tuple[str, ...] = ("_start_time",)
     _start_time: float | None
