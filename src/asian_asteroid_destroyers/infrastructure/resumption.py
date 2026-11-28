@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import gzip
 import importlib
-from typing import TYPE_CHECKING, NamedTuple, cast
+from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
 import polars as pl
 
 from asian_asteroid_destroyers.evokit import (
-    EvolutionAlgorithm,
     HistoryLogger,
     Logbook,
     TrainingResult,
@@ -17,7 +16,6 @@ from asian_asteroid_destroyers.evokit import (
 from .checkpointing import (
     EMERGENCY_HISTORY_FILENAME,
     EMERGENCY_LOGBOOK_FILENAME,
-    CheckpointPayload,
     get_periodic_history_filename,
     get_periodic_logbook_filename,
 )
@@ -32,22 +30,24 @@ from .workspace import (
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from asian_asteroid_destroyers.evokit import EvolutionAlgorithm
+
+    from .checkpointing import CheckpointPayload
+
 
 class ResumptionWorkspace(NamedTuple):
     algorithm: EvolutionAlgorithm[TrainingResult]
     last_generation: int
     saved_state: TrainingResult
     rng: np.random.Generator
+    master_seed: int
 
 
 def _load_algorithm(path_str: str) -> EvolutionAlgorithm[TrainingResult]:
     try:
         module_path, function_name = path_str.rsplit(".", 1)
         module = importlib.import_module(module_path)
-        return cast(
-            EvolutionAlgorithm[TrainingResult],
-            getattr(module, function_name),
-        )
+        return getattr(module, function_name)  # pyright: ignore[reportAny]
     except (ValueError, AttributeError, ModuleNotFoundError) as error:
         raise ImportError(
             "Failed to dynamically import the target evolution module "
@@ -80,9 +80,8 @@ def load_resumption_workspace(
 
     print(f"Reading simulation workspace metadata: {target_checkpoint.name}")
     with gzip.open(target_checkpoint, "rb") as file:
-        payload = cast(
-            CheckpointPayload,
-            MainHydratingUnpickler(file).load(),
+        payload: CheckpointPayload = (  # pyright: ignore[reportAny]
+            MainHydratingUnpickler(file).load()
         )
 
     algorithm = _load_algorithm(payload["algorithm_path"])
@@ -104,9 +103,9 @@ def load_resumption_workspace(
         rebuilt_logbook = Logbook()
         rebuilt_logbook.hydrate(
             pl.read_parquet(
-                logbook_path,
-                memory_map=True,
-                low_memory=True,
+                logbook_path,  # type: ignore[arg-type]
+                memory_map=True,  # type: ignore[arg-type]
+                low_memory=True,  # type: ignore[arg-type]
             )
         )
 
@@ -115,9 +114,9 @@ def load_resumption_workspace(
         rebuilt_history = HistoryLogger()
         rebuilt_history.hydrate(
             pl.read_parquet(
-                history_path,
-                memory_map=True,
-                low_memory=True,
+                history_path,  # type: ignore[arg-type]
+                memory_map=True,  # type: ignore[arg-type]
+                low_memory=True,  # type: ignore[arg-type]
             )
         )
 
@@ -137,4 +136,5 @@ def load_resumption_workspace(
         last_generation=last_generation,
         saved_state=hydrated_state,
         rng=rng,
+        master_seed=payload["master_seed"],
     )

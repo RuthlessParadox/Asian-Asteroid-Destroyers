@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import signal
-import sys
 from typing import TYPE_CHECKING, NamedTuple, Protocol, TypeVar
 
 import numpy as np
 from pathos.multiprocessing import ProcessPool
 
+from .seeding import derive_generation_seed
+
 if TYPE_CHECKING:
-    from collections.abc import Callable, MutableSequence
+    from collections.abc import Callable, Iterable, MutableSequence
 
     from .hall_of_fame import HallOfFame
     from .history_logger import HistoryLogger
@@ -42,6 +43,8 @@ class EvolutionAlgorithm(Protocol[R_co]):
         population_size: int,
         *,
         seed: int | np.random.Generator | None = None,
+        master_seed: int | None = None,
+        workers: int | None = None,
         hall_of_fame: HallOfFame | None = None,
         statistics: Statistics | None = None,
         logbook: Logbook | None = None,
@@ -52,80 +55,6 @@ class EvolutionAlgorithm(Protocol[R_co]):
     ) -> R_co: ...
 
 
-def run_simple_evolution(
-    toolbox: Toolbox,
-    cx_pb: float,
-    mut_pb: float,
-    generations: int,
-    population_size: int,
-    *,
-    seed: int | np.random.Generator | None = None,
-    hall_of_fame: HallOfFame | None = None,
-    statistics: Statistics | None = None,
-    logbook: Logbook | None = None,
-    history_logger: HistoryLogger | None = None,
-    checkpoint_callback: Callable[[int, TrainingResult], None] | None = None,
-    initial_population: Population | None = None,
-    start_generation: int = 1,
-) -> TrainingResult:
-    _validate_parameters(
-        cx_pb,
-        mut_pb,
-        generations,
-        population_size,
-        initial_population,
-        start_generation,
-    )
-
-    rng = (
-        seed
-        if isinstance(seed, np.random.Generator)
-        else np.random.default_rng(seed)
-    )
-
-    if initial_population is not None:
-        population = initial_population
-    else:
-        population = toolbox.population(population_size)
-        _evaluate_invalid_fitness(toolbox, population)
-        _record_generation_metrics(
-            generation=0,
-            population=population,
-            hall_of_fame=hall_of_fame,
-            statistics=statistics,
-            logbook=logbook,
-            history_logger=history_logger,
-            checkpoint_callback=checkpoint_callback,
-        )
-
-    for generation in range(start_generation, generations + 1):
-        offspring = list(toolbox.select(population, len(population)))
-        offspring = [toolbox.clone(individual) for individual in offspring]
-
-        _apply_crossover(toolbox, offspring, cx_pb, rng)
-        _apply_mutation(toolbox, offspring, mut_pb, rng)
-
-        _evaluate_invalid_fitness(toolbox, offspring)
-        population = offspring
-
-        _record_generation_metrics(
-            generation=generation,
-            population=population,
-            hall_of_fame=hall_of_fame,
-            statistics=statistics,
-            logbook=logbook,
-            history_logger=history_logger,
-            checkpoint_callback=checkpoint_callback,
-        )
-
-    return TrainingResult(
-        final_population=population,
-        logbook=logbook,
-        history_logger=history_logger,
-        hall_of_fame=hall_of_fame,
-    )
-
-
 def run_nsga_evolution(
     toolbox: Toolbox,
     cx_pb: float,
@@ -134,6 +63,8 @@ def run_nsga_evolution(
     population_size: int,
     *,
     seed: int | np.random.Generator | None = None,
+    master_seed: int | None = None,
+    workers: int | None = None,
     hall_of_fame: HallOfFame | None = None,
     statistics: Statistics | None = None,
     logbook: Logbook | None = None,
@@ -149,6 +80,12 @@ def run_nsga_evolution(
         population_size,
         initial_population,
         start_generation,
+    )
+
+    resolved_master_seed = (
+        master_seed
+        if master_seed is not None
+        else int(np.random.default_rng().integers(1, 2**31 - 1))
     )
 
     rng = (
@@ -162,29 +99,16 @@ def run_nsga_evolution(
         else toolbox.population(population_size)
     )
 
-    initial_seed = int(rng.integers(1, 1000000))
-    main_module = sys.modules.get("__main__")
-    parent_evaluator = (
-        getattr(main_module, "GLOBAL_EVALUATOR_INSTANCE", None)
-        if main_module is not None
-        else None
-    )
-
-    with ProcessPool(
-        initializer=_initialize_worker_context,
-        initargs=(parent_evaluator, initial_seed),
-    ) as executor:
-        invalid_individuals = [
-            individual
-            for individual in population
-            if not individual.fitness.valid
-        ]
-        if invalid_individuals:
-            fitnesses = executor.map(toolbox.evaluate, invalid_individuals)
-            for individual, fitness in zip(invalid_individuals, fitnesses):
-                individual.fitness.values = fitness
-
+    with _create_process_pool(workers) as executor:
         if start_generation == 1:
+            _evaluate_seeded_individuals(
+                pool=executor,
+                evaluate_function=toolbox.evaluate,
+                individuals=population,
+                generation_seed=derive_generation_seed(
+                    resolved_master_seed, 0
+                ),
+            )
             _record_generation_metrics(
                 generation=0,
                 population=population,
@@ -202,22 +126,14 @@ def run_nsga_evolution(
             _apply_crossover(toolbox, offspring, cx_pb, rng)
             _apply_mutation(toolbox, offspring, mut_pb, rng)
 
-            invalid_individuals = [
-                individual
-                for individual in offspring
-                if not individual.fitness.valid
-            ]
-            if invalid_individuals:
-                generation_seed = int(rng.integers(1, 1000000))
-                _ = executor.map(
-                    lambda _: _initialize_worker_context(
-                        parent_evaluator, generation_seed
-                    ),
-                    range(executor.ncpus),
-                )
-                fitnesses = executor.map(toolbox.evaluate, invalid_individuals)
-                for individual, fitness in zip(invalid_individuals, fitnesses):
-                    individual.fitness.values = fitness
+            _evaluate_seeded_individuals(
+                pool=executor,
+                evaluate_function=toolbox.evaluate,
+                individuals=offspring,
+                generation_seed=derive_generation_seed(
+                    resolved_master_seed, generation
+                ),
+            )
 
             population = toolbox.select_survivors(
                 [*population, *offspring],
@@ -240,32 +156,6 @@ def run_nsga_evolution(
         history_logger=history_logger,
         hall_of_fame=hall_of_fame,
     )
-
-
-def _initialize_worker_context(
-    evaluator_template: object,
-    generation_seed: int,
-) -> None:
-    _ = signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-    evaluation_module = sys.modules.get("asian_asteroid_destroyers.evaluation")
-    if evaluation_module is not None:
-        setattr(
-            evaluation_module,
-            "GLOBAL_EVALUATOR_INSTANCE",
-            evaluator_template,
-        )
-
-    main_module = sys.modules.get("__main__")
-    if main_module is not None:
-        setattr(
-            main_module,
-            "GLOBAL_EVALUATOR_INSTANCE",
-            evaluator_template,
-        )
-
-    if hasattr(evaluator_template, "evaluation_seed"):
-        setattr(evaluator_template, "evaluation_seed", generation_seed)
 
 
 def _validate_parameters(
@@ -321,17 +211,45 @@ def _validate_parameters(
         )
 
 
-def _evaluate_invalid_fitness(
-    toolbox: Toolbox,
-    population: Population,
+def _create_process_pool(workers: int | None) -> ProcessPool:
+    if workers is not None:
+        if workers <= 0:
+            raise ValueError(
+                f"'workers' must be a positive integer or None. Got: {workers}"
+            )
+        return ProcessPool(initializer=_ignore_sigint, nodes=workers)
+    return ProcessPool(initializer=_ignore_sigint)
+
+
+def _ignore_sigint() -> None:
+    _ = signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+
+def _evaluate_seeded_individuals(
+    pool: ProcessPool,
+    evaluate_function: Callable[[Individual, int], tuple[float, ...]],
+    individuals: Population,
+    generation_seed: int,
 ) -> None:
-    invalid_individuals = [
-        individual for individual in population if not individual.fitness.valid
+    invalid = [
+        individual
+        for individual in individuals
+        if not individual.fitness.valid
     ]
-    if not invalid_individuals:
+    if not invalid:
         return
-    fitnesses = toolbox.map(toolbox.evaluate, invalid_individuals)
-    for individual, fitness in zip(invalid_individuals, fitnesses):
+
+    seeds = [generation_seed] * len(invalid)
+    typed_map: Callable[
+        [
+            Callable[[Individual, int], tuple[float, ...]],
+            list[Individual],
+            list[int],
+        ],
+        Iterable[tuple[float, ...]],
+    ] = pool.map  # pyright: ignore[reportAssignmentType]
+    fitnesses = list(typed_map(evaluate_function, invalid, seeds))
+    for individual, fitness in zip(invalid, fitnesses):
         individual.fitness.values = fitness
 
 

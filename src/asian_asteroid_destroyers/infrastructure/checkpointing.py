@@ -46,6 +46,7 @@ class CheckpointPayload(TypedDict):
     final_population: Population
     hall_of_fame: HallOfFame | None
     rng_state: Mapping[str, object]
+    master_seed: int
 
 
 class EmergencySaver:
@@ -55,6 +56,7 @@ class EmergencySaver:
         "_last_known_generation",
         "_rng",
         "_algorithm_path",
+        "_master_seed",
     )
 
     output_directory: Path
@@ -62,18 +64,21 @@ class EmergencySaver:
     _last_known_generation: int
     _rng: np.random.Generator
     _algorithm_path: str
+    _master_seed: int
 
     def __init__(
         self,
         output_directory: str | os.PathLike[str],
         rng: np.random.Generator,
         algorithm: EvolutionAlgorithm[TrainingResult],
+        master_seed: int,
     ) -> None:
         self.output_directory = Path(output_directory)
         self._last_known_state = None
         self._last_known_generation = 0
         self._rng = rng
         self._algorithm_path = f"{algorithm.__module__}.{algorithm.__name__}"
+        self._master_seed = master_seed
 
     def update_state(self, generation: int, state: TrainingResult) -> None:
         self._last_known_generation = generation
@@ -113,6 +118,7 @@ class EmergencySaver:
             "final_population": self._last_known_state.final_population,
             "hall_of_fame": self._last_known_state.hall_of_fame,
             "rng_state": self._rng.bit_generator.state,
+            "master_seed": self._master_seed,
         }
         with gzip.open(runtime_path, "wb") as file:
             pickle.dump(payload_data, file)
@@ -134,6 +140,7 @@ def make_checkpoint_saver(
     output_directory: str | os.PathLike[str],
     rng: np.random.Generator,
     algorithm: EvolutionAlgorithm[TrainingResult],
+    master_seed: int,
     save_interval: int = 10,
 ) -> Callable[[int, TrainingResult], None]:
     path = Path(output_directory)
@@ -165,6 +172,7 @@ def make_checkpoint_saver(
                 "final_population": current_state.final_population,
                 "hall_of_fame": current_state.hall_of_fame,
                 "rng_state": rng.bit_generator.state,
+                "master_seed": master_seed,
             }
             with gzip.open(runtime_path, "wb") as file:
                 pickle.dump(payload_data, file)

@@ -23,22 +23,18 @@ class FuzzyFitnessEvaluator:
     __slots__: tuple[str, ...] = (
         "_template",
         "_cached_json_data",
-        "_evaluation_seed",
         "_environment",
     )
     _template: Final[ControllerChromosome]
     _cached_json_data: Final[RootJsonSchema]
-    _evaluation_seed: int
     _environment: Final[TrainerEnvironment]
 
     def __init__(
         self,
         template: ControllerChromosome,
         profile_path: Path,
-        evaluation_seed: int,
     ) -> None:
         self._template = template
-        self._evaluation_seed = evaluation_seed
         self._environment = TrainerEnvironment()
 
         if not profile_path.is_file():
@@ -49,15 +45,11 @@ class FuzzyFitnessEvaluator:
         with open(profile_path, "r", encoding="utf-8") as file:
             self._cached_json_data = json.load(file)
 
-    @property
-    def evaluation_seed(self) -> int:
-        return self._evaluation_seed
-
-    @evaluation_seed.setter
-    def evaluation_seed(self, seed: int) -> None:
-        self._evaluation_seed = seed
-
-    def evaluate_individual(self, individual: Individual) -> tuple[float, ...]:
+    def evaluate_individual(
+        self,
+        individual: Individual,
+        evaluation_seed: int,
+    ) -> tuple[float, ...]:
         chromosome = hydrate_chromosome_blueprint(
             individual[:],
             self._template,
@@ -66,11 +58,13 @@ class FuzzyFitnessEvaluator:
         scenarios_pool = load_scenario_suite(
             {
                 "json_data": self._cached_json_data,
-                "seed": self._evaluation_seed,
+                "seed": evaluation_seed,
                 "is_deterministic": False,
             }
         )
         scenario_count = len(scenarios_pool)
+        if scenario_count == 0:
+            raise ValueError("Scenario suite cannot be empty.")
 
         total_asteroid_fraction = 0.0
         total_accuracy = 0.0
