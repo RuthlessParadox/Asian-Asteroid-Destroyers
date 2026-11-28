@@ -52,7 +52,7 @@ MapMethod = Callable[
     Iterable[tuple[float, ...]],
 ]
 
-FitnessEvaluator = Callable[[Individual], tuple[float, ...]]
+FitnessEvaluator = Callable[[Individual, int], tuple[float, ...]]
 CrossoverOperator = Callable[
     [Individual, Individual], tuple[Individual, Individual]
 ]

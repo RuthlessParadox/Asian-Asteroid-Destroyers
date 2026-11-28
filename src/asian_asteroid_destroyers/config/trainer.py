@@ -23,6 +23,8 @@ class TrainerArgs:
     gene_size: int
     scenarios_path: Path
     resume: Path | None = None
+    seed: int | None = None
+    workers: int | None = None
 
 
 def get_trainer_config(baseline: EvolutionConfig | None = None) -> TrainerArgs:
@@ -82,6 +84,18 @@ def get_trainer_config(baseline: EvolutionConfig | None = None) -> TrainerArgs:
         default=None,
         help="Path to an experiment directory to resume training from",
     )
+    _ = parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Master seed to use for random number generation",
+    )
+    _ = parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        help="Number of workers to use during multiprocessing",
+    )
 
     namespace = parser.parse_args()
 
@@ -98,6 +112,8 @@ def get_trainer_config(baseline: EvolutionConfig | None = None) -> TrainerArgs:
     )
     resume_str: str | None = namespace.resume  # pyright: ignore[reportAny]
     resume = Path(resume_str) if resume_str is not None else None
+    seed: int | None = namespace.seed  # pyright: ignore[reportAny]
+    workers: int | None = namespace.workers  # pyright: ignore[reportAny]
 
     if resume is not None:
         forbidden_resume_flags = {
@@ -105,6 +121,7 @@ def get_trainer_config(baseline: EvolutionConfig | None = None) -> TrainerArgs:
             "--cx-pb",
             "--mut-pb",
             "--gene-size",
+            "--seed",
         }
         conflicting_flags = forbidden_resume_flags.intersection(sys.argv)
         if conflicting_flags:
@@ -125,4 +142,6 @@ def get_trainer_config(baseline: EvolutionConfig | None = None) -> TrainerArgs:
         gene_size=gene_size,
         scenarios_path=Path(scenarios_path),
         resume=resume,
+        seed=seed,
+        workers=workers,
     )

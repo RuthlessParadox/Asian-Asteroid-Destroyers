@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import signal
-import sys
 from typing import TYPE_CHECKING
 
 import dill
@@ -38,8 +37,6 @@ from asian_asteroid_destroyers.infrastructure import (
 if TYPE_CHECKING:
     from asian_asteroid_destroyers.evokit import Individual, TrainingResult
 
-GLOBAL_EVALUATOR_INSTANCE: FuzzyFitnessEvaluator | None = None
-
 
 class _MultiprocessingEvaluationWorker:
     __slots__: tuple[str, ...] = ("evaluator",)
@@ -48,8 +45,12 @@ class _MultiprocessingEvaluationWorker:
     def __init__(self, evaluator: FuzzyFitnessEvaluator) -> None:
         self.evaluator = evaluator
 
-    def __call__(self, individual: Individual) -> tuple[float, ...]:
-        return self.evaluator.evaluate_individual(individual)
+    def __call__(
+        self,
+        individual: Individual,
+        evaluation_seed: int,
+    ) -> tuple[float, ...]:
+        return self.evaluator.evaluate_individual(individual, evaluation_seed)
 
 
 def main() -> None:
@@ -78,6 +79,7 @@ def main() -> None:
         algorithm = workspace.algorithm
         start_generation = workspace.last_generation + 1
         rng = workspace.rng
+        master_seed = workspace.master_seed
 
         logbook = workspace.saved_state.logbook
         history_logger = workspace.saved_state.history_logger
@@ -88,22 +90,20 @@ def main() -> None:
         data_directory = create_experiment_directory()
         algorithm = run_nsga_evolution
         start_generation = 1
-        rng = np.random.default_rng()
+        master_seed = (
+            args.seed
+            if args.seed is not None
+            else int(np.random.default_rng().integers(1, 2**31 - 1))
+        )
+        rng = np.random.default_rng(master_seed)
         logbook = Logbook()
         history_logger = HistoryLogger()
         hall_of_fame = HallOfFame()
         population = None
 
-    initial_seed = int(rng.integers(1, 1000000))
     runtime_evaluator = FuzzyFitnessEvaluator(
         template=template,
         profile_path=args.scenarios_path,
-        evaluation_seed=initial_seed,
-    )
-    setattr(
-        sys.modules["__main__"],
-        "GLOBAL_EVALUATOR_INSTANCE",
-        runtime_evaluator,
     )
 
     triangular_array, trapezoidal_array = create_geometry_repair_maps(template)
@@ -137,7 +137,6 @@ def main() -> None:
     )
 
     statistics = Statistics()
-
     evaluation_worker = _MultiprocessingEvaluationWorker(runtime_evaluator)
 
     toolbox = build_toolbox(
@@ -155,11 +154,13 @@ def main() -> None:
         output_directory=data_directory,
         rng=rng,
         algorithm=algorithm,
+        master_seed=master_seed,
     )
     periodic_saver = make_checkpoint_saver(
         output_directory=data_directory,
         rng=rng,
         algorithm=algorithm,
+        master_seed=master_seed,
         save_interval=args.save_interval,
     )
 
@@ -169,9 +170,6 @@ def main() -> None:
         emergency_saver.update_state(generation, state)
         periodic_saver(generation, state)
 
-        next_generation_seed = int(rng.integers(1, 1000000))
-        runtime_evaluator.evaluation_seed = next_generation_seed
-
     print("Commencing evolutionary loop...")
     final_result = algorithm(
         toolbox=toolbox,
@@ -180,6 +178,8 @@ def main() -> None:
         generations=args.generations,
         population_size=args.population_size,
         seed=rng,
+        master_seed=master_seed,
+        workers=args.workers,
         hall_of_fame=hall_of_fame,
         logbook=logbook,
         history_logger=history_logger,
