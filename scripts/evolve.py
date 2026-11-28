@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 import dill
 import numpy as np
 
-from asian_asteroid_destroyers.benchmarks.metrics1 import BenchMarkMetrics
 from asian_asteroid_destroyers.chromosomes import (
     create_geometry_repair_maps,
     flatten_chromosome,
