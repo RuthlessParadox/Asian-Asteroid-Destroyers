@@ -27,6 +27,7 @@ from asian_asteroid_destroyers.evokit import (
     mut_fuzzy_gaussian,
     run_nsga_evolution,
     sel_nsga_3,
+    sel_random,
 )
 from asian_asteroid_destroyers.infrastructure import (
     EmergencySaver,
@@ -129,7 +130,12 @@ def main() -> None:
         independent_probability=0.08,
     )
 
-    select_operator = sel_nsga_3(num_objectives=5, subdivisions=4)
+    select_parents_operator = sel_random(seed=rng)
+    select_survivors_operator = sel_nsga_3(
+        objective_count=5,
+        subdivisions=4,
+        seed=rng,
+    )
 
     statistics = Statistics()
 
@@ -142,7 +148,8 @@ def main() -> None:
         individual_factory=fuzzy_individual_factory,
         mate_operator=mate_operator,
         mutate_operator=mutate_operator,
-        select_operator=select_operator,
+        select_parents_operator=select_parents_operator,
+        select_survivors_operator=select_survivors_operator,
     )
 
     emergency_saver = EmergencySaver(

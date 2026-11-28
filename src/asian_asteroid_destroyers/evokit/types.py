@@ -1,5 +1,5 @@
 from collections.abc import Callable, Iterable, Sequence
-from typing import TypedDict, TypeVar
+from typing import TypedDict
 
 import numpy as np
 
@@ -10,8 +10,12 @@ __all__ = [
     "Individual",
     "Population",
     "GenerationStats",
+    "IntVector",
+    "IntMatrix",
     "FloatVector",
     "FloatMatrix",
+    "BoolVector",
+    "BoolMatrix",
     "IndividualGenerator",
     "PopulationGenerator",
     "CloneMethod",
@@ -21,9 +25,6 @@ __all__ = [
     "MutationOperator",
     "SelectionOperator",
 ]
-
-_Shape1D = TypeVar("_Shape1D", bound=tuple[int])
-_Shape2D = TypeVar("_Shape2D", bound=tuple[int, int])
 
 Population = Sequence[Individual]
 
@@ -36,8 +37,12 @@ class GenerationStats(TypedDict):
     std_fitness: float
 
 
-FloatVector = np.ndarray[_Shape1D, np.dtype[np.float64]]
-FloatMatrix = np.ndarray[_Shape2D, np.dtype[np.float64]]
+IntVector = np.ndarray[tuple[int], np.dtype[np.int64]]
+IntMatrix = np.ndarray[tuple[int, int], np.dtype[np.int64]]
+FloatVector = np.ndarray[tuple[int], np.dtype[np.float64]]
+FloatMatrix = np.ndarray[tuple[int, int], np.dtype[np.float64]]
+BoolVector = np.ndarray[tuple[int], np.dtype[np.bool]]
+BoolMatrix = np.ndarray[tuple[int, int], np.dtype[np.bool]]
 
 IndividualGenerator = Callable[[], Individual]
 PopulationGenerator = Callable[[int], Population]
